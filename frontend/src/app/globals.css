@@ -14,19 +14,19 @@
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
 
-  /* Tasteful Option Colors (Gradients) */
-  --opt-1-from: #be185d;
-  --opt-1-to: #db2777;
+  /* Modern Neon Palette (Cyberpunk/Tech) */
+  --opt-1-from: #7c3aed;
+  --opt-1-to: #a78bfa;
+  /* Violet */
+  --opt-2-from: #0891b2;
+  --opt-2-to: #22d3ee;
+  /* Cyan */
+  --opt-3-from: #db2777;
+  --opt-3-to: #f472b6;
   /* Pink */
-  --opt-2-from: #1d4ed8;
-  --opt-2-to: #3b82f6;
-  /* Blue */
-  --opt-3-from: #047857;
-  --opt-3-to: #10b981;
-  /* Emerald */
-  --opt-4-from: #b45309;
-  --opt-4-to: #f59e0b;
-  /* Amber */
+  --opt-4-from: #ea580c;
+  --opt-4-to: #fb923c;
+  /* Orange */
 
   --text-main: #ffffff;
   --text-muted: #a1a1aa;
@@ -46,8 +46,7 @@
 body {
   font-family: 'Inter', sans-serif;
   background-color: var(--bg-dark);
-  /* Extremely subtle radial gradient */
-  background: radial-gradient(circle at center, var(--bg-gradient-center) 0%, var(--bg-gradient-edge) 80%);
+  background: var(--bg-gradient);
   color: var(--text-main);
   min-height: 100vh;
   display: flex;
@@ -88,16 +87,15 @@ h2 {
 
 /* Glass Card */
 .glass-card {
-  background: var(--bg-panel);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--border-light);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
   border-radius: 24px;
   padding: 3rem;
   width: 100%;
   max-width: 480px;
-  /* Removed shadow for cleaner look, or very subtle one */
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--glass-shadow);
   transition: transform 0.3s ease, border-color 0.3s ease;
 }
 

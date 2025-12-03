@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -12,29 +13,28 @@ export default function Home() {
         maxWidth: '480px'
       }}>
 
-        {/* 1. Small Animated Logo (Centered above box) */}
+        {/* 1. Static PNG Logo */}
         <div style={{
-          width: '200px',
-          height: '200px',
+          width: '100%',
+          maxWidth: '350px', // Adjusted width for PNG
           marginBottom: '2rem',
           position: 'relative',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
+          <Image
+            src="/otamat/logo.png"
+            alt="OtaMat Logo"
+            width={350}
+            height={150}
             style={{
               width: '100%',
-              height: '100%',
+              height: 'auto',
               objectFit: 'contain',
             }}
-          >
-            <source src="/otamat/logo.mp4" type="video/mp4" />
-          </video>
+            priority
+          />
         </div>
 
         {/* 2. Input Box (Card) */}

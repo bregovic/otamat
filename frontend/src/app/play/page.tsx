@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { User, Check, Loader2, AlertCircle } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 
-// Determine backend URL (localhost for dev, otherwise relative or env var)
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+// Production Backend URL
+const BACKEND_URL = "https://otamat-production.up.railway.app";
 
 export default function LobbyPage() {
     const [step, setStep] = useState<"nickname" | "avatar" | "waiting">("nickname");

@@ -48,4 +48,23 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     return { success: true, message: 'Joined game successfully' };
   }
+
+  @SubscribeMessage('createGame')
+  handleCreateGame(
+    @MessageBody() data: { title: string; questions: any[] },
+    @ConnectedSocket() client: Socket,
+  ) {
+    this.logger.log(`Client ${client.id} creating game: ${data.title}`);
+
+    // Generate a random 6-digit PIN
+    const pin = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store game in memory (TODO: Persist to DB)
+    // For now, we just join the host to the room so they receive updates
+    client.join(pin);
+
+    this.logger.log(`Game created with PIN: ${pin}`);
+
+    return { success: true, pin: pin };
+  }
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { Loader2, Users, Play, Check } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
@@ -13,6 +13,7 @@ const BACKEND_URL = "https://otamat-production.up.railway.app";
 
 function CreateQuizContent() {
     const { user } = useAuth();
+    const router = useRouter();
     const searchParams = useSearchParams();
     const editQuizId = searchParams.get("edit");
 
@@ -151,6 +152,8 @@ function CreateQuizContent() {
                 alert("Pro spuštění upraveného kvízu použijte tlačítko 'Pouze uložit' a poté ho spusťte z Dashboardu.");
                 setIsSaving(false);
             } else {
+                console.error("Save failed:", response.message);
+                alert("Chyba při ukládání: " + (response.message || "Neznámá chyba"));
                 setError(response.message || "Chyba při ukládání.");
                 setIsSaving(false);
             }
@@ -186,8 +189,10 @@ function CreateQuizContent() {
             setIsSaving(false);
             if (response.success) {
                 alert(editQuizId ? "Kvíz byl úspěšně aktualizován!" : "Kvíz byl úspěšně uložen!");
-                window.location.href = "/dashboard";
+                router.push("/dashboard");
             } else {
+                console.error("Save failed:", response.message);
+                alert("Chyba při ukládání: " + (response.message || "Neznámá chyba"));
                 setError(response.message || "Chyba při ukládání kvízu.");
             }
         });

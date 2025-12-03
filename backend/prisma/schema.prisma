@@ -149,7 +149,7 @@ model GameQuestion {
   game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
   
   questionId  String
-  question    Question @relation(fields: [questionId], references: [id])
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   
   startTime   DateTime? // When the question was shown
   endTime     DateTime? // When voting ended

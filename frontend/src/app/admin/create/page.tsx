@@ -135,10 +135,10 @@ export default function CreateQuizPage() {
                         </div>
                     </div>
 
-                    <div className="glass-card" style={{ width: '100%', marginBottom: '2rem', padding: '3rem' }}>
-                        <h2 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>{currentQuestion.text}</h2>
+                    <div className="glass-card" style={{ width: '100%', maxWidth: '800px', marginBottom: '2rem', padding: '4rem' }}>
+                        <h2 style={{ fontSize: '3.5rem', marginBottom: '3rem', lineHeight: '1.2' }}>{currentQuestion.text}</h2>
 
-                        <div style={{ marginTop: '3rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                        <div style={{ marginTop: '3rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                             {currentQuestion.options.map((opt, i) => {
                                 const isCorrect = showResults && resultsData?.correctIndex === i;
                                 const isWrong = showResults && resultsData?.correctIndex !== i;
@@ -152,15 +152,15 @@ export default function CreateQuizPage() {
 
                                 return (
                                     <div key={i} className={`
-                                        p-8 rounded-2xl text-2xl font-bold text-white flex items-center gap-4 transition-all duration-300
+                                        p-6 rounded-2xl text-3xl font-bold text-white flex items-center gap-4 transition-all duration-300
                                         ${showResults
                                             ? (isCorrect ? 'bg-emerald-500' : 'bg-white/5 opacity-30')
                                             : `bg-gradient-to-br ${gradientClass}`
                                         }
                                     `}>
-                                        <span style={{ fontSize: '2rem' }}>{['▲', '◆', '●', '■'][i]}</span>
+                                        <span style={{ fontSize: '2.5rem' }}>{['▲', '◆', '●', '■'][i]}</span>
                                         {opt}
-                                        {isCorrect && <Check size={32} style={{ marginLeft: 'auto' }} />}
+                                        {isCorrect && <Check size={40} style={{ marginLeft: 'auto' }} />}
                                     </div>
                                 );
                             })}

@@ -38,17 +38,14 @@ function LobbyContent() {
         if (!socket) return;
 
         socket.on("playerJoined", (player) => {
-            console.log("Player joined:", player);
             setPlayers((prev) => [...prev, player]);
         });
 
         socket.on("updatePlayerList", (playerList) => {
-            console.log("Updated player list:", playerList);
             setPlayers(playerList);
         });
 
         socket.on("questionStart", (data) => {
-            console.log("Player: Question started", data);
             setStep("game");
             setCurrentQuestion({
                 index: data.questionIndex,
@@ -61,8 +58,6 @@ function LobbyContent() {
         });
 
         socket.on("questionEnd", (data) => {
-            console.log("Player: Question ended", data);
-            // Find my score
             const myData = data.players.find((p: any) => p.id === socket.id);
             const isCorrect = data.correctIndex === answerSubmitted;
 
@@ -72,8 +67,8 @@ function LobbyContent() {
 
             setResult({
                 correct: isCorrect,
-                points: myData ? myData.score : 0, // This is total score, ideally we want points gained this round
-                rank: 0 // TODO: Calculate rank
+                points: myData ? myData.score : 0,
+                rank: 0
             });
             setShowResultScreen(true);
         });
@@ -93,19 +88,13 @@ function LobbyContent() {
     }, [socket, answerSubmitted, router]);
 
     const handleConnect = () => {
-        if (pin.length !== 6) {
-            setError("PIN musí mít 6 číslic.");
-            return;
-        }
+        if (pin.length !== 6) { setError("PIN musí mít 6 číslic."); return; }
         setStep("nickname");
         setError(null);
     };
 
     const handleJoin = () => {
-        if (!nickname.trim()) {
-            setError("Zadej přezdívku.");
-            return;
-        }
+        if (!nickname.trim()) { setError("Zadej přezdívku."); return; }
 
         const newSocket = io(BACKEND_URL);
         setSocket(newSocket);
@@ -133,7 +122,6 @@ function LobbyContent() {
         return (
             <div className="glass-card">
                 <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>OtaMat</h1>
-
                 <div className="input-wrapper">
                     <input
                         type="text"
@@ -143,10 +131,7 @@ function LobbyContent() {
                         style={{ textAlign: 'center', letterSpacing: '0.2em', fontSize: '2rem', fontWeight: 'bold' }}
                     />
                 </div>
-
-                <button onClick={handleConnect} className="btn btn-primary" style={{ width: '100%' }}>
-                    Pokračovat
-                </button>
+                <button onClick={handleConnect} className="btn btn-primary" style={{ width: '100%' }}>Pokračovat</button>
                 {error && <p style={{ color: '#ef4444', marginTop: '1rem' }}>{error}</p>}
             </div>
         );
@@ -156,19 +141,13 @@ function LobbyContent() {
         return (
             <div className="glass-card">
                 <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>Tvoje postava</h1>
-
                 <div className="avatar-grid">
                     {['cow', 'fox', 'cat', 'dog', 'lion', 'panda', 'koala', 'pig'].map((a) => (
-                        <div
-                            key={a}
-                            className={`avatar-option ${avatar === a ? 'selected' : ''}`}
-                            onClick={() => setAvatar(a)}
-                        >
+                        <div key={a} className={`avatar-option ${avatar === a ? 'selected' : ''}`} onClick={() => setAvatar(a)}>
                             {a === 'cow' ? '🐮' : a === 'fox' ? '🦊' : a === 'cat' ? '🐱' : a === 'dog' ? '🐶' : a === 'lion' ? '🦁' : a === 'panda' ? '🐼' : a === 'koala' ? '🐨' : '🐷'}
                         </div>
                     ))}
                 </div>
-
                 <div className="input-wrapper">
                     <input
                         type="text"
@@ -178,10 +157,7 @@ function LobbyContent() {
                         style={{ textAlign: 'center' }}
                     />
                 </div>
-
-                <button onClick={handleJoin} className="btn btn-primary" style={{ width: '100%' }}>
-                    Vstoupit do hry
-                </button>
+                <button onClick={handleJoin} className="btn btn-primary" style={{ width: '100%' }}>Vstoupit do hry</button>
                 {error && <p style={{ color: '#ef4444', marginTop: '1rem' }}>{error}</p>}
             </div>
         );
@@ -198,7 +174,6 @@ function LobbyContent() {
                     <div style={{ width: '10px', height: '10px', background: '#10b981', borderRadius: '50%' }}></div>
                     Jsi ve hře!
                 </div>
-
                 <Loader2 className="animate-spin" size={48} style={{ margin: '0 auto', opacity: 0.5 }} />
                 <p style={{ marginTop: '1rem', color: '#a1a1aa' }}>Čekáme na spuštění hry...</p>
                 <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.5rem' }}>Vidíš své jméno na hlavní obrazovce?</p>
@@ -215,12 +190,10 @@ function LobbyContent() {
                     </div>
                     <h1 style={{ marginBottom: '0.5rem' }}>{result?.correct ? "Správně!" : "Špatně"}</h1>
                     <p style={{ fontSize: '1.5rem', marginBottom: '2rem' }}>{result?.correct ? "+ Body" : "Zkus to příště"}</p>
-
                     <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '12px', display: 'inline-block' }}>
                         <div style={{ fontSize: '0.9rem', color: '#aaa' }}>Celkové skóre</div>
                         <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{score}</div>
                     </div>
-
                     <p style={{ marginTop: '2rem', color: '#a1a1aa' }}>Čekej na další otázku...</p>
                 </div>
             );
@@ -228,14 +201,16 @@ function LobbyContent() {
 
         return (
             <div style={{ width: '100%', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#a1a1aa', padding: '0 1rem' }}>
-                    <span>Otázka {currentQuestion?.index} / {currentQuestion?.total}</span>
-                    <span>Skóre: {score}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#a1a1aa', padding: '0 1rem' }}>
+                    <span style={{ fontSize: '0.9rem' }}>Otázka {currentQuestion?.index} / {currentQuestion?.total}</span>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', background: 'rgba(255,255,255,0.1)', padding: '0.25rem 1rem', borderRadius: '8px' }}>
+                        {currentQuestion?.timeLimit}s
+                    </div>
+                    <span style={{ fontSize: '0.9rem' }}>Skóre: {score}</span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', height: '60vh' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', height: '50vh' }}>
                     {['▲', '◆', '●', '■'].map((symbol, i) => {
-                        // Use CSS variables for colors
                         const gradientClass = [
                             'from-[var(--opt-1-from)] to-[var(--opt-1-to)]',
                             'from-[var(--opt-2-from)] to-[var(--opt-2-to)]',
@@ -249,15 +224,15 @@ function LobbyContent() {
                                 onClick={() => submitAnswer(i)}
                                 disabled={answerSubmitted !== null}
                                 className={`
-                                    rounded-2xl flex flex-col items-center justify-center text-white transition-all duration-200
+                                    rounded-xl flex flex-col items-center justify-center text-white transition-all duration-200
                                     ${answerSubmitted === null
-                                        ? `bg-gradient-to-br ${gradientClass} shadow-lg active:scale-95`
+                                        ? `bg-gradient-to-br ${gradientClass} shadow-md active:scale-95`
                                         : answerSubmitted === i
                                             ? 'bg-white text-black scale-105 z-10 ring-4 ring-white/50'
                                             : 'bg-gray-800 opacity-20 grayscale'
                                     }
                                 `}
-                                style={{ fontSize: '3rem' }}
+                                style={{ fontSize: '2.5rem' }}
                             >
                                 {symbol}
                             </button>
@@ -266,7 +241,7 @@ function LobbyContent() {
                 </div>
 
                 {answerSubmitted !== null && (
-                    <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>
+                    <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '1.25rem', fontWeight: 'bold', color: '#10b981' }}>
                         Odpověď odeslána!
                     </div>
                 )}

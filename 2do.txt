@@ -1,1 +1,6 @@
 parametr na čtení zadání - AI
+zvuky na zobrazujícím zařízení
+překlad do jiných jazyků
+login
+přehled kvízů
+hádání osobnosti odkrývání

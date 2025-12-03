@@ -27,9 +27,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     questions: any[];
     players: any[];
     currentQuestionIndex: number;
-    answers: Map<string, number>; // playerId -> answerIndex
+    answers: Map<string, { index: number; time: number }>; // playerId -> { answerIndex, timestamp }
     state: 'lobby' | 'question' | 'results' | 'finished';
     timer: NodeJS.Timeout | null;
+    questionStartTime: number;
   }>();
 
   handleConnection(client: Socket) {
@@ -57,7 +58,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       currentQuestionIndex: -1,
       answers: new Map(),
       state: 'lobby',
-      timer: null
+      timer: null,
+      questionStartTime: 0
     });
 
     client.join(pin);
@@ -106,7 +108,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // Record answer
     if (!game.answers.has(client.id)) {
-      game.answers.set(client.id, data.answerIndex);
+      game.answers.set(client.id, { index: data.answerIndex, time: Date.now() });
 
       // Notify host about answer count update
       this.server.to(data.pin).emit('answerSubmitted', { count: game.answers.size, total: game.players.length });
@@ -133,6 +135,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     game.state = 'question';
     game.answers.clear();
+    game.questionStartTime = Date.now();
 
     const question = game.questions[game.currentQuestionIndex];
     const timeLimit = 30; // 30 seconds per question
@@ -162,12 +165,24 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const currentQ = game.questions[game.currentQuestionIndex];
     const correctIndex = currentQ.correct;
+    const timeLimit = 30 * 1000; // 30s in ms
 
     // Calculate scores
-    game.answers.forEach((answerIndex, playerId) => {
-      if (answerIndex === correctIndex) {
+    game.answers.forEach((answer, playerId) => {
+      if (answer.index === correctIndex) {
         const player = game.players.find(p => p.id === playerId);
-        if (player) player.score += 100; // Simple scoring
+        if (player) {
+          // Calculate score based on speed
+          const timeTaken = answer.time - game.questionStartTime;
+          // Formula: 1000 * (1 - (timeTaken / timeLimit) / 2)
+          // If timeTaken = 0, score = 1000
+          // If timeTaken = timeLimit, score = 500
+          let score = Math.round(1000 * (1 - (timeTaken / timeLimit) / 2));
+          if (score < 500) score = 500; // Minimum points for correct answer
+          if (score > 1000) score = 1000; // Cap at 1000
+
+          player.score += score;
+        }
       }
     });
 

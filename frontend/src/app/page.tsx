@@ -37,10 +37,10 @@ export default function Home() {
           </div>
         ) : (
           <div className="flex gap-4">
-            <Link href="/login" className="text-white hover:text-primary font-bold py-2 px-4 transition-colors">
+            <Link href="/login" className="text-white hover:text-primary font-bold py-2 px-4 transition-colors" prefetch={false}>
               Přihlásit
             </Link>
-            <Link href="/register" className="btn btn-primary py-2 px-6 text-sm">
+            <Link href="/register" className="btn btn-primary py-2 px-6 text-sm" prefetch={false}>
               Registrovat
             </Link>
           </div>

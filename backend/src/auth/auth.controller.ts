@@ -17,6 +17,11 @@ export class AuthController {
         return this.authService.register(body);
     }
 
+    @Get('test')
+    test() {
+        return "Auth working";
+    }
+
     @UseGuards(AuthGuard('jwt'))
     @Get('profile')
     getProfile(@Request() req) {

@@ -8,7 +8,7 @@ export class QuizController {
 
     @UseGuards(AuthGuard('jwt'))
     @Post()
-    create(@Request() req, @Body() body) {
+    create(@Request() req: any, @Body() body: any) {
         return this.quizService.createQuiz(req.user.userId, body);
     }
 
@@ -19,7 +19,7 @@ export class QuizController {
 
     @UseGuards(AuthGuard('jwt'))
     @Get('my')
-    findAllMy(@Request() req) {
+    findAllMy(@Request() req: any) {
         return this.quizService.findAllMy(req.user.userId);
     }
 

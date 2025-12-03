@@ -9,7 +9,7 @@ import { io, Socket } from "socket.io-client";
 const BACKEND_URL = "https://otamat-production.up.railway.app";
 
 function LobbyContent() {
-    const [step, setStep] = useState<"nickname" | "avatar" | "waiting">("nickname");
+    const [step, setStep] = useState<"nickname" | "avatar" | "waiting" | "game">("nickname");
     const [nickname, setNickname] = useState("");
     const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
     const [socket, setSocket] = useState<Socket | null>(null);
@@ -40,6 +40,11 @@ function LobbyContent() {
             console.error("Connection error:", err);
             setError("Nepodařilo se připojit k serveru. Zkus to znovu.");
             setIsConnected(false);
+        });
+
+        newSocket.on("gameStarted", () => {
+            console.log("Game started!");
+            setStep("game");
         });
 
         setSocket(newSocket);
@@ -203,6 +208,17 @@ function LobbyContent() {
                         <Loader2 size={32} style={{ margin: '0 auto 1rem auto', animation: 'spin 1s linear infinite' }} />
                         <p style={{ marginBottom: '0.5rem', fontSize: '1.1rem' }}>Čekáme na spuštění hry...</p>
                         <p style={{ fontSize: '0.9rem' }}>Vidíš své jméno na hlavní obrazovce?</p>
+                    </div>
+                </div>
+            )}
+
+            {/* STEP 4: Game Running */}
+            {step === "game" && (
+                <div style={{ width: '100%' }}>
+                    <div className="glass-card" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                        <h2 style={{ marginBottom: '1rem', fontSize: '2rem' }}>Hra běží!</h2>
+                        <p style={{ fontSize: '1.2rem' }}>Sleduj hlavní obrazovku pro otázky.</p>
+                        <div style={{ marginTop: '2rem', fontSize: '3rem' }}>👀</div>
                     </div>
                 </div>
             )}

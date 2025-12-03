@@ -64,13 +64,47 @@ export default function CreateQuizPage() {
         });
     };
 
+    const [gameStarted, setGameStarted] = useState(false);
+
     const handleStartGame = () => {
         if (socket && gamePin) {
             socket.emit("startGame", { pin: gamePin });
-            // TODO: Redirect to game host view
-            alert("Hra spuštěna! (Zatím jen alert)");
+            setGameStarted(true);
         }
     };
+
+    if (gameStarted) {
+        return (
+            <main>
+                <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                    <h1 style={{ fontSize: '3rem', marginBottom: '2rem' }}>Hra probíhá!</h1>
+
+                    <div className="glass-card" style={{ width: '100%', marginBottom: '2rem', padding: '3rem' }}>
+                        <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Otázka 1</h2>
+                        <p style={{ fontSize: '1.5rem', color: '#a1a1aa' }}>{questions[0].text}</p>
+
+                        <div style={{ marginTop: '3rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            {questions[0].options.map((opt, i) => (
+                                <div key={i} style={{
+                                    padding: '1.5rem',
+                                    background: 'rgba(255,255,255,0.1)',
+                                    borderRadius: '12px',
+                                    fontSize: '1.2rem',
+                                    fontWeight: 'bold'
+                                }}>
+                                    {opt}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <Link href="/" className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>
+                        Ukončit hru
+                    </Link>
+                </div>
+            </main>
+        );
+    }
 
     if (gamePin) {
         return (

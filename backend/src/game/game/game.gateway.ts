@@ -21,18 +21,25 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private logger: Logger = new Logger('GameGateway');
 
+  // In-memory storage for games
+  private games = new Map<string, {
+    title: string;
+    questions: any[];
+    players: any[];
+    currentQuestionIndex: number;
+    answers: Map<string, number>; // playerId -> answerIndex
+    state: 'lobby' | 'question' | 'results' | 'finished';
+    timer: NodeJS.Timeout | null;
+  }>();
+
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
   }
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
+    // TODO: Handle player disconnect during game
   }
-
-
-
-  // In-memory storage for games: { pin: { title: string, players: [] } }
-  private games = new Map<string, { title: string; players: any[] }>();
 
   @SubscribeMessage('createGame')
   handleCreateGame(
@@ -41,15 +48,19 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     this.logger.log(`Client ${client.id} creating game: ${data.title}`);
 
-    // Generate a random 6-digit PIN
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Store game in memory
-    this.games.set(pin, { title: data.title, players: [] });
+    this.games.set(pin, {
+      title: data.title,
+      questions: data.questions,
+      players: [],
+      currentQuestionIndex: -1,
+      answers: new Map(),
+      state: 'lobby',
+      timer: null
+    });
 
-    // Join the host to the room so they receive updates
     client.join(pin);
-
     this.logger.log(`Game created with PIN: ${pin}`);
 
     return { success: true, pin: pin };
@@ -60,33 +71,115 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { pin: string; nickname: string; avatar: string },
     @ConnectedSocket() client: Socket,
   ) {
-    this.logger.log(`Client ${client.id} joining game ${data.pin} as ${data.nickname}`);
-
     const game = this.games.get(data.pin);
-    if (!game) {
-      return { success: false, message: 'Hra s tímto PINem neexistuje.' };
-    }
+    if (!game) return { success: false, message: 'Hra neexistuje.' };
+    if (game.state !== 'lobby') return { success: false, message: 'Hra už běží.' };
 
-    // Join the room based on PIN
     client.join(data.pin);
 
-    // Add player to game state
-    const player = { id: client.id, nickname: data.nickname, avatar: data.avatar };
+    const player = { id: client.id, nickname: data.nickname, avatar: data.avatar, score: 0 };
     game.players.push(player);
 
-    // Notify everyone in the room (including the host) that a player joined
     this.server.to(data.pin).emit('playerJoined', player);
-
-    // Also send the full list of players to the new joiner (or everyone to be safe)
     this.server.to(data.pin).emit('updatePlayerList', game.players);
 
-    return { success: true, message: 'Joined game successfully' };
+    return { success: true, message: 'Joined' };
   }
 
   @SubscribeMessage('startGame')
   handleStartGame(@MessageBody() data: { pin: string }) {
+    const game = this.games.get(data.pin);
+    if (!game) return { success: false };
+
     this.logger.log(`Starting game ${data.pin}`);
-    this.server.to(data.pin).emit('gameStarted');
+    this.nextQuestion(data.pin);
     return { success: true };
+  }
+
+  @SubscribeMessage('submitAnswer')
+  handleSubmitAnswer(
+    @MessageBody() data: { pin: string; answerIndex: number },
+    @ConnectedSocket() client: Socket
+  ) {
+    const game = this.games.get(data.pin);
+    if (!game || game.state !== 'question') return;
+
+    // Record answer
+    if (!game.answers.has(client.id)) {
+      game.answers.set(client.id, data.answerIndex);
+
+      // Notify host about answer count update
+      this.server.to(data.pin).emit('answerSubmitted', { count: game.answers.size, total: game.players.length });
+
+      // Check if all players answered
+      if (game.answers.size === game.players.length) {
+        this.finishQuestion(data.pin);
+      }
+    }
+  }
+
+  private nextQuestion(pin: string) {
+    const game = this.games.get(pin);
+    if (!game) return;
+
+    game.currentQuestionIndex++;
+
+    if (game.currentQuestionIndex >= game.questions.length) {
+      // Game Over
+      game.state = 'finished';
+      this.server.to(pin).emit('gameOver', { players: game.players }); // Send final scores
+      return;
+    }
+
+    game.state = 'question';
+    game.answers.clear();
+
+    const question = game.questions[game.currentQuestionIndex];
+    const timeLimit = 30; // 30 seconds per question
+
+    // Send question to everyone (Players get options count, Host gets text)
+    this.server.to(pin).emit('questionStart', {
+      questionIndex: game.currentQuestionIndex + 1,
+      totalQuestions: game.questions.length,
+      text: question.text,
+      options: question.options,
+      timeLimit: timeLimit
+    });
+
+    // Start Timer
+    if (game.timer) clearTimeout(game.timer);
+    game.timer = setTimeout(() => {
+      this.finishQuestion(pin);
+    }, timeLimit * 1000);
+  }
+
+  private finishQuestion(pin: string) {
+    const game = this.games.get(pin);
+    if (!game || game.state !== 'question') return;
+
+    if (game.timer) clearTimeout(game.timer);
+    game.state = 'results';
+
+    const currentQ = game.questions[game.currentQuestionIndex];
+    const correctIndex = currentQ.correct;
+
+    // Calculate scores
+    game.answers.forEach((answerIndex, playerId) => {
+      if (answerIndex === correctIndex) {
+        const player = game.players.find(p => p.id === playerId);
+        if (player) player.score += 100; // Simple scoring
+      }
+    });
+
+    // Send results
+    this.server.to(pin).emit('questionEnd', {
+      correctIndex: correctIndex,
+      players: game.players // Send updated scores
+    });
+
+    // Wait 5 seconds then next question (or let host trigger it? Let's auto-advance for now for simplicity)
+    game.timer = setTimeout(() => {
+      this.nextQuestion(pin);
+    }, 5000);
   }
 }

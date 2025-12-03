@@ -19,6 +19,10 @@ function LobbyContent() {
     const [gamePin, setGamePin] = useState<string | null>(null);
     const searchParams = useSearchParams();
 
+    const [questionData, setQuestionData] = useState<{ text: string, options: string[], timeLimit: number } | null>(null);
+    const [hasAnswered, setHasAnswered] = useState(false);
+    const [resultMessage, setResultMessage] = useState<string | null>(null);
+
     useEffect(() => {
         const pin = searchParams.get("pin");
         if (pin) {
@@ -45,6 +49,23 @@ function LobbyContent() {
         newSocket.on("gameStarted", () => {
             console.log("Game started!");
             setStep("game");
+        });
+
+        newSocket.on("questionStart", (data) => {
+            console.log("Question started:", data);
+            setQuestionData(data);
+            setHasAnswered(false);
+            setResultMessage(null);
+            setStep("game");
+        });
+
+        newSocket.on("questionEnd", (data) => {
+            console.log("Question ended:", data);
+            setResultMessage("Konec kola!");
+        });
+
+        newSocket.on("gameOver", () => {
+            setResultMessage("Hra skončila!");
         });
 
         setSocket(newSocket);
@@ -87,6 +108,16 @@ function LobbyContent() {
             setError("Chybí PIN hry. Vrať se na hlavní stránku.");
         }
     };
+
+    const handleAnswer = (index: number) => {
+        if (!socket || !gamePin || hasAnswered) return;
+
+        socket.emit("submitAnswer", { pin: gamePin, answerIndex: index });
+        setHasAnswered(true);
+    };
+
+    // Colors for buttons
+    const colors = ['#ef4444', '#3b82f6', '#eab308', '#22c55e']; // Red, Blue, Yellow, Green
 
     if (!gamePin) {
         return (
@@ -214,12 +245,51 @@ function LobbyContent() {
 
             {/* STEP 4: Game Running */}
             {step === "game" && (
-                <div style={{ width: '100%' }}>
-                    <div className="glass-card" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                        <h2 style={{ marginBottom: '1rem', fontSize: '2rem' }}>Hra běží!</h2>
-                        <p style={{ fontSize: '1.2rem' }}>Sleduj hlavní obrazovku pro otázky.</p>
-                        <div style={{ marginTop: '2rem', fontSize: '3rem' }}>👀</div>
-                    </div>
+                <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
+                    {resultMessage ? (
+                        <div className="glass-card" style={{ textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>
+                            <h2 style={{ fontSize: '2rem' }}>{resultMessage}</h2>
+                            <p>Čekej na další otázku...</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div style={{ textAlign: 'center', marginBottom: '1rem', color: 'white' }}>
+                                {hasAnswered ? "Odpověď odeslána!" : "Vyber odpověď:"}
+                            </div>
+
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gridTemplateRows: '1fr 1fr',
+                                gap: '1rem',
+                                flex: 1,
+                                maxHeight: '600px'
+                            }}>
+                                {questionData?.options.map((_, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => handleAnswer(index)}
+                                        disabled={hasAnswered}
+                                        style={{
+                                            background: colors[index % 4],
+                                            border: 'none',
+                                            borderRadius: '16px',
+                                            fontSize: '3rem',
+                                            color: 'white',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            opacity: hasAnswered ? 0.5 : 1,
+                                            cursor: hasAnswered ? 'default' : 'pointer',
+                                            boxShadow: '0 4px 0 rgba(0,0,0,0.2)'
+                                        }}
+                                    >
+                                        {['▲', '◆', '●', '■'][index]}
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
         </div>

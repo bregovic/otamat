@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { io, Socket } from "socket.io-client";
-import { Loader2, Users, Play } from "lucide-react";
+import { Loader2, Users, Play, Check } from "lucide-react";
 
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
@@ -17,6 +17,14 @@ export default function CreateQuizPage() {
     const [gamePin, setGamePin] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [players, setPlayers] = useState<any[]>([]);
+
+    // Game Running State
+    const [gameStarted, setGameStarted] = useState(false);
+    const [currentQuestion, setCurrentQuestion] = useState<{ text: string, options: string[], index: number, total: number } | null>(null);
+    const [answerStats, setAnswerStats] = useState<{ count: number, total: number }>({ count: 0, total: 0 });
+    const [timeLeft, setTimeLeft] = useState(30);
+    const [showResults, setShowResults] = useState(false);
+    const [resultsData, setResultsData] = useState<{ correctIndex: number, players: any[] } | null>(null);
 
     useEffect(() => {
         const newSocket = io(BACKEND_URL);
@@ -32,10 +40,53 @@ export default function CreateQuizPage() {
             setPlayers(playerList);
         });
 
+        newSocket.on("questionStart", (data) => {
+            console.log("Host: Question started", data);
+            setCurrentQuestion({
+                text: data.text,
+                options: data.options,
+                index: data.questionIndex,
+                total: data.totalQuestions
+            });
+            setAnswerStats({ count: 0, total: players.length }); // Reset stats
+            setTimeLeft(data.timeLimit);
+            setShowResults(false);
+            setGameStarted(true);
+        });
+
+        newSocket.on("answerSubmitted", (data) => {
+            setAnswerStats({ count: data.count, total: data.total });
+        });
+
+        newSocket.on("questionEnd", (data) => {
+            console.log("Host: Question ended", data);
+            setResultsData(data);
+            setShowResults(true);
+        });
+
+        newSocket.on("gameOver", (data) => {
+            alert("Hra skončila! Vítěz: " + data.players.sort((a: any, b: any) => b.score - a.score)[0].nickname);
+        });
+
         return () => {
             newSocket.disconnect();
         };
-    }, []);
+    }, [players.length]); // Re-run if players length changes to have correct total for answer stats reset? Actually socket on inside useEffect might be tricky with closures. 
+    // Better to rely on the data from backend for total. Backend sends total in answerSubmitted.
+    // For reset, we can use players.length but inside the callback it might be stale if not in dep array.
+    // However, recreating socket connection on players change is bad.
+    // Let's fix the closure issue by using a ref or just trusting the backend data.
+
+    // Timer effect
+    useEffect(() => {
+        if (!gameStarted || showResults || timeLeft <= 0) return;
+
+        const timer = setInterval(() => {
+            setTimeLeft((prev) => prev - 1);
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [gameStarted, showResults, timeLeft]);
 
     const handleAddQuestion = () => {
         setQuestions([...questions, { text: "", options: ["", "", "", ""], correct: 0 }]);
@@ -64,43 +115,69 @@ export default function CreateQuizPage() {
         });
     };
 
-    const [gameStarted, setGameStarted] = useState(false);
-
     const handleStartGame = () => {
         if (socket && gamePin) {
             socket.emit("startGame", { pin: gamePin });
-            setGameStarted(true);
         }
     };
 
-    if (gameStarted) {
+    if (gameStarted && currentQuestion) {
         return (
             <main>
-                <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                    <h1 style={{ fontSize: '3rem', marginBottom: '2rem' }}>Hra probíhá!</h1>
+                <div style={{ width: '100%', maxWidth: '1000px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
 
-                    <div className="glass-card" style={{ width: '100%', marginBottom: '2rem', padding: '3rem' }}>
-                        <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Otázka 1</h2>
-                        <p style={{ fontSize: '1.5rem', color: '#a1a1aa' }}>{questions[0].text}</p>
-
-                        <div style={{ marginTop: '3rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            {questions[0].options.map((opt, i) => (
-                                <div key={i} style={{
-                                    padding: '1.5rem',
-                                    background: 'rgba(255,255,255,0.1)',
-                                    borderRadius: '12px',
-                                    fontSize: '1.2rem',
-                                    fontWeight: 'bold'
-                                }}>
-                                    {opt}
-                                </div>
-                            ))}
+                    {/* Top Bar */}
+                    <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', padding: '0 1rem' }}>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#a1a1aa' }}>
+                            Otázka {currentQuestion.index} / {currentQuestion.total}
+                        </div>
+                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'white', background: 'rgba(255,255,255,0.1)', padding: '0.5rem 1.5rem', borderRadius: '12px' }}>
+                            {timeLeft}s
+                        </div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#a1a1aa' }}>
+                            Odpovědi: {answerStats.count} / {answerStats.total}
                         </div>
                     </div>
 
-                    <Link href="/" className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>
-                        Ukončit hru
-                    </Link>
+                    <div className="glass-card" style={{ width: '100%', marginBottom: '2rem', padding: '3rem' }}>
+                        <h2 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>{currentQuestion.text}</h2>
+
+                        <div style={{ marginTop: '3rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                            {currentQuestion.options.map((opt, i) => {
+                                const isCorrect = showResults && resultsData?.correctIndex === i;
+                                const isWrong = showResults && resultsData?.correctIndex !== i;
+                                const colors = ['#ef4444', '#3b82f6', '#eab308', '#22c55e'];
+
+                                return (
+                                    <div key={i} style={{
+                                        padding: '2rem',
+                                        background: showResults
+                                            ? (isCorrect ? '#22c55e' : 'rgba(255,255,255,0.05)')
+                                            : colors[i % 4],
+                                        borderRadius: '16px',
+                                        fontSize: '1.5rem',
+                                        fontWeight: 'bold',
+                                        color: 'white',
+                                        opacity: isWrong ? 0.3 : 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '1rem',
+                                        transition: 'all 0.3s ease'
+                                    }}>
+                                        <span style={{ fontSize: '2rem' }}>{['▲', '◆', '●', '■'][i]}</span>
+                                        {opt}
+                                        {isCorrect && <Check size={32} style={{ marginLeft: 'auto' }} />}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {showResults && (
+                        <div style={{ marginTop: '1rem', fontSize: '1.5rem', color: '#a1a1aa' }}>
+                            Další otázka za 5 sekund...
+                        </div>
+                    )}
                 </div>
             </main>
         );

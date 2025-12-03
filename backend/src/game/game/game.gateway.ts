@@ -9,6 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
+import { QuizService } from '../../quiz/quiz.service';
 
 @WebSocketGateway({
   cors: {
@@ -20,6 +21,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private logger: Logger = new Logger('GameGateway');
+
+  constructor(private quizService: QuizService) { }
 
   // In-memory storage for games
   private games = new Map<string, {
@@ -43,17 +46,36 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('createGame')
-  handleCreateGame(
-    @MessageBody() data: { title: string; questions: any[] },
+  async handleCreateGame(
+    @MessageBody() data: { title?: string; questions?: any[]; quizId?: string },
     @ConnectedSocket() client: Socket,
   ) {
-    this.logger.log(`Client ${client.id} creating game: ${data.title}`);
+    let title = data.title;
+    let questions = data.questions;
+
+    if (data.quizId) {
+      const quiz = await this.quizService.findOne(data.quizId);
+      if (!quiz) return { success: false, message: 'Kvíz nenalezen' };
+
+      title = quiz.title;
+      questions = quiz.questions.map(q => ({
+        text: q.text,
+        options: q.options.map(o => o.text),
+        correct: q.options.findIndex(o => o.isCorrect)
+      }));
+    }
+
+    if (!title || !questions) {
+      return { success: false, message: 'Neplatná data kvízu' };
+    }
+
+    this.logger.log(`Client ${client.id} creating game: ${title}`);
 
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
 
     this.games.set(pin, {
-      title: data.title,
-      questions: data.questions,
+      title: title,
+      questions: questions,
       players: [],
       currentQuestionIndex: -1,
       answers: new Map(),

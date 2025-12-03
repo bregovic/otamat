@@ -59,7 +59,10 @@ model Quiz {
   coverImage  String?
   isPublic    Boolean  @default(false)
   language    String   @default("cs")
-  category    String?
+  
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  
   tags        String[] // Array of strings for tags
   
   authorId    String
@@ -170,4 +173,15 @@ model PlayerAnswer {
   responseTime   Int          // Milliseconds
   
   answeredAt     DateTime     @default(now())
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  quizzes     Quiz[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

@@ -14,7 +14,16 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 @WebSocketGateway({
   cors: {
-    origin: '*', // In production, change this to your frontend URL
+    origin: [
+      'https://hollyhop.cz',
+      'http://hollyhop.cz',
+      'https://www.hollyhop.cz',
+      'http://www.hollyhop.cz',
+      'https://otamat.w33.wedos.net',
+      'http://localhost:3000',
+      'http://localhost:4000'
+    ],
+    credentials: true,
   },
 })
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {

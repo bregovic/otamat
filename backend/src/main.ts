@@ -7,6 +7,8 @@ async function bootstrap() {
     origin: [
       'https://hollyhop.cz',
       'http://hollyhop.cz',
+      'https://www.hollyhop.cz',
+      'http://www.hollyhop.cz',
       'https://otamat.w33.wedos.net',
       'http://localhost:3000',
       'http://localhost:4000'

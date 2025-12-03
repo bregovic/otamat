@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
-import { Loader2, Check, X, Trophy } from "lucide-react";
+import { Loader2, Check, X } from "lucide-react";
 
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
@@ -38,14 +38,17 @@ function LobbyContent() {
         if (!socket) return;
 
         socket.on("playerJoined", (player) => {
+            console.log("Player joined:", player);
             setPlayers((prev) => [...prev, player]);
         });
 
         socket.on("updatePlayerList", (playerList) => {
+            console.log("Updated player list:", playerList);
             setPlayers(playerList);
         });
 
         socket.on("questionStart", (data) => {
+            console.log("Player: Question started", data);
             setStep("game");
             setCurrentQuestion({
                 index: data.questionIndex,
@@ -58,6 +61,7 @@ function LobbyContent() {
         });
 
         socket.on("questionEnd", (data) => {
+            console.log("Player: Question ended", data);
             // Find my score
             const myData = data.players.find((p: any) => p.id === socket.id);
             const isCorrect = data.correctIndex === answerSubmitted;
@@ -89,13 +93,19 @@ function LobbyContent() {
     }, [socket, answerSubmitted, router]);
 
     const handleConnect = () => {
-        if (pin.length !== 6) { setError("PIN musí mít 6 číslic."); return; }
+        if (pin.length !== 6) {
+            setError("PIN musí mít 6 číslic.");
+            return;
+        }
         setStep("nickname");
         setError(null);
     };
 
     const handleJoin = () => {
-        if (!nickname.trim()) { setError("Zadej přezdívku."); return; }
+        if (!nickname.trim()) {
+            setError("Zadej přezdívku.");
+            return;
+        }
 
         const newSocket = io(BACKEND_URL);
         setSocket(newSocket);
@@ -121,69 +131,77 @@ function LobbyContent() {
 
     if (step === 'pin') {
         return (
-            <div className="w-full max-w-sm">
-                <h1 className="text-3xl font-bold mb-8 text-center">Vložit PIN</h1>
-                <input
-                    type="text"
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    className="w-full bg-white/10 border border-white/20 rounded-xl p-4 text-center text-4xl tracking-widest font-bold mb-4 focus:border-primary outline-none"
-                    placeholder="000000"
-                    autoFocus
-                />
-                <button onClick={handleConnect} className="btn btn-primary w-full py-4 text-xl">Pokračovat</button>
-                {error && <p className="text-red-400 mt-4 text-center">{error}</p>}
+            <div className="glass-card">
+                <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>OtaMat</h1>
+
+                <div className="input-wrapper">
+                    <input
+                        type="text"
+                        placeholder="Herní PIN"
+                        value={pin}
+                        onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        style={{ textAlign: 'center', letterSpacing: '0.2em', fontSize: '2rem', fontWeight: 'bold' }}
+                    />
+                </div>
+
+                <button onClick={handleConnect} className="btn btn-primary" style={{ width: '100%' }}>
+                    Pokračovat
+                </button>
+                {error && <p style={{ color: '#ef4444', marginTop: '1rem' }}>{error}</p>}
             </div>
         );
     }
 
     if (step === 'nickname') {
         return (
-            <div className="w-full max-w-sm">
-                <h1 className="text-3xl font-bold mb-8 text-center">Tvoje postava</h1>
+            <div className="glass-card">
+                <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>Tvoje postava</h1>
 
-                <div className="grid grid-cols-4 gap-4 mb-8">
+                <div className="avatar-grid">
                     {['cow', 'fox', 'cat', 'dog', 'lion', 'panda', 'koala', 'pig'].map((a) => (
-                        <button
+                        <div
                             key={a}
+                            className={`avatar-option ${avatar === a ? 'selected' : ''}`}
                             onClick={() => setAvatar(a)}
-                            className={`aspect-square rounded-xl flex items-center justify-center text-3xl transition-all ${avatar === a ? 'bg-primary scale-110 shadow-lg shadow-primary/50' : 'bg-white/10 hover:bg-white/20'}`}
                         >
                             {a === 'cow' ? '🐮' : a === 'fox' ? '🦊' : a === 'cat' ? '🐱' : a === 'dog' ? '🐶' : a === 'lion' ? '🦁' : a === 'panda' ? '🐼' : a === 'koala' ? '🐨' : '🐷'}
-                        </button>
+                        </div>
                     ))}
                 </div>
 
-                <input
-                    type="text"
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    className="w-full bg-white/10 border border-white/20 rounded-xl p-4 text-center text-xl font-bold mb-4 focus:border-primary outline-none"
-                    placeholder="Přezdívka"
-                />
-                <button onClick={handleJoin} className="btn btn-primary w-full py-4 text-xl">Vstoupit do hry</button>
-                {error && <p className="text-red-400 mt-4 text-center">{error}</p>}
+                <div className="input-wrapper">
+                    <input
+                        type="text"
+                        placeholder="Přezdívka"
+                        value={nickname}
+                        onChange={(e) => setNickname(e.target.value)}
+                        style={{ textAlign: 'center' }}
+                    />
+                </div>
+
+                <button onClick={handleJoin} className="btn btn-primary" style={{ width: '100%' }}>
+                    Vstoupit do hry
+                </button>
+                {error && <p style={{ color: '#ef4444', marginTop: '1rem' }}>{error}</p>}
             </div>
         );
     }
 
     if (step === 'lobby') {
         return (
-            <div className="text-center w-full max-w-md">
-                <div className="mb-8 animate-bounce">
-                    <div className="w-24 h-24 mx-auto bg-gradient-to-br from-primary to-purple-600 rounded-full flex items-center justify-center text-5xl shadow-xl shadow-primary/30">
-                        {avatar === 'cow' ? '🐮' : avatar === 'fox' ? '🦊' : avatar === 'cat' ? '🐱' : avatar === 'dog' ? '🐶' : avatar === 'lion' ? '🦁' : avatar === 'panda' ? '🐼' : avatar === 'koala' ? '🐨' : '🐷'}
-                    </div>
+            <div className="glass-card" style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>
+                    {avatar === 'cow' ? '🐮' : avatar === 'fox' ? '🦊' : avatar === 'cat' ? '🐱' : avatar === 'dog' ? '🐶' : avatar === 'lion' ? '🦁' : avatar === 'panda' ? '🐼' : avatar === 'koala' ? '🐨' : '🐷'}
                 </div>
-                <h1 className="text-4xl font-black mb-2">{nickname}</h1>
-                <div className="inline-block px-4 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-sm font-bold mb-8 animate-pulse">
+                <h1 style={{ marginBottom: '0.5rem' }}>{nickname}</h1>
+                <div style={{ color: '#10b981', fontWeight: 'bold', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                    <div style={{ width: '10px', height: '10px', background: '#10b981', borderRadius: '50%' }}></div>
                     Jsi ve hře!
                 </div>
-                <p className="text-gray-400">Vidíš své jméno na obrazovce?</p>
-                <div className="mt-12 p-6 bg-white/5 rounded-2xl border border-white/10">
-                    <div className="text-sm text-gray-500 uppercase tracking-widest mb-2">Čekáme na start</div>
-                    <Loader2 className="w-8 h-8 mx-auto animate-spin text-primary" />
-                </div>
+
+                <Loader2 className="animate-spin" size={48} style={{ margin: '0 auto', opacity: 0.5 }} />
+                <p style={{ marginTop: '1rem', color: '#a1a1aa' }}>Čekáme na spuštění hry...</p>
+                <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.5rem' }}>Vidíš své jméno na hlavní obrazovce?</p>
             </div>
         );
     }
@@ -191,41 +209,39 @@ function LobbyContent() {
     if (step === 'game') {
         if (showResultScreen) {
             return (
-                <div className={`fixed inset-0 flex flex-col items-center justify-center p-6 ${result?.correct ? 'bg-emerald-900/20' : 'bg-red-900/20'}`}>
-                    <div className={`w-32 h-32 rounded-full flex items-center justify-center mb-6 shadow-2xl ${result?.correct ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
-                        {result?.correct ? <Check size={64} /> : <X size={64} />}
+                <div className="glass-card" style={{ textAlign: 'center', background: result?.correct ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', borderColor: result?.correct ? '#10b981' : '#ef4444' }}>
+                    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>
+                        {result?.correct ? <Check size={64} color="#10b981" /> : <X size={64} color="#ef4444" />}
+                    </div>
+                    <h1 style={{ marginBottom: '0.5rem' }}>{result?.correct ? "Správně!" : "Špatně"}</h1>
+                    <p style={{ fontSize: '1.5rem', marginBottom: '2rem' }}>{result?.correct ? "+ Body" : "Zkus to příště"}</p>
+
+                    <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '12px', display: 'inline-block' }}>
+                        <div style={{ fontSize: '0.9rem', color: '#aaa' }}>Celkové skóre</div>
+                        <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{score}</div>
                     </div>
 
-                    <h1 className="text-4xl font-black mb-2">{result?.correct ? "Správně!" : "Špatně"}</h1>
-                    <p className="text-xl text-gray-400 mb-8">{result?.correct ? "+ Body" : "Zkus to příště"}</p>
-
-                    <div className="glass-card p-6 w-full max-w-xs text-center">
-                        <div className="text-sm text-gray-400 uppercase tracking-widest mb-1">Celkové skóre</div>
-                        <div className="text-4xl font-black text-white">{score}</div>
-                    </div>
-
-                    <div className="mt-8 text-gray-500 animate-pulse">Čekej na další otázku...</div>
+                    <p style={{ marginTop: '2rem', color: '#a1a1aa' }}>Čekej na další otázku...</p>
                 </div>
             );
         }
 
         return (
-            <div className="fixed inset-0 flex flex-col bg-black">
-                {/* Header */}
-                <div className="p-4 flex justify-between items-center bg-white/5">
-                    <div className="font-bold text-gray-400">Otázka {currentQuestion?.index}</div>
-                    <div className="font-bold text-white bg-primary px-3 py-1 rounded-lg">{score} bodů</div>
+            <div style={{ width: '100%', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#a1a1aa', padding: '0 1rem' }}>
+                    <span>Otázka {currentQuestion?.index} / {currentQuestion?.total}</span>
+                    <span>Skóre: {score}</span>
                 </div>
 
-                {/* Answer Area */}
-                <div className="flex-1 p-4 grid grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', height: '60vh' }}>
                     {['▲', '◆', '●', '■'].map((symbol, i) => {
-                        const gradients = [
+                        // Use CSS variables for colors
+                        const gradientClass = [
                             'from-[var(--opt-1-from)] to-[var(--opt-1-to)]',
                             'from-[var(--opt-2-from)] to-[var(--opt-2-to)]',
                             'from-[var(--opt-3-from)] to-[var(--opt-3-to)]',
                             'from-[var(--opt-4-from)] to-[var(--opt-4-to)]'
-                        ];
+                        ][i % 4];
 
                         return (
                             <button
@@ -233,29 +249,27 @@ function LobbyContent() {
                                 onClick={() => submitAnswer(i)}
                                 disabled={answerSubmitted !== null}
                                 className={`
-                                    relative rounded-2xl flex flex-col items-center justify-center transition-all duration-200 active:scale-95
+                                    rounded-2xl flex flex-col items-center justify-center text-white transition-all duration-200
                                     ${answerSubmitted === null
-                                        ? `bg-gradient-to-br ${gradients[i]} shadow-lg`
+                                        ? `bg-gradient-to-br ${gradientClass} shadow-lg active:scale-95`
                                         : answerSubmitted === i
                                             ? 'bg-white text-black scale-105 z-10 ring-4 ring-white/50'
                                             : 'bg-gray-800 opacity-20 grayscale'
                                     }
                                 `}
+                                style={{ fontSize: '3rem' }}
                             >
-                                <span className="text-6xl mb-2 filter drop-shadow-md">{symbol}</span>
+                                {symbol}
                             </button>
                         );
                     })}
                 </div>
 
-                {/* Footer Status */}
-                <div className="p-6 text-center">
-                    {answerSubmitted !== null ? (
-                        <div className="text-xl font-bold text-white animate-pulse">Odpověď odeslána!</div>
-                    ) : (
-                        <div className="text-gray-400">Vyber správnou odpověď</div>
-                    )}
-                </div>
+                {answerSubmitted !== null && (
+                    <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '1.5rem', fontWeight: 'bold' }}>
+                        Odpověď odeslána!
+                    </div>
+                )}
             </div>
         );
     }
@@ -265,7 +279,7 @@ function LobbyContent() {
 
 export default function PlayPage() {
     return (
-        <main className="min-h-screen flex flex-col items-center justify-center bg-bg-dark text-white p-4">
+        <main>
             <Suspense fallback={<Loader2 className="animate-spin" />}>
                 <LobbyContent />
             </Suspense>

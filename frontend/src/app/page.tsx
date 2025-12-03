@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Play, User as UserIcon, LogOut } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -22,7 +21,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4 relative">
 
       {/* Auth Buttons (Top Right) */}
-      <div className="absolute top-4 right-4 flex gap-4 z-10">
+      <div className="absolute top-4 right-4 flex gap-4 z-10 items-center">
         {user ? (
           <div className="flex items-center gap-4 bg-black/20 backdrop-blur-md p-2 rounded-full border border-white/10">
             <div className="flex items-center gap-2 px-2">
@@ -36,11 +35,11 @@ export default function Home() {
             </button>
           </div>
         ) : (
-          <div className="flex gap-4">
-            <a href="/otamat/login" className="text-white hover:text-primary font-bold py-2 px-4 transition-colors">
+          <div className="flex items-center gap-3">
+            <a href="/otamat/login" className="text-gray-300 hover:text-white font-semibold py-2 px-4 transition-colors text-sm uppercase tracking-wider">
               Přihlásit
             </a>
-            <a href="/otamat/register" className="btn btn-primary py-2 px-6 text-sm">
+            <a href="/otamat/register" className="btn btn-primary py-2 px-6 text-sm !w-auto shadow-lg hover:shadow-primary/20">
               Registrovat
             </a>
           </div>

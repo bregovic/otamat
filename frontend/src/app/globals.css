@@ -127,7 +127,7 @@ input:focus {
 
 /* Buttons */
 .btn {
-  width: 100%;
+  /* width: 100%;  Removed to allow auto width */
   padding: 1.25rem;
   font-size: 1.125rem;
   font-weight: 700;

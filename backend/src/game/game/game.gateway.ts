@@ -51,30 +51,38 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('createGame')
   async handleCreateGame(
-    @MessageBody() data: { title: string; questions: any[]; isPublic: boolean },
+    @MessageBody() data: { title: string; questions: any[]; isPublic: boolean; userId?: string },
     @ConnectedSocket() client: Socket,
   ) {
-    let { title, questions, isPublic } = data;
+    let { title, questions, isPublic, userId } = data;
 
     if (!title || !questions || questions.length === 0) {
       return { success: false, message: 'Neplatná data kvízu' };
     }
 
-    this.logger.log(`Client ${client.id} creating game: ${title}`);
+    this.logger.log(`Client ${client.id} creating game: ${title} for user ${userId}`);
 
     // --- SAVE TO DATABASE ---
     try {
-      let host = await this.prisma.user.findFirst({ where: { role: 'ADMIN' } });
+      let host;
+      if (userId) {
+        host = await this.prisma.user.findUnique({ where: { id: userId } });
+      }
+
       if (!host) {
-        host = await this.prisma.user.findFirst();
+        // Fallback to admin if no user found or provided
+        host = await this.prisma.user.findFirst({ where: { role: 'ADMIN' } });
         if (!host) {
-          host = await this.prisma.user.create({
-            data: {
-              email: 'admin@hollyhop.cz',
-              nickname: 'Admin',
-              role: 'ADMIN'
-            }
-          });
+          host = await this.prisma.user.findFirst();
+          if (!host) {
+            host = await this.prisma.user.create({
+              data: {
+                email: 'admin@hollyhop.cz',
+                nickname: 'Admin',
+                role: 'ADMIN'
+              }
+            });
+          }
         }
       }
 
@@ -100,7 +108,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           }
         }
       });
-      this.logger.log(`Quiz '${title}' saved to database.`);
+      this.logger.log(`Quiz '${title}' saved to database for author ${host.id}.`);
     } catch (error) {
       this.logger.error(`Failed to save quiz to DB: ${error}`);
     }
@@ -127,24 +135,31 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('saveQuiz')
   async handleSaveQuiz(
-    @MessageBody() data: { title: string; questions: any[]; isPublic: boolean },
+    @MessageBody() data: { title: string; questions: any[]; isPublic: boolean; userId?: string },
     @ConnectedSocket() client: Socket,
   ) {
-    let { title, questions, isPublic } = data;
-    this.logger.log(`Client ${client.id} saving quiz (no start): ${title}`);
+    let { title, questions, isPublic, userId } = data;
+    this.logger.log(`Client ${client.id} saving quiz (no start): ${title} for user ${userId}`);
 
     try {
-      let host = await this.prisma.user.findFirst({ where: { role: 'ADMIN' } });
+      let host;
+      if (userId) {
+        host = await this.prisma.user.findUnique({ where: { id: userId } });
+      }
+
       if (!host) {
-        host = await this.prisma.user.findFirst();
+        host = await this.prisma.user.findFirst({ where: { role: 'ADMIN' } });
         if (!host) {
-          host = await this.prisma.user.create({
-            data: {
-              email: 'admin@hollyhop.cz',
-              nickname: 'Admin',
-              role: 'ADMIN'
-            }
-          });
+          host = await this.prisma.user.findFirst();
+          if (!host) {
+            host = await this.prisma.user.create({
+              data: {
+                email: 'admin@hollyhop.cz',
+                nickname: 'Admin',
+                role: 'ADMIN'
+              }
+            });
+          }
         }
       }
 

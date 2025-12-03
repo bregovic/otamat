@@ -5,11 +5,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { io, Socket } from "socket.io-client";
 import { Loader2, Users, Play, Check } from "lucide-react";
+import { useAuth } from "../../../context/AuthContext"; // Import AuthContext
 
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
 
 export default function CreateQuizPage() {
+    const { user } = useAuth(); // Get user from context
     const [title, setTitle] = useState("");
     const [isPublic, setIsPublic] = useState(false);
     const [questions, setQuestions] = useState([{ text: "", options: ["", "", "", ""], correct: 0 }]);
@@ -99,7 +101,15 @@ export default function CreateQuizPage() {
         setIsSaving(true);
         setError(null);
 
-        socket.emit("createGame", { title, questions, isPublic }, (response: { success: boolean, pin: string }) => {
+        // Send userId if available
+        const payload = {
+            title,
+            questions,
+            isPublic,
+            userId: user?.id // Pass userId
+        };
+
+        socket.emit("createGame", payload, (response: { success: boolean, pin: string }) => {
             setIsSaving(false);
             if (response.success) {
                 setGamePin(response.pin);
@@ -118,15 +128,27 @@ export default function CreateQuizPage() {
             setError("Vyplňte název kvízu.");
             return;
         }
+        if (!user) {
+            setError("Pro uložení kvízu musíte být přihlášeni.");
+            return;
+        }
 
         setIsSaving(true);
         setError(null);
 
-        socket.emit("saveQuiz", { title, questions, isPublic }, (response: { success: boolean, message: string }) => {
+        // Send userId
+        const payload = {
+            title,
+            questions,
+            isPublic,
+            userId: user.id
+        };
+
+        socket.emit("saveQuiz", payload, (response: { success: boolean, message: string }) => {
             setIsSaving(false);
             if (response.success) {
                 alert("Kvíz byl úspěšně uložen!");
-                window.location.href = "/";
+                window.location.href = "/otamat/dashboard"; // Redirect to dashboard
             } else {
                 setError(response.message || "Chyba při ukládání kvízu.");
             }

@@ -26,6 +26,8 @@ export default function CreateQuizPage() {
     const [timeLeft, setTimeLeft] = useState(30);
     const [showResults, setShowResults] = useState(false);
     const [resultsData, setResultsData] = useState<{ correctIndex: number, players: any[] } | null>(null);
+    const [gameFinished, setGameFinished] = useState(false);
+    const [finalPlayers, setFinalPlayers] = useState<any[]>([]);
 
     useEffect(() => {
         const newSocket = io(BACKEND_URL);
@@ -62,7 +64,9 @@ export default function CreateQuizPage() {
         });
 
         newSocket.on("gameOver", (data) => {
-            alert("Hra skončila! Vítěz: " + data.players.sort((a: any, b: any) => b.score - a.score)[0].nickname);
+            setFinalPlayers(data.players.sort((a: any, b: any) => b.score - a.score));
+            setGameFinished(true);
+            setGameStarted(false);
         });
 
         return () => {
@@ -110,6 +114,41 @@ export default function CreateQuizPage() {
             socket.emit("startGame", { pin: gamePin });
         }
     };
+
+    if (gameFinished) {
+        return (
+            <main>
+                <div style={{ width: '100%', maxWidth: '800px', textAlign: 'center' }}>
+                    <h1 style={{ fontSize: '4rem', marginBottom: '2rem', background: 'linear-gradient(to right, #facc15, #fbbf24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                        Konec hry!
+                    </h1>
+
+                    <div className="glass-card" style={{ padding: '3rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {finalPlayers.slice(0, 5).map((player, index) => (
+                                <div key={player.id} style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '1rem', background: index === 0 ? 'rgba(250, 204, 21, 0.2)' : 'rgba(255,255,255,0.05)',
+                                    borderRadius: '12px', border: index === 0 ? '1px solid #facc15' : 'none'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <span style={{ fontSize: '2rem', fontWeight: 'bold', width: '40px' }}>#{index + 1}</span>
+                                        <span style={{ fontSize: '2.5rem' }}>{['🐮', '🦊', '🐱', '🐶', '🦁', '🐼', '🐨', '🐷'][['cow', 'fox', 'cat', 'dog', 'lion', 'panda', 'koala', 'pig'].indexOf(player.avatar)] || player.avatar}</span>
+                                        <span style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{player.nickname}</span>
+                                    </div>
+                                    <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{player.score} b</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <Link href="/" className="btn btn-primary" style={{ marginTop: '3rem', display: 'inline-block' }}>
+                            Zpět na úvod
+                        </Link>
+                    </div>
+                </div>
+            </main>
+        );
+    }
 
     if (gameStarted && currentQuestion) {
         return (
@@ -166,6 +205,7 @@ export default function CreateQuizPage() {
     }
 
     if (gamePin) {
+        const avatarMap: { [key: string]: string } = { cow: '🐮', fox: '🦊', cat: '🐱', dog: '🐶', lion: '🦁', panda: '🐼', koala: '🐨', pig: '🐷' };
         return (
             <main>
                 <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
@@ -195,7 +235,7 @@ export default function CreateQuizPage() {
                                 {players.map((player) => (
                                     <div key={player.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                                         <div style={{ fontSize: '2.5rem', background: 'rgba(255,255,255,0.1)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            {player.avatar === "cow" ? "🐮" : player.avatar}
+                                            {avatarMap[player.avatar] || player.avatar}
                                         </div>
                                         <div style={{ fontWeight: 'bold' }}>{player.nickname}</div>
                                     </div>

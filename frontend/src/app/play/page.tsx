@@ -28,11 +28,20 @@ function LobbyContent() {
     const [showResultScreen, setShowResultScreen] = useState(false);
     const [score, setScore] = useState(0);
 
+    // Timer State
+    const [timeLeft, setTimeLeft] = useState(0);
+
     useEffect(() => {
         if (pinFromUrl) {
             setStep("nickname");
         }
     }, [pinFromUrl]);
+
+    useEffect(() => {
+        if (step !== 'game' || timeLeft <= 0 || showResultScreen) return;
+        const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+        return () => clearInterval(timer);
+    }, [timeLeft, step, showResultScreen]);
 
     useEffect(() => {
         if (!socket) return;
@@ -52,6 +61,7 @@ function LobbyContent() {
                 total: data.totalQuestions,
                 timeLimit: data.timeLimit
             });
+            setTimeLeft(data.timeLimit); // Start timer
             setAnswerSubmitted(null);
             setShowResultScreen(false);
             setResult(null);
@@ -164,10 +174,11 @@ function LobbyContent() {
     }
 
     if (step === 'lobby') {
+        const avatarMap: { [key: string]: string } = { cow: '🐮', fox: '🦊', cat: '🐱', dog: '🐶', lion: '🦁', panda: '🐼', koala: '🐨', pig: '🐷' };
         return (
             <div className="glass-card" style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>
-                    {avatar === 'cow' ? '🐮' : avatar === 'fox' ? '🦊' : avatar === 'cat' ? '🐱' : avatar === 'dog' ? '🐶' : avatar === 'lion' ? '🦁' : avatar === 'panda' ? '🐼' : avatar === 'koala' ? '🐨' : '🐷'}
+                    {avatarMap[avatar] || avatar}
                 </div>
                 <h1 style={{ marginBottom: '0.5rem' }}>{nickname}</h1>
                 <div style={{ color: '#10b981', fontWeight: 'bold', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
@@ -204,7 +215,7 @@ function LobbyContent() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#a1a1aa', padding: '0 1rem' }}>
                     <span style={{ fontSize: '0.9rem' }}>Otázka {currentQuestion?.index} / {currentQuestion?.total}</span>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', background: 'rgba(255,255,255,0.1)', padding: '0.25rem 1rem', borderRadius: '8px' }}>
-                        {currentQuestion?.timeLimit}s
+                        {timeLeft}s
                     </div>
                     <span style={{ fontSize: '0.9rem' }}>Skóre: {score}</span>
                 </div>

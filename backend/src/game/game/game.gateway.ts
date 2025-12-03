@@ -133,6 +133,59 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { success: true, pin: pin };
   }
 
+  @SubscribeMessage('createGameFromQuiz')
+  async handleCreateGameFromQuiz(
+    @MessageBody() data: { quizId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { quizId } = data;
+    this.logger.log(`Creating game from quiz ID: ${quizId}`);
+
+    const quiz = await this.prisma.quiz.findUnique({
+      where: { id: quizId },
+      include: {
+        questions: {
+          include: { options: true },
+          orderBy: { order: 'asc' }
+        }
+      }
+    });
+
+    if (!quiz) {
+      return { success: false, message: 'Kvíz nenalezen.' };
+    }
+
+    // Transform DB questions to Game questions structure
+    const gameQuestions = quiz.questions.map(q => {
+      // Sort options by order to ensure correct index matches
+      const sortedOptions = q.options.sort((a, b) => a.order - b.order);
+      return {
+        text: q.text,
+        options: sortedOptions.map(o => o.text),
+        correct: sortedOptions.findIndex(o => o.isCorrect),
+        timeLimit: q.timeLimit || 30
+      };
+    });
+
+    const pin = Math.floor(100000 + Math.random() * 900000).toString();
+
+    this.games.set(pin, {
+      title: quiz.title,
+      questions: gameQuestions,
+      players: [],
+      currentQuestionIndex: -1,
+      answers: new Map(),
+      state: 'lobby',
+      timer: null,
+      questionStartTime: 0
+    });
+
+    client.join(pin);
+    this.logger.log(`Game created from saved quiz with PIN: ${pin}`);
+
+    return { success: true, pin: pin };
+  }
+
   @SubscribeMessage('saveQuiz')
   async handleSaveQuiz(
     @MessageBody() data: { title: string; questions: any[]; isPublic: boolean; userId?: string },

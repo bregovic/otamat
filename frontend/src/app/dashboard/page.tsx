@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { Plus, Play, Edit, Trash2, Loader2 } from "lucide-react";
+import { io } from "socket.io-client";
 
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
@@ -13,6 +14,7 @@ export default function DashboardPage() {
     const router = useRouter();
     const [quizzes, setQuizzes] = useState<any[]>([]);
     const [loadingQuizzes, setLoadingQuizzes] = useState(true);
+    const [startingGameId, setStartingGameId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!isLoading && !user) {
@@ -43,7 +45,18 @@ export default function DashboardPage() {
     };
 
     const handleStartGame = (quizId: string) => {
-        alert("Spouštění uložených kvízů bude dostupné v příští aktualizaci! Zatím použijte 'Rychlá hra'.");
+        setStartingGameId(quizId);
+        const socket = io(BACKEND_URL);
+
+        socket.emit("createGameFromQuiz", { quizId }, (response: { success: boolean, pin: string, message?: string }) => {
+            if (response.success) {
+                router.push(`/admin/host?pin=${response.pin}`);
+            } else {
+                alert(response.message || "Chyba při spouštění hry.");
+                setStartingGameId(null);
+            }
+            socket.disconnect();
+        });
     };
 
     if (isLoading || !user) {
@@ -111,10 +124,11 @@ export default function DashboardPage() {
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => handleStartGame(quiz.id)}
-                                            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                            disabled={startingGameId === quiz.id}
+                                            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors disabled:opacity-50"
                                             title="Spustit"
                                         >
-                                            <Play size={20} />
+                                            {startingGameId === quiz.id ? <Loader2 className="animate-spin" size={20} /> : <Play size={20} />}
                                         </button>
                                         <button className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Upravit">
                                             <Edit size={20} />

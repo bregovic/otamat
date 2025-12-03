@@ -2,23 +2,35 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Tasteful Black & Subtle Gradient Palette */
-  --bg-dark: #000000;
-  --bg-gradient-center: #0a0a0a;
-  /* Very subtle dark grey */
-  --bg-gradient-edge: #000000;
-  /* Pure black */
+  /* Premium Dark Theme */
+  --bg-dark: #09090b;
+  --bg-gradient: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #09090b 60%);
 
-  --bg-panel: rgba(255, 255, 255, 0.03);
+  --primary: #8b5cf6;
+  /* Violet */
+  --primary-hover: #7c3aed;
 
-  --primary: #ffffff;
-  --primary-hover: #e5e5e5;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
+
+  /* Tasteful Option Colors (Gradients) */
+  --opt-1-from: #be185d;
+  --opt-1-to: #db2777;
+  /* Pink */
+  --opt-2-from: #1d4ed8;
+  --opt-2-to: #3b82f6;
+  /* Blue */
+  --opt-3-from: #047857;
+  --opt-3-to: #10b981;
+  /* Emerald */
+  --opt-4-from: #b45309;
+  --opt-4-to: #f59e0b;
+  /* Amber */
 
   --text-main: #ffffff;
   --text-muted: #a1a1aa;
 
-  --border-light: rgba(255, 255, 255, 0.08);
-  /* More subtle border */
   --border-hover: rgba(255, 255, 255, 0.15);
 
   --success: #10b981;

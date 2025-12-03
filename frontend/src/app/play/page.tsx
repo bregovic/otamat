@@ -1,329 +1,274 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { User, Check, Loader2, AlertCircle } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
+import { Loader2, Check, X, Trophy } from "lucide-react";
 
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
 
 function LobbyContent() {
-    const [step, setStep] = useState<"nickname" | "avatar" | "waiting" | "game">("nickname");
-    const [nickname, setNickname] = useState("");
-    const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
-    const [socket, setSocket] = useState<Socket | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [isConnected, setIsConnected] = useState(false);
-
-    const [gamePin, setGamePin] = useState<string | null>(null);
     const searchParams = useSearchParams();
+    const router = useRouter();
+    const pinFromUrl = searchParams.get("pin");
 
-    const [questionData, setQuestionData] = useState<{ text: string, options: string[], timeLimit: number } | null>(null);
-    const [hasAnswered, setHasAnswered] = useState(false);
-    const [resultMessage, setResultMessage] = useState<string | null>(null);
+    const [pin, setPin] = useState(pinFromUrl || "");
+    const [nickname, setNickname] = useState("");
+    const [avatar, setAvatar] = useState("cow"); // Default avatar
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const [step, setStep] = useState<'pin' | 'nickname' | 'lobby' | 'game'>("pin");
+    const [error, setError] = useState<string | null>(null);
+    const [players, setPlayers] = useState<any[]>([]);
+
+    // Game State
+    const [currentQuestion, setCurrentQuestion] = useState<{ index: number, total: number, timeLimit: number } | null>(null);
+    const [answerSubmitted, setAnswerSubmitted] = useState<number | null>(null);
+    const [result, setResult] = useState<{ correct: boolean, points: number, rank: number } | null>(null);
+    const [showResultScreen, setShowResultScreen] = useState(false);
+    const [score, setScore] = useState(0);
 
     useEffect(() => {
-        const pin = searchParams.get("pin");
-        if (pin) {
-            setGamePin(pin);
+        if (pinFromUrl) {
+            setStep("nickname");
         }
-    }, [searchParams]);
+    }, [pinFromUrl]);
 
     useEffect(() => {
-        // Initialize socket connection
-        const newSocket = io(BACKEND_URL);
+        if (!socket) return;
 
-        newSocket.on("connect", () => {
-            console.log("Connected to backend", newSocket.id);
-            setIsConnected(true);
-            setError(null);
+        socket.on("playerJoined", (player) => {
+            setPlayers((prev) => [...prev, player]);
         });
 
-        newSocket.on("connect_error", (err) => {
-            console.error("Connection error:", err);
-            setError("Nepodařilo se připojit k serveru. Zkus to znovu.");
-            setIsConnected(false);
+        socket.on("updatePlayerList", (playerList) => {
+            setPlayers(playerList);
         });
 
-        newSocket.on("gameStarted", () => {
-            console.log("Game started!");
+        socket.on("questionStart", (data) => {
             setStep("game");
+            setCurrentQuestion({
+                index: data.questionIndex,
+                total: data.totalQuestions,
+                timeLimit: data.timeLimit
+            });
+            setAnswerSubmitted(null);
+            setShowResultScreen(false);
+            setResult(null);
         });
 
-        newSocket.on("questionStart", (data) => {
-            console.log("Question started:", data);
-            setQuestionData(data);
-            setHasAnswered(false);
-            setResultMessage(null);
-            setStep("game");
+        socket.on("questionEnd", (data) => {
+            // Find my score
+            const myData = data.players.find((p: any) => p.id === socket.id);
+            const isCorrect = data.correctIndex === answerSubmitted;
+
+            if (myData) {
+                setScore(myData.score);
+            }
+
+            setResult({
+                correct: isCorrect,
+                points: myData ? myData.score : 0, // This is total score, ideally we want points gained this round
+                rank: 0 // TODO: Calculate rank
+            });
+            setShowResultScreen(true);
         });
 
-        newSocket.on("questionEnd", (data) => {
-            console.log("Question ended:", data);
-            setResultMessage("Konec kola!");
+        socket.on("gameOver", (data) => {
+            alert("Konec hry! Tvé skóre: " + (data.players.find((p: any) => p.id === socket.id)?.score || 0));
+            router.push("/");
         });
-
-        newSocket.on("gameOver", () => {
-            setResultMessage("Hra skončila!");
-        });
-
-        setSocket(newSocket);
 
         return () => {
-            newSocket.disconnect();
+            socket.off("playerJoined");
+            socket.off("updatePlayerList");
+            socket.off("questionStart");
+            socket.off("questionEnd");
+            socket.off("gameOver");
         };
-    }, []);
+    }, [socket, answerSubmitted, router]);
 
-    // Mock avatars
-    const avatars = [
-        "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "cow"
-    ];
-
-    const handleNicknameSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (nickname.trim()) setStep("avatar");
+    const handleConnect = () => {
+        if (pin.length !== 6) { setError("PIN musí mít 6 číslic."); return; }
+        setStep("nickname");
+        setError(null);
     };
 
-    const handleJoinGame = () => {
-        if (selectedAvatar && socket && isConnected && gamePin) {
-            setStep("waiting");
+    const handleJoin = () => {
+        if (!nickname.trim()) { setError("Zadej přezdívku."); return; }
 
-            // Emit join event to backend
-            socket.emit("joinGame", {
-                pin: gamePin,
-                nickname: nickname,
-                avatar: selectedAvatar
-            }, (response: { success: boolean, message: string }) => {
-                if (response.success) {
-                    console.log("Joined successfully");
-                } else {
-                    setError("Nepodařilo se připojit do hry: " + response.message);
-                    setStep("avatar"); // Go back
-                }
-            });
-        } else if (!isConnected) {
-            setError("Nejsi připojen k serveru. Čekám na spojení...");
-        } else if (!gamePin) {
-            setError("Chybí PIN hry. Vrať se na hlavní stránku.");
-        }
+        const newSocket = io(BACKEND_URL);
+        setSocket(newSocket);
+
+        newSocket.emit("joinGame", { pin, nickname, avatar }, (response: { success: boolean, message: string }) => {
+            if (response.success) {
+                setStep("lobby");
+                setError(null);
+            } else {
+                setError(response.message);
+                newSocket.disconnect();
+            }
+        });
     };
 
-    const handleAnswer = (index: number) => {
-        if (!socket || !gamePin || hasAnswered) return;
-
-        socket.emit("submitAnswer", { pin: gamePin, answerIndex: index });
-        setHasAnswered(true);
+    const submitAnswer = (index: number) => {
+        if (!socket || answerSubmitted !== null) return;
+        setAnswerSubmitted(index);
+        socket.emit("submitAnswer", { pin, answerIndex: index });
     };
 
-    // Colors for buttons
-    const colors = ['#ef4444', '#3b82f6', '#eab308', '#22c55e']; // Red, Blue, Yellow, Green
+    // --- RENDERERS ---
 
-    if (!gamePin) {
+    if (step === 'pin') {
         return (
-            <div style={{ textAlign: 'center', marginTop: '4rem' }}>
-                <h1>Chybí PIN hry</h1>
-                <p>Prosím, vrať se na hlavní stránku a zadej PIN.</p>
+            <div className="w-full max-w-sm">
+                <h1 className="text-3xl font-bold mb-8 text-center">Vložit PIN</h1>
+                <input
+                    type="text"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    className="w-full bg-white/10 border border-white/20 rounded-xl p-4 text-center text-4xl tracking-widest font-bold mb-4 focus:border-primary outline-none"
+                    placeholder="000000"
+                    autoFocus
+                />
+                <button onClick={handleConnect} className="btn btn-primary w-full py-4 text-xl">Pokračovat</button>
+                {error && <p className="text-red-400 mt-4 text-center">{error}</p>}
             </div>
         );
     }
 
-    return (
-        <div style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>OtaMat</h1>
-                <div style={{ background: 'rgba(255,255,255,0.1)', padding: '0.5rem 1.5rem', borderRadius: '999px', display: 'inline-block', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    PIN: {gamePin}
+    if (step === 'nickname') {
+        return (
+            <div className="w-full max-w-sm">
+                <h1 className="text-3xl font-bold mb-8 text-center">Tvoje postava</h1>
+
+                <div className="grid grid-cols-4 gap-4 mb-8">
+                    {['cow', 'fox', 'cat', 'dog', 'lion', 'panda', 'koala', 'pig'].map((a) => (
+                        <button
+                            key={a}
+                            onClick={() => setAvatar(a)}
+                            className={`aspect-square rounded-xl flex items-center justify-center text-3xl transition-all ${avatar === a ? 'bg-primary scale-110 shadow-lg shadow-primary/50' : 'bg-white/10 hover:bg-white/20'}`}
+                        >
+                            {a === 'cow' ? '🐮' : a === 'fox' ? '🦊' : a === 'cat' ? '🐱' : a === 'dog' ? '🐶' : a === 'lion' ? '🦁' : a === 'panda' ? '🐼' : a === 'koala' ? '🐨' : '🐷'}
+                        </button>
+                    ))}
                 </div>
 
-                {/* Connection Status Indicator */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', fontSize: '0.875rem', color: isConnected ? '#10b981' : '#ef4444' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isConnected ? '#10b981' : '#ef4444' }} />
-                    {isConnected ? 'Online' : 'Offline'}
+                <input
+                    type="text"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 rounded-xl p-4 text-center text-xl font-bold mb-4 focus:border-primary outline-none"
+                    placeholder="Přezdívka"
+                />
+                <button onClick={handleJoin} className="btn btn-primary w-full py-4 text-xl">Vstoupit do hry</button>
+                {error && <p className="text-red-400 mt-4 text-center">{error}</p>}
+            </div>
+        );
+    }
+
+    if (step === 'lobby') {
+        return (
+            <div className="text-center w-full max-w-md">
+                <div className="mb-8 animate-bounce">
+                    <div className="w-24 h-24 mx-auto bg-gradient-to-br from-primary to-purple-600 rounded-full flex items-center justify-center text-5xl shadow-xl shadow-primary/30">
+                        {avatar === 'cow' ? '🐮' : avatar === 'fox' ? '🦊' : avatar === 'cat' ? '🐱' : avatar === 'dog' ? '🐶' : avatar === 'lion' ? '🦁' : avatar === 'panda' ? '🐼' : avatar === 'koala' ? '🐨' : '🐷'}
+                    </div>
+                </div>
+                <h1 className="text-4xl font-black mb-2">{nickname}</h1>
+                <div className="inline-block px-4 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-sm font-bold mb-8 animate-pulse">
+                    Jsi ve hře!
+                </div>
+                <p className="text-gray-400">Vidíš své jméno na obrazovce?</p>
+                <div className="mt-12 p-6 bg-white/5 rounded-2xl border border-white/10">
+                    <div className="text-sm text-gray-500 uppercase tracking-widest mb-2">Čekáme na start</div>
+                    <Loader2 className="w-8 h-8 mx-auto animate-spin text-primary" />
                 </div>
             </div>
+        );
+    }
 
-            {/* Error Message */}
-            {error && (
-                <div style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', width: '100%', textAlign: 'center', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                    {error}
+    if (step === 'game') {
+        if (showResultScreen) {
+            return (
+                <div className={`fixed inset-0 flex flex-col items-center justify-center p-6 ${result?.correct ? 'bg-emerald-900/20' : 'bg-red-900/20'}`}>
+                    <div className={`w-32 h-32 rounded-full flex items-center justify-center mb-6 shadow-2xl ${result?.correct ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+                        {result?.correct ? <Check size={64} /> : <X size={64} />}
+                    </div>
+
+                    <h1 className="text-4xl font-black mb-2">{result?.correct ? "Správně!" : "Špatně"}</h1>
+                    <p className="text-xl text-gray-400 mb-8">{result?.correct ? "+ Body" : "Zkus to příště"}</p>
+
+                    <div className="glass-card p-6 w-full max-w-xs text-center">
+                        <div className="text-sm text-gray-400 uppercase tracking-widest mb-1">Celkové skóre</div>
+                        <div className="text-4xl font-black text-white">{score}</div>
+                    </div>
+
+                    <div className="mt-8 text-gray-500 animate-pulse">Čekej na další otázku...</div>
                 </div>
-            )}
+            );
+        }
 
-            {/* STEP 1: Nickname */}
-            {step === "nickname" && (
-                <div className="glass-card">
-                    <h2>Jak ti máme říkat?</h2>
-                    <form onSubmit={handleNicknameSubmit}>
-                        <div className="input-wrapper">
-                            <input
-                                type="text"
-                                value={nickname}
-                                onChange={(e) => setNickname(e.target.value)}
-                                placeholder="Tvoje přezdívka"
-                                autoFocus
-                            />
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={!nickname.trim()}
-                            className="btn btn-primary"
-                        >
-                            Pokračovat
-                        </button>
-                    </form>
+        return (
+            <div className="fixed inset-0 flex flex-col bg-black">
+                {/* Header */}
+                <div className="p-4 flex justify-between items-center bg-white/5">
+                    <div className="font-bold text-gray-400">Otázka {currentQuestion?.index}</div>
+                    <div className="font-bold text-white bg-primary px-3 py-1 rounded-lg">{score} bodů</div>
                 </div>
-            )}
 
-            {/* STEP 2: Avatar Selection */}
-            {step === "avatar" && (
-                <div className="glass-card">
-                    <h2>Vyber si avatara</h2>
+                {/* Answer Area */}
+                <div className="flex-1 p-4 grid grid-cols-2 gap-4">
+                    {['▲', '◆', '●', '■'].map((symbol, i) => {
+                        const gradients = [
+                            'from-[var(--opt-1-from)] to-[var(--opt-1-to)]',
+                            'from-[var(--opt-2-from)] to-[var(--opt-2-to)]',
+                            'from-[var(--opt-3-from)] to-[var(--opt-3-to)]',
+                            'from-[var(--opt-4-from)] to-[var(--opt-4-to)]'
+                        ];
 
-                    <div className="avatar-grid">
-                        {avatars.map((avatar, index) => (
+                        return (
                             <button
-                                key={index}
-                                onClick={() => setSelectedAvatar(avatar)}
-                                className={`avatar-option ${selectedAvatar === avatar ? 'selected' : ''}`}
+                                key={i}
+                                onClick={() => submitAnswer(i)}
+                                disabled={answerSubmitted !== null}
+                                className={`
+                                    relative rounded-2xl flex flex-col items-center justify-center transition-all duration-200 active:scale-95
+                                    ${answerSubmitted === null
+                                        ? `bg-gradient-to-br ${gradients[i]} shadow-lg`
+                                        : answerSubmitted === i
+                                            ? 'bg-white text-black scale-105 z-10 ring-4 ring-white/50'
+                                            : 'bg-gray-800 opacity-20 grayscale'
+                                    }
+                                `}
                             >
-                                {avatar === "cow" ? "🐮" : avatar}
+                                <span className="text-6xl mb-2 filter drop-shadow-md">{symbol}</span>
                             </button>
-                        ))}
-                    </div>
-
-                    <button
-                        onClick={handleJoinGame}
-                        disabled={!selectedAvatar || !isConnected}
-                        className="btn btn-primary"
-                        style={{ background: isConnected ? 'var(--success)' : undefined }}
-                    >
-                        {isConnected ? (
-                            <>Připojit se do hry <Check size={20} /></>
-                        ) : (
-                            <><Loader2 size={20} className="animate-spin" /> Připojování...</>
-                        )}
-                    </button>
+                        );
+                    })}
                 </div>
-            )}
 
-            {/* STEP 3: Waiting Room */}
-            {step === "waiting" && (
-                <div style={{ width: '100%' }}>
-                    <div className="glass-card" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-
-                        <div style={{
-                            width: '120px',
-                            height: '120px',
-                            background: 'rgba(255,255,255,0.1)',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '4rem',
-                            margin: '0 auto 1.5rem auto',
-                            border: '4px solid var(--primary)',
-                            boxShadow: '0 0 30px rgba(255, 255, 255, 0.2)'
-                        }}>
-                            {selectedAvatar === "cow" ? "🐮" : selectedAvatar}
-                        </div>
-                        <h2 style={{ marginBottom: '0.5rem', fontSize: '2.5rem' }}>{nickname}</h2>
-                        <div style={{ color: '#10b981', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '1.2rem' }}>
-                            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
-                            Jsi ve hře!
-                        </div>
-                    </div>
-
-                    <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                        <Loader2 size={32} style={{ margin: '0 auto 1rem auto', animation: 'spin 1s linear infinite' }} />
-                        <p style={{ marginBottom: '0.5rem', fontSize: '1.1rem' }}>Čekáme na spuštění hry...</p>
-                        <p style={{ fontSize: '0.9rem' }}>Vidíš své jméno na hlavní obrazovce?</p>
-                    </div>
-                </div>
-            )}
-
-            {/* STEP 4: Game Running */}
-            {step === "game" && (
-                <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
-                    {resultMessage ? (
-                        <div className="glass-card" style={{ textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>
-                            <h2 style={{ fontSize: '2rem' }}>{resultMessage}</h2>
-                            <p>Čekej na další otázku...</p>
-                        </div>
+                {/* Footer Status */}
+                <div className="p-6 text-center">
+                    {answerSubmitted !== null ? (
+                        <div className="text-xl font-bold text-white animate-pulse">Odpověď odeslána!</div>
                     ) : (
-                        <>
-                            <div style={{ textAlign: 'center', marginBottom: '1rem', color: 'white' }}>
-                                {hasAnswered ? "Odpověď odeslána!" : "Vyber odpověď:"}
-                            </div>
-
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: '1fr 1fr',
-                                gridTemplateRows: '1fr 1fr',
-                                gap: '1rem',
-                                flex: 1,
-                                maxHeight: '600px'
-                            }}>
-                                {questionData?.options.map((_, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={() => handleAnswer(index)}
-                                        disabled={hasAnswered}
-                                        style={{
-                                            background: colors[index % 4],
-                                            border: 'none',
-                                            borderRadius: '16px',
-                                            fontSize: '3rem',
-                                            color: 'white',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            opacity: hasAnswered ? 0.5 : 1,
-                                            cursor: hasAnswered ? 'default' : 'pointer',
-                                            boxShadow: '0 4px 0 rgba(0,0,0,0.2)'
-                                        }}
-                                    >
-                                        {['▲', '◆', '●', '■'][index]}
-                                    </button>
-                                ))}
-                            </div>
-                        </>
+                        <div className="text-gray-400">Vyber správnou odpověď</div>
                     )}
                 </div>
-            )}
-        </div>
-    );
+            </div>
+        );
+    }
+
+    return null;
 }
 
-export default function LobbyPage() {
+export default function PlayPage() {
     return (
-        <main>
-            <div style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                {/* Logo */}
-                <div style={{
-                    width: '100%',
-                    maxWidth: '300px',
-                    marginBottom: '2rem',
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                }}>
-                    <img
-                        src="/otamat/logo.png"
-                        alt="OtaMat Logo"
-                        style={{
-                            width: '100%',
-                            height: 'auto',
-                            objectFit: 'contain',
-                        }}
-                    />
-                </div>
-                <Suspense fallback={<div style={{ color: 'white', textAlign: 'center' }}>Načítám...</div>}>
-                    <LobbyContent />
-                </Suspense>
-            </div>
+        <main className="min-h-screen flex flex-col items-center justify-center bg-bg-dark text-white p-4">
+            <Suspense fallback={<Loader2 className="animate-spin" />}>
+                <LobbyContent />
+            </Suspense>
         </main>
     );
 }

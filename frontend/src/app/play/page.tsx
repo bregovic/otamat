@@ -8,6 +8,21 @@ import { Loader2, Check, X } from "lucide-react";
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
 
+const avatarMap: { [key: string]: string } = {
+    cow: '🐮', fox: '🦊', cat: '🐱', dog: '🐶', lion: '🦁', panda: '🐼', koala: '🐨', pig: '🐷',
+    mouse: '🐭', frog: '🐸', bear: '🐻', tiger: '🐯', rabbit: '🐰', hamster: '🐹', dragon: '🐲', monkey: '🐵',
+    chicken: '🐔', penguin: '🐧', bird: '🐦', duck: '🦆', eagle: '🦅', owl: '🦉', bat: '🦇', wolf: '🐺',
+    boar: '🐗', horse: '🐴', unicorn: '🦄', bee: '🐝', bug: '🐛', butterfly: '🦋', snail: '🐌', beetle: '🐞',
+    ant: '🐜', spider: '🕷', scorpion: '🦂', turtle: '🐢', snake: '🐍', lizard: '🦎', t_rex: '🦖', sauropod: '🦕',
+    octopus: '🐙', squid: '🦑', shrimp: '🦐', lobster: '🦞', crab: '🦀', puffer: '🐡', fish: '🐠', dolphin: '🐬',
+    whale: '🐳', shark: '🦈', crocodile: '🐊', leopard: '🐆', zebra: '🦓', gorilla: '🦍', orangutan: '🦧', elephant: '🐘',
+    hippo: '🦛', rhino: '🦏', camel: '🐫', llama: '🦙', giraffe: '🦒', buffalo: '🐃', ox: '🐂', ram: '🐏',
+    sheep: '🐑', goat: '🐐', deer: '🦌', turkey: '🦃', rooster: '🐓', peacock: '🦚', parrot: '🦜', swan: '🦢',
+    flamingo: '🦩', dove: '🕊', raccoon: '🦝', skunk: '🦨', badger: '🦡', beaver: '🦫', otter: '🦦', sloth: '🦥'
+};
+
+const avatars = Object.keys(avatarMap);
+
 function LobbyContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -149,16 +164,16 @@ function LobbyContent() {
 
     if (step === 'nickname') {
         return (
-            <div className="glass-card">
+            <div className="glass-card w-full max-w-2xl">
                 <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>Tvoje postava</h1>
-                <div className="avatar-grid">
-                    {['cow', 'fox', 'cat', 'dog', 'lion', 'panda', 'koala', 'pig'].map((a) => (
+                <div className="avatar-grid" style={{ maxHeight: '300px', overflowY: 'auto', padding: '1rem' }}>
+                    {avatars.map((a) => (
                         <div key={a} className={`avatar-option ${avatar === a ? 'selected' : ''}`} onClick={() => setAvatar(a)}>
-                            {a === 'cow' ? '🐮' : a === 'fox' ? '🦊' : a === 'cat' ? '🐱' : a === 'dog' ? '🐶' : a === 'lion' ? '🦁' : a === 'panda' ? '🐼' : a === 'koala' ? '🐨' : '🐷'}
+                            {avatarMap[a]}
                         </div>
                     ))}
                 </div>
-                <div className="input-wrapper">
+                <div className="input-wrapper mt-4">
                     <input
                         type="text"
                         placeholder="Přezdívka"
@@ -174,7 +189,6 @@ function LobbyContent() {
     }
 
     if (step === 'lobby') {
-        const avatarMap: { [key: string]: string } = { cow: '🐮', fox: '🦊', cat: '🐱', dog: '🐶', lion: '🦁', panda: '🐼', koala: '🐨', pig: '🐷' };
         return (
             <div className="glass-card" style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>

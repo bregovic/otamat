@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
@@ -102,15 +101,15 @@ export default function RegisterPage() {
 
                 <div className="mt-6 text-center text-gray-400">
                     Již máte účet?{" "}
-                    <Link href="/login" className="text-primary hover:underline">
+                    <a href="/otamat/login" className="text-primary hover:underline">
                         Přihlaste se
-                    </Link>
+                    </a>
                 </div>
 
                 <div className="mt-4 text-center">
-                    <Link href="/" className="text-sm text-gray-500 hover:text-white">
+                    <a href="/otamat/" className="text-sm text-gray-500 hover:text-white">
                         ← Zpět na hlavní stránku
-                    </Link>
+                    </a>
                 </div>
             </div>
         </main>

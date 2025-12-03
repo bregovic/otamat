@@ -37,12 +37,12 @@ export default function Home() {
           </div>
         ) : (
           <div className="flex gap-4">
-            <Link href="/login" className="text-white hover:text-primary font-bold py-2 px-4 transition-colors" prefetch={false}>
+            <a href="/otamat/login" className="text-white hover:text-primary font-bold py-2 px-4 transition-colors">
               Přihlásit
-            </Link>
-            <Link href="/register" className="btn btn-primary py-2 px-6 text-sm" prefetch={false}>
+            </a>
+            <a href="/otamat/register" className="btn btn-primary py-2 px-6 text-sm">
               Registrovat
-            </Link>
+            </a>
           </div>
         )}
       </div>
@@ -85,13 +85,13 @@ export default function Home() {
         {/* Admin Link */}
         <div className="text-center">
           <p className="text-gray-400 mb-2">Chceš vytvořit vlastní kvíz?</p>
-          <Link href={user ? "/dashboard" : "/login"} className="text-primary hover:text-primary-hover font-bold flex items-center justify-center gap-2 text-lg transition-colors">
+          <a href={user ? "/otamat/dashboard" : "/otamat/login"} className="text-primary hover:text-primary-hover font-bold flex items-center justify-center gap-2 text-lg transition-colors">
             {user ? "Přejít na Dashboard" : "Přihlásit se jako organizátor"} <Play size={20} />
-          </Link>
+          </a>
 
           {!user && (
             <div className="mt-4 text-sm text-gray-600">
-              <Link href="/admin/create" className="hover:text-gray-400 transition-colors">Rychlá hra bez registrace</Link>
+              <a href="/otamat/admin/create" className="hover:text-gray-400 transition-colors">Rychlá hra bez registrace</a>
             </div>
           )}
         </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import { Loader2 } from "lucide-react";
 
@@ -88,15 +87,15 @@ export default function LoginPage() {
 
                 <div className="mt-6 text-center text-gray-400">
                     Ještě nemáte účet?{" "}
-                    <Link href="/register" className="text-primary hover:underline">
+                    <a href="/otamat/register" className="text-primary hover:underline">
                         Zaregistrujte se
-                    </Link>
+                    </a>
                 </div>
 
                 <div className="mt-4 text-center">
-                    <Link href="/" className="text-sm text-gray-500 hover:text-white">
+                    <a href="/otamat/" className="text-sm text-gray-500 hover:text-white">
                         ← Zpět na hlavní stránku
-                    </Link>
+                    </a>
                 </div>
             </div>
         </main>

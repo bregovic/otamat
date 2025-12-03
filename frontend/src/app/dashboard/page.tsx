@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { Plus, Play, Edit, Trash2, Loader2 } from "lucide-react";
@@ -44,15 +43,6 @@ export default function DashboardPage() {
     };
 
     const handleStartGame = (quizId: string) => {
-        // TODO: Implement starting a game from a saved quiz
-        // For now, we can redirect to a lobby setup page or directly start it via socket
-        // But GameGateway needs to support creating game from ID.
-        // We implemented that in backend!
-        // So we need a page that initiates the game.
-        // Let's redirect to /admin/lobby/[quizId] (we need to create this)
-        // OR we can just use a simple modal here.
-
-        // For simplicity, let's just alert for now or try to create it directly.
         alert("Spouštění uložených kvízů bude dostupné v příští aktualizaci! Zatím použijte 'Rychlá hra'.");
     };
 
@@ -74,12 +64,12 @@ export default function DashboardPage() {
                         <p className="text-gray-400">Tady jsou tvoje kvízy.</p>
                     </div>
                     <div className="flex gap-4">
-                        <Link href="/" className="btn btn-secondary">
+                        <a href="/otamat/" className="btn btn-secondary">
                             Zpět domů
-                        </Link>
-                        <Link href="/admin/create" className="btn btn-primary flex items-center gap-2">
+                        </a>
+                        <a href="/otamat/admin/create" className="btn btn-primary flex items-center gap-2">
                             <Plus size={20} /> Vytvořit nový kvíz
-                        </Link>
+                        </a>
                     </div>
                 </div>
 
@@ -93,9 +83,9 @@ export default function DashboardPage() {
                         <div className="text-6xl mb-4">📝</div>
                         <h2 className="text-2xl font-bold text-white mb-2">Zatím žádné kvízy</h2>
                         <p className="text-gray-400 mb-6">Vytvoř svůj první kvíz a začni se bavit!</p>
-                        <Link href="/admin/create" className="btn btn-primary inline-flex items-center gap-2">
+                        <a href="/otamat/admin/create" className="btn btn-primary inline-flex items-center gap-2">
                             <Plus size={20} /> Vytvořit první kvíz
-                        </Link>
+                        </a>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

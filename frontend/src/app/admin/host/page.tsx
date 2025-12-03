@@ -32,29 +32,6 @@ function HostGameContent() {
         const newSocket = io(BACKEND_URL);
         setSocket(newSocket);
 
-        // Host joins the room to listen for events (but doesn't add to player list)
-        // Actually, in our current backend logic, 'joinGame' adds a player.
-        // We need a way for host to just "watch".
-        // BUT, createGame puts the creator in the room. 
-        // Here we are a NEW connection. We need to join the room.
-        // Let's just emit a custom event or reuse join but filter out?
-        // Wait, the backend broadcasts to the room 'pin'. If we just client.join(pin) we receive events.
-        // We can use a simple emit to join room without being a player.
-        // Or we can just rely on the fact that we created the game? No, we might be a different session.
-
-        // Workaround: We need to tell backend "I am host, let me in room PIN".
-        // Since we don't have auth on socket yet, let's just use a generic join event if it exists, 
-        // or add a 'joinAsHost' event.
-        // Actually, looking at backend, 'createGame' does client.join(pin).
-        // We need something similar.
-        // Let's assume for now we can just use the socket to emit 'startGame' etc. 
-        // BUT we need to receive events. We must be in the room.
-        // I will add a simple 'joinRoom' event to backend later if needed, 
-        // but for now let's try to just use the socket. 
-        // Wait, if I don't join the room, I won't get 'playerJoined'.
-
-        // Let's add a quick 'watchGame' event to backend in next step if this fails.
-        // For now, let's assume we implement 'watchGame' on backend.
         newSocket.emit('watchGame', { pin });
 
         newSocket.on("playerJoined", (player) => {
@@ -72,7 +49,7 @@ function HostGameContent() {
                 index: data.questionIndex,
                 total: data.totalQuestions
             });
-            setAnswerStats({ count: 0, total: players.length }); // This might be inaccurate if players joined late, but ok for now
+            setAnswerStats({ count: 0, total: players.length });
             setTimeLeft(data.timeLimit);
             setShowResults(false);
             setGameStarted(true);
@@ -96,7 +73,7 @@ function HostGameContent() {
         return () => {
             newSocket.disconnect();
         };
-    }, [pin]);
+    }, [pin]); // Removed 'players.length' from dependency array to avoid reconnection loops, rely on updatePlayerList
 
     useEffect(() => {
         if (!gameStarted || showResults || timeLeft <= 0) return;

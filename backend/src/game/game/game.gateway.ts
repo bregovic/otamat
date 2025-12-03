@@ -250,9 +250,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
             }
           }
         });
-        return { success: true, message: 'Kvíz byl úspěšně aktualizován.' };
+        return { success: true, message: 'Kvíz byl úspěšně aktualizován.', quizId: quizId };
       } else {
-        await this.prisma.quiz.create({
+        const newQuiz = await this.prisma.quiz.create({
           data: {
             title: title,
             isPublic: isPublic || false,
@@ -274,12 +274,29 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
             }
           }
         });
-        return { success: true, message: 'Kvíz byl úspěšně uložen.' };
+        return { success: true, message: 'Kvíz byl úspěšně uložen.', quizId: newQuiz.id };
       }
     } catch (error) {
       console.error("Error saving quiz:", error);
       return { success: false, message: 'Chyba při ukládání do databáze.' };
     }
+  }
+
+  @SubscribeMessage('watchGame')
+  handleWatchGame(
+    @MessageBody() data: { pin: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const game = this.games.get(data.pin);
+    if (!game) return { success: false, message: 'Hra neexistuje.' };
+
+    client.join(data.pin);
+    this.logger.log(`Client ${client.id} watching game ${data.pin}`);
+
+    // Send current state immediately
+    client.emit('updatePlayerList', game.players);
+
+    return { success: true };
   }
 
   @SubscribeMessage('joinGame')

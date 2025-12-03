@@ -147,10 +147,17 @@ function CreateQuizContent() {
             userId: user?.id
         };
 
-        socket.emit("saveQuiz", payload, (response: { success: boolean, message: string }) => {
-            if (response.success) {
-                alert("Pro spuštění upraveného kvízu použijte tlačítko 'Pouze uložit' a poté ho spusťte z Dashboardu.");
-                setIsSaving(false);
+        socket.emit("saveQuiz", payload, (response: { success: boolean, message: string, quizId?: string }) => {
+            if (response.success && response.quizId) {
+                // Quiz saved, now start it
+                socket.emit("createGameFromQuiz", { quizId: response.quizId }, (gameResponse: { success: boolean, pin?: string, message?: string }) => {
+                    if (gameResponse.success && gameResponse.pin) {
+                        router.push(`/admin/host?pin=${gameResponse.pin}`);
+                    } else {
+                        alert("Kvíz byl uložen, ale nepodařilo se spustit hru: " + (gameResponse.message || "Neznámá chyba"));
+                        setIsSaving(false);
+                    }
+                });
             } else {
                 console.error("Save failed:", response.message);
                 alert("Chyba při ukládání: " + (response.message || "Neznámá chyba"));

@@ -109,6 +109,30 @@ export default function CreateQuizPage() {
         });
     };
 
+    const handleSaveOnly = () => {
+        if (!socket) {
+            setError("Nepodařilo se připojit k serveru.");
+            return;
+        }
+        if (!title.trim()) {
+            setError("Vyplňte název kvízu.");
+            return;
+        }
+
+        setIsSaving(true);
+        setError(null);
+
+        socket.emit("saveQuiz", { title, questions, isPublic }, (response: { success: boolean, message: string }) => {
+            setIsSaving(false);
+            if (response.success) {
+                alert("Kvíz byl úspěšně uložen!");
+                window.location.href = "/";
+            } else {
+                setError(response.message || "Chyba při ukládání kvízu.");
+            }
+        });
+    };
+
     const handleStartGame = () => {
         if (socket && gamePin) {
             socket.emit("startGame", { pin: gamePin });
@@ -295,6 +319,9 @@ export default function CreateQuizPage() {
                 ))}
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '4rem' }}>
                     <button onClick={handleAddQuestion} className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>+ Přidat otázku</button>
+                    <button onClick={handleSaveOnly} className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }} disabled={isSaving}>
+                        {isSaving ? <Loader2 className="animate-spin" /> : <Check size={24} />} Pouze uložit
+                    </button>
                     <button onClick={handleSaveAndStart} className="btn btn-primary" style={{ display: 'inline-flex', width: 'auto' }} disabled={isSaving}>
                         {isSaving ? <Loader2 className="animate-spin" /> : <Play size={24} />} Uložit a spustit
                     </button>

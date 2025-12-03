@@ -64,10 +64,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // --- SAVE TO DATABASE ---
     try {
-      // 1. Find or create a default host user (temporary solution)
       let host = await this.prisma.user.findFirst({ where: { role: 'ADMIN' } });
       if (!host) {
-        // Fallback if no admin exists, try to find ANY user or create one
         host = await this.prisma.user.findFirst();
         if (!host) {
           host = await this.prisma.user.create({
@@ -80,7 +78,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
       }
 
-      // 2. Create Quiz
       await this.prisma.quiz.create({
         data: {
           title: title,
@@ -106,8 +103,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.logger.log(`Quiz '${title}' saved to database.`);
     } catch (error) {
       this.logger.error(`Failed to save quiz to DB: ${error}`);
-      // Continue creating the game in memory even if DB save fails (or should we fail?)
-      // For now, let's continue so the user can play.
     }
     // ------------------------
 
@@ -128,6 +123,58 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`Game created with PIN: ${pin}`);
 
     return { success: true, pin: pin };
+  }
+
+  @SubscribeMessage('saveQuiz')
+  async handleSaveQuiz(
+    @MessageBody() data: { title: string; questions: any[]; isPublic: boolean },
+    @ConnectedSocket() client: Socket,
+  ) {
+    let { title, questions, isPublic } = data;
+    this.logger.log(`Client ${client.id} saving quiz (no start): ${title}`);
+
+    try {
+      let host = await this.prisma.user.findFirst({ where: { role: 'ADMIN' } });
+      if (!host) {
+        host = await this.prisma.user.findFirst();
+        if (!host) {
+          host = await this.prisma.user.create({
+            data: {
+              email: 'admin@hollyhop.cz',
+              nickname: 'Admin',
+              role: 'ADMIN'
+            }
+          });
+        }
+      }
+
+      await this.prisma.quiz.create({
+        data: {
+          title: title,
+          isPublic: isPublic || false,
+          authorId: host.id,
+          questions: {
+            create: questions.map((q, index) => ({
+              text: q.text,
+              type: 'MULTIPLE_CHOICE',
+              order: index,
+              timeLimit: 30,
+              options: {
+                create: q.options.map((opt: string, optIndex: number) => ({
+                  text: opt,
+                  isCorrect: optIndex === q.correct,
+                  order: optIndex
+                }))
+              }
+            }))
+          }
+        }
+      });
+      return { success: true, message: 'Kvíz byl úspěšně uložen.' };
+    } catch (error) {
+      console.error("Error saving quiz:", error);
+      return { success: false, message: 'Chyba při ukládání do databáze.' };
+    }
   }
 
   @SubscribeMessage('joinGame')

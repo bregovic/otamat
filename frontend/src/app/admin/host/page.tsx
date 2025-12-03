@@ -18,7 +18,7 @@ function HostGameContent() {
 
     // Game State
     const [gameStarted, setGameStarted] = useState(false);
-    const [currentQuestion, setCurrentQuestion] = useState<{ text: string, options: string[], index: number, total: number } | null>(null);
+    const [currentQuestion, setCurrentQuestion] = useState<{ text: string, mediaUrl?: string, options: string[], index: number, total: number } | null>(null);
     const [answerStats, setAnswerStats] = useState<{ count: number, total: number }>({ count: 0, total: 0 });
     const [timeLeft, setTimeLeft] = useState(30);
     const [showResults, setShowResults] = useState(false);
@@ -45,6 +45,7 @@ function HostGameContent() {
         newSocket.on("questionStart", (data) => {
             setCurrentQuestion({
                 text: data.text,
+                mediaUrl: data.mediaUrl,
                 options: data.options,
                 index: data.questionIndex,
                 total: data.totalQuestions
@@ -73,7 +74,7 @@ function HostGameContent() {
         return () => {
             newSocket.disconnect();
         };
-    }, [pin]); // Removed 'players.length' from dependency array to avoid reconnection loops, rely on updatePlayerList
+    }, [pin]);
 
     useEffect(() => {
         if (!gameStarted || showResults || timeLeft <= 0) return;
@@ -109,7 +110,7 @@ function HostGameContent() {
                                 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                         <span style={{ fontSize: '2rem', fontWeight: 'bold', width: '40px' }}>#{index + 1}</span>
-                                        <span style={{ fontSize: '2.5rem' }}>{['🐮', '🦊', '🐱', '🐶', '🦁', '🐼', '🐨', '🐷'][['cow', 'fox', 'cat', 'dog', 'lion', 'panda', 'koala', 'pig'].indexOf(player.avatar)] || player.avatar}</span>
+                                        <span style={{ fontSize: '2.5rem' }}>{avatarMap[player.avatar] || player.avatar}</span>
                                         <span style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{player.nickname}</span>
                                     </div>
                                     <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{player.score} b</span>
@@ -128,106 +129,159 @@ function HostGameContent() {
 
     if (gameStarted && currentQuestion) {
         return (
-            <main>
-                <div style={{ width: '100%', maxWidth: '1000px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', margin: '0 auto', paddingTop: '2rem' }}>
-                    <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', padding: '0 1rem' }}>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#a1a1aa' }}>
-                            Otázka {currentQuestion.index} / {currentQuestion.total}
-                        </div>
-                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'white', background: 'rgba(255,255,255,0.1)', padding: '0.5rem 1.5rem', borderRadius: '12px' }}>
-                            {timeLeft}s
-                        </div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#a1a1aa' }}>
-                            Odpovědi: {answerStats.count} / {answerStats.total}
-                        </div>
+            <main className="h-screen flex flex-col p-4">
+                {/* Header Info */}
+                <div className="flex justify-between items-center mb-4 px-4">
+                    <div className="text-xl font-bold text-gray-400">
+                        Otázka {currentQuestion.index} / {currentQuestion.total}
                     </div>
-
-                    <div className="glass-card" style={{ width: '100%', maxWidth: '800px', marginBottom: '2rem', padding: '4rem' }}>
-                        <h2 style={{ fontSize: '3.5rem', marginBottom: '3rem', lineHeight: '1.2' }}>{currentQuestion.text}</h2>
-                        <div style={{ marginTop: '3rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                            {currentQuestion.options.map((opt, i) => {
-                                const isCorrect = showResults && resultsData?.correctIndex === i;
-                                const gradientClass = [
-                                    'from-[var(--opt-1-from)] to-[var(--opt-1-to)]',
-                                    'from-[var(--opt-2-from)] to-[var(--opt-2-to)]',
-                                    'from-[var(--opt-3-from)] to-[var(--opt-3-to)]',
-                                    'from-[var(--opt-4-from)] to-[var(--opt-4-to)]'
-                                ][i % 4];
-
-                                return (
-                                    <div key={i} className={`
-                                        p-6 rounded-2xl text-3xl font-bold text-white flex items-center gap-4 transition-all duration-300
-                                        ${showResults
-                                            ? (isCorrect ? 'bg-emerald-500' : 'bg-white/5 opacity-30')
-                                            : `bg-gradient-to-br ${gradientClass}`
-                                        }
-                                    `}>
-                                        <span style={{ fontSize: '2.5rem' }}>{['▲', '◆', '●', '■'][i]}</span>
-                                        {opt}
-                                        {isCorrect && <Check size={40} style={{ marginLeft: 'auto' }} />}
-                                    </div>
-                                );
-                            })}
-                        </div>
+                    <div className="text-3xl font-bold text-white bg-white/10 px-6 py-2 rounded-xl">
+                        {timeLeft}s
                     </div>
-                    {showResults && (
-                        <div style={{ marginTop: '1rem', fontSize: '1.5rem', color: '#a1a1aa' }}>
-                            Další otázka za 5 sekund...
-                        </div>
-                    )}
+                    <div className="text-xl font-bold text-gray-400">
+                        Odpovědi: {answerStats.count} / {answerStats.total}
+                    </div>
                 </div>
+
+                {/* Question & Image Area */}
+                <div className="flex-1 flex flex-col items-center justify-center mb-4 relative">
+                    <div className="glass-card w-full max-w-6xl p-8 flex flex-col items-center justify-center h-full relative overflow-hidden">
+                        <h2 className="text-4xl md:text-5xl font-bold text-center mb-8 leading-tight z-10">
+                            {currentQuestion.text}
+                        </h2>
+
+                        {/* Image Placeholder or Actual Image */}
+                        <div className="flex-1 w-full flex items-center justify-center bg-black/20 rounded-xl mb-4 relative overflow-hidden" style={{ minHeight: '200px' }}>
+                            {currentQuestion.mediaUrl ? (
+                                <img src={currentQuestion.mediaUrl} alt="Question Media" className="max-h-full max-w-full object-contain" />
+                            ) : (
+                                <div className="text-white/20 text-6xl font-bold">?</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Options Area - Compact Height */}
+                <div className="grid grid-cols-4 gap-4 h-32 md:h-40">
+                    {currentQuestion.options.map((opt, i) => {
+                        const isCorrect = showResults && resultsData?.correctIndex === i;
+                        const gradientClass = [
+                            'from-[var(--opt-1-from)] to-[var(--opt-1-to)]',
+                            'from-[var(--opt-2-from)] to-[var(--opt-2-to)]',
+                            'from-[var(--opt-3-from)] to-[var(--opt-3-to)]',
+                            'from-[var(--opt-4-from)] to-[var(--opt-4-to)]'
+                        ][i % 4];
+
+                        return (
+                            <div key={i} className={`
+                                rounded-xl text-2xl font-bold text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden
+                                ${showResults
+                                    ? (isCorrect ? 'bg-emerald-500' : 'bg-white/5 opacity-30')
+                                    : `bg-gradient-to-br ${gradientClass}`
+                                }
+                            `}>
+                                <span className="absolute left-4 text-3xl opacity-50">{['▲', '◆', '●', '■'][i]}</span>
+                                <span className="z-10 text-center px-8 truncate w-full">{opt}</span>
+                                {isCorrect && <Check size={40} className="absolute right-4" />}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {showResults && (
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-white px-8 py-4 rounded-xl text-2xl backdrop-blur-md z-50">
+                        Další otázka za 5 sekund...
+                    </div>
+                )}
             </main>
         );
     }
 
-    const avatarMap: { [key: string]: string } = { cow: '🐮', fox: '🦊', cat: '🐱', dog: '🐶', lion: '🦁', panda: '🐼', koala: '🐨', pig: '🐷' };
     return (
-        <main>
-            <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', margin: '0 auto', paddingTop: '4rem' }}>
-                <h1 style={{ fontSize: '3rem', marginBottom: '1rem' }}>Lobby</h1>
-                <p style={{ fontSize: '1.5rem', marginBottom: '2rem', color: '#a1a1aa' }}>Připojte se pomocí PINu:</p>
-                <div style={{
-                    fontSize: '6rem', fontWeight: 'bold', color: 'var(--primary)',
-                    background: 'rgba(255,255,255,0.1)', padding: '2rem 4rem', borderRadius: '24px',
-                    border: '2px solid var(--primary)', marginBottom: '3rem',
-                    textShadow: '0 0 30px rgba(255,255,255,0.3)'
-                }}>
+        <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+            <style jsx global>{`
+                @keyframes float {
+                    0% { transform: translateY(0px); }
+                    50% { transform: translateY(-10px); }
+                    100% { transform: translateY(0px); }
+                }
+                @keyframes pulse-glow {
+                    0% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.4); }
+                    70% { box-shadow: 0 0 0 20px rgba(var(--primary-rgb), 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0); }
+                }
+                .avatar-float {
+                    animation: float 3s ease-in-out infinite;
+                }
+            `}</style>
+
+            <div className="w-full max-w-[1400px] flex flex-col items-center text-center z-10">
+                <h1 className="text-6xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                    Lobby
+                </h1>
+                <p className="text-2xl text-gray-400 mb-8">Připojte se na <span className="text-white font-bold">hollyhop.cz</span> pomocí PINu:</p>
+
+                <div className="text-8xl md:text-9xl font-black text-white bg-white/10 px-12 py-8 rounded-3xl border-4 border-white/20 mb-12 backdrop-blur-lg shadow-[0_0_50px_rgba(255,255,255,0.1)] animate-pulse">
                     {pin}
                 </div>
-                <div className="glass-card" style={{ width: '100%', marginBottom: '2rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                        <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Users /> Hráči ({players.length})
+
+                <div className="glass-card w-full p-8 min-h-[400px] flex flex-col">
+                    <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
+                        <h2 className="text-3xl font-bold flex items-center gap-3">
+                            <Users size={32} /> Hráči ({players.length})
                         </h2>
                         {players.length > 0 && (
-                            <div style={{ color: '#10b981', fontWeight: 'bold' }}>Připraveni</div>
+                            <div className="text-emerald-400 font-bold text-xl animate-pulse">Připraveni ke hře</div>
                         )}
                     </div>
+
                     {players.length === 0 ? (
-                        <p style={{ color: '#a1a1aa', padding: '2rem' }}>Čekání na hráče...</p>
+                        <div className="flex-1 flex items-center justify-center text-gray-500 text-2xl">
+                            Čekání na hráče...
+                        </div>
                     ) : (
-                        <div className="avatar-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))' }}>
-                            {players.map((player) => (
-                                <div key={player.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                                    <div style={{ fontSize: '2.5rem', background: 'rgba(255,255,255,0.1)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
+                            {players.map((player, i) => (
+                                <div key={player.id} className="flex flex-col items-center gap-2 avatar-float" style={{ animationDelay: `${i * 0.1}s` }}>
+                                    <div className="text-6xl bg-white/10 w-24 h-24 rounded-full flex items-center justify-center border-2 border-white/20 shadow-lg">
                                         {avatarMap[player.avatar] || player.avatar}
                                     </div>
-                                    <div style={{ fontWeight: 'bold' }}>{player.nickname}</div>
+                                    <div className="font-bold text-xl truncate w-full">{player.nickname}</div>
                                 </div>
                             ))}
                         </div>
                     )}
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <Link href="/dashboard" className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>Ukončit hru</Link>
-                    <button onClick={handleStartGame} className="btn btn-primary" style={{ display: 'inline-flex', width: 'auto', padding: '1rem 3rem', fontSize: '1.25rem' }} disabled={players.length === 0}>
-                        <Play size={24} /> Spustit hru
+
+                <div className="flex gap-4 mt-8">
+                    <Link href="/dashboard" className="btn btn-secondary text-xl px-8 py-4">
+                        Ukončit hru
+                    </Link>
+                    <button
+                        onClick={handleStartGame}
+                        className="btn btn-primary text-xl px-12 py-4 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all"
+                        disabled={players.length === 0}
+                    >
+                        <Play size={28} /> Spustit hru
                     </button>
                 </div>
             </div>
         </main>
     );
 }
+
+const avatarMap: { [key: string]: string } = {
+    cow: '🐮', fox: '🦊', cat: '🐱', dog: '🐶', lion: '🦁', panda: '🐼', koala: '🐨', pig: '🐷',
+    mouse: '🐭', frog: '🐸', bear: '🐻', tiger: '🐯', rabbit: '🐰', hamster: '🐹', dragon: '🐲', monkey: '🐵',
+    chicken: '🐔', penguin: '🐧', bird: '🐦', duck: '🦆', eagle: '🦅', owl: '🦉', bat: '🦇', wolf: '🐺',
+    boar: '🐗', horse: '🐴', unicorn: '🦄', bee: '🐝', bug: '🐛', butterfly: '🦋', snail: '🐌', beetle: '🐞',
+    ant: '🐜', spider: '🕷', scorpion: '🦂', turtle: '🐢', snake: '🐍', lizard: '🦎', t_rex: '🦖', sauropod: '🦕',
+    octopus: '🐙', squid: '🦑', shrimp: '🦐', lobster: '🦞', crab: '🦀', puffer: '🐡', fish: '🐠', dolphin: '🐬',
+    whale: '🐳', shark: '🦈', crocodile: '🐊', leopard: '🐆', zebra: '🦓', gorilla: '🦍', orangutan: '🦧', elephant: '🐘',
+    hippo: '🦛', rhino: '🦏', camel: '🐫', llama: '🦙', giraffe: '🦒', buffalo: '🐃', ox: '🐂', ram: '🐏',
+    sheep: '🐑', goat: '🐐', deer: '🦌', turkey: '🦃', rooster: '🐓', peacock: '🦚', parrot: '🦜', swan: '🦢',
+    flamingo: '🦩', dove: '🕊', raccoon: '🦝', skunk: '🦨', badger: '🦡', beaver: '🦫', otter: '🦦', sloth: '🦥'
+};
 
 export default function HostGamePage() {
     return (

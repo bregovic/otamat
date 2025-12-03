@@ -170,6 +170,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const sortedOptions = q.options.sort((a, b) => a.order - b.order);
       return {
         text: q.text,
+        mediaUrl: q.mediaUrl,
         options: sortedOptions.map(o => o.text),
         correct: sortedOptions.findIndex(o => o.isCorrect),
         timeLimit: q.timeLimit || 30
@@ -376,6 +377,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       questionIndex: game.currentQuestionIndex + 1,
       totalQuestions: game.questions.length,
       text: question.text,
+      mediaUrl: question.mediaUrl,
       options: question.options,
       timeLimit: timeLimit
     });

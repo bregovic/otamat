@@ -9,6 +9,10 @@ export const metadata: Metadata = {
   description: "Vytvářejte a hrajte zábavné kvízy ve škole, v práci nebo doma.",
 };
 
+import { AuthProvider } from "../context/AuthContext";
+
+// ...
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -17,9 +21,11 @@ export default function RootLayout({
   return (
     <html lang="cs">
       <body className={inter.className}>
-        <div className="min-h-screen flex flex-col">
-          {children}
-        </div>
+        <AuthProvider>
+          <div className="min-h-screen flex flex-col">
+            {children}
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

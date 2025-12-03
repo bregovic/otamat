@@ -1,85 +1,99 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Play, User as UserIcon, LogOut } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export default function Home() {
   const [pin, setPin] = useState("");
   const router = useRouter();
+  const { user, logout } = useAuth();
 
-  const handleJoin = () => {
-    if (pin.trim().length > 0) {
+  const handleJoin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pin.length === 6) {
       router.push(`/play?pin=${pin}`);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleJoin();
-    }
-  };
-
   return (
-    <main>
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        maxWidth: '480px'
-      }}>
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 relative">
 
-        {/* 1. Static PNG Logo */}
-        <div style={{
-          width: '100%',
-          maxWidth: '350px',
-          marginBottom: '2rem',
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '10px' // Add padding to prevent cropping
-        }}>
-          <Image
+      {/* Auth Buttons (Top Right) */}
+      <div className="absolute top-4 right-4 flex gap-4 z-10">
+        {user ? (
+          <div className="flex items-center gap-4 bg-black/20 backdrop-blur-md p-2 rounded-full border border-white/10">
+            <div className="flex items-center gap-2 px-2">
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold">
+                {user.avatar === 'cow' ? '🐮' : user.avatar?.charAt(0).toUpperCase() || user.nickname.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-white font-bold">{user.nickname}</span>
+            </div>
+            <button onClick={logout} className="text-gray-400 hover:text-white p-2 transition-colors" title="Odhlásit se">
+              <LogOut size={20} />
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-4">
+            <Link href="/login" className="text-white hover:text-primary font-bold py-2 px-4 transition-colors">
+              Přihlásit
+            </Link>
+            <Link href="/register" className="btn btn-primary py-2 px-6 text-sm">
+              Registrovat
+            </Link>
+          </div>
+        )}
+      </div>
+
+      <div className="w-full max-w-md flex flex-col items-center z-0">
+        {/* Logo */}
+        <div className="w-full max-w-[300px] mb-8 relative flex items-center justify-center">
+          <img
             src="/otamat/logo.png"
             alt="OtaMat Logo"
-            width={350}
-            height={150}
             style={{
               width: '100%',
               height: 'auto',
               objectFit: 'contain',
-              maxHeight: '150px' // Ensure it doesn't get too tall
             }}
-            priority
           />
         </div>
 
-        {/* 2. Input Box (Card) */}
-        <div className="glass-card" style={{ margin: '0 auto', textAlign: 'center' }}>
-          <div className="input-wrapper">
+        {/* PIN Input Card */}
+        <div className="glass-card w-full p-6 mb-8">
+          <form onSubmit={handleJoin} className="flex flex-col gap-4">
             <input
               type="text"
-              placeholder="Zadej PIN hry"
               value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="PIN hry"
+              className="text-center text-4xl tracking-widest font-bold py-4 bg-black/20 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary transition-colors w-full"
               maxLength={6}
             />
-          </div>
-          <button onClick={handleJoin} className="btn btn-primary">
-            Vstoupit do hry
-          </button>
+            <button
+              type="submit"
+              className="btn btn-primary w-full py-4 text-xl font-bold uppercase tracking-wide"
+              disabled={pin.length !== 6}
+            >
+              Vstoupit do hry
+            </button>
+          </form>
         </div>
 
-        {/* 3. Host Actions */}
-        <div className="link-wrapper">
-          <Link href="/admin/create" className="link-text" prefetch={false}>
-            Chceš vytvořit vlastní kvíz? <span style={{ color: '#fff', fontWeight: 'bold' }}>Klikni zde</span>
+        {/* Admin Link */}
+        <div className="text-center">
+          <p className="text-gray-400 mb-2">Chceš vytvořit vlastní kvíz?</p>
+          <Link href={user ? "/dashboard" : "/login"} className="text-primary hover:text-primary-hover font-bold flex items-center justify-center gap-2 text-lg transition-colors">
+            {user ? "Přejít na Dashboard" : "Přihlásit se jako organizátor"} <Play size={20} />
           </Link>
+
+          {!user && (
+            <div className="mt-4 text-sm text-gray-600">
+              <Link href="/admin/create" className="hover:text-gray-400 transition-colors">Rychlá hra bez registrace</Link>
+            </div>
+          )}
         </div>
       </div>
     </main>

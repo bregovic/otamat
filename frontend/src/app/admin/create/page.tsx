@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { io, Socket } from "socket.io-client";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users, Play } from "lucide-react";
 
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
@@ -16,10 +16,22 @@ export default function CreateQuizPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [gamePin, setGamePin] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [players, setPlayers] = useState<any[]>([]);
 
     useEffect(() => {
         const newSocket = io(BACKEND_URL);
         setSocket(newSocket);
+
+        newSocket.on("playerJoined", (player) => {
+            console.log("Player joined:", player);
+            setPlayers((prev) => [...prev, player]);
+        });
+
+        newSocket.on("updatePlayerList", (playerList) => {
+            console.log("Updated player list:", playerList);
+            setPlayers(playerList);
+        });
+
         return () => {
             newSocket.disconnect();
         };
@@ -52,6 +64,14 @@ export default function CreateQuizPage() {
         });
     };
 
+    const handleStartGame = () => {
+        if (socket && gamePin) {
+            socket.emit("startGame", { pin: gamePin });
+            // TODO: Redirect to game host view
+            alert("Hra spuštěna! (Zatím jen alert)");
+        }
+    };
+
     if (gamePin) {
         return (
             <main>
@@ -73,14 +93,45 @@ export default function CreateQuizPage() {
                         {gamePin}
                     </div>
 
-                    <div className="glass-card">
-                        <h2 style={{ marginBottom: '1rem' }}>Čekání na hráče...</h2>
-                        <p>Zatím se nikdo nepřipojil (TODO: Seznam hráčů)</p>
+                    <div className="glass-card" style={{ width: '100%', marginBottom: '2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                            <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Users /> Hráči ({players.length})
+                            </h2>
+                            {players.length > 0 && (
+                                <div style={{ color: '#10b981', fontWeight: 'bold' }}>Připraveni</div>
+                            )}
+                        </div>
+
+                        {players.length === 0 ? (
+                            <p style={{ color: '#a1a1aa', padding: '2rem' }}>Čekání na hráče...</p>
+                        ) : (
+                            <div className="avatar-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))' }}>
+                                {players.map((player) => (
+                                    <div key={player.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                                        <div style={{ fontSize: '2.5rem', background: 'rgba(255,255,255,0.1)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {player.avatar === "cow" ? "🐮" : player.avatar}
+                                        </div>
+                                        <div style={{ fontWeight: 'bold' }}>{player.nickname}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
-                    <Link href="/" className="btn btn-secondary" style={{ marginTop: '2rem', display: 'inline-flex', width: 'auto' }}>
-                        Ukončit hru
-                    </Link>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <Link href="/" className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>
+                            Ukončit hru
+                        </Link>
+                        <button
+                            onClick={handleStartGame}
+                            className="btn btn-primary"
+                            style={{ display: 'inline-flex', width: 'auto', padding: '1rem 3rem', fontSize: '1.25rem' }}
+                            disabled={players.length === 0}
+                        >
+                            <Play size={24} /> Spustit hru
+                        </button>
+                    </div>
                 </div>
             </main>
         );

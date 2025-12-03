@@ -1,7 +1,26 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const [pin, setPin] = useState("");
+  const router = useRouter();
+
+  const handleJoin = () => {
+    if (pin.trim().length > 0) {
+      router.push(`/play?pin=${pin}`);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleJoin();
+    }
+  };
+
   return (
     <main>
       <div style={{
@@ -16,12 +35,13 @@ export default function Home() {
         {/* 1. Static PNG Logo */}
         <div style={{
           width: '100%',
-          maxWidth: '350px', // Adjusted width for PNG
+          maxWidth: '350px',
           marginBottom: '2rem',
           position: 'relative',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          padding: '10px' // Add padding to prevent cropping
         }}>
           <Image
             src="/otamat/logo.png"
@@ -32,6 +52,7 @@ export default function Home() {
               width: '100%',
               height: 'auto',
               objectFit: 'contain',
+              maxHeight: '150px' // Ensure it doesn't get too tall
             }}
             priority
           />
@@ -43,16 +64,19 @@ export default function Home() {
             <input
               type="text"
               placeholder="Zadej PIN hry"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              onKeyDown={handleKeyDown}
+              maxLength={6}
             />
           </div>
-          <button className="btn btn-primary">
+          <button onClick={handleJoin} className="btn btn-primary">
             Vstoupit do hry
           </button>
         </div>
 
         {/* 3. Host Actions */}
         <div className="link-wrapper">
-          {/* prefetch={false} prevents 404 errors in console on static hosts */}
           <Link href="/admin/create" className="link-text" prefetch={false}>
             Chceš vytvořit vlastní kvíz? <span style={{ color: '#fff', fontWeight: 'bold' }}>Klikni zde</span>
           </Link>

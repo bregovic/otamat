@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { User, Check, Loader2, AlertCircle } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
 
-export default function LobbyPage() {
+function LobbyContent() {
     const [step, setStep] = useState<"nickname" | "avatar" | "waiting">("nickname");
     const [nickname, setNickname] = useState("");
     const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
@@ -15,8 +16,15 @@ export default function LobbyPage() {
     const [error, setError] = useState<string | null>(null);
     const [isConnected, setIsConnected] = useState(false);
 
-    // Hardcoded PIN for now - in real app this would come from URL or user input
-    const GAME_PIN = "123456";
+    const [gamePin, setGamePin] = useState<string | null>(null);
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+        const pin = searchParams.get("pin");
+        if (pin) {
+            setGamePin(pin);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         // Initialize socket connection
@@ -52,12 +60,12 @@ export default function LobbyPage() {
     };
 
     const handleJoinGame = () => {
-        if (selectedAvatar && socket && isConnected) {
+        if (selectedAvatar && socket && isConnected && gamePin) {
             setStep("waiting");
 
             // Emit join event to backend
             socket.emit("joinGame", {
-                pin: GAME_PIN,
+                pin: gamePin,
                 nickname: nickname,
                 avatar: selectedAvatar
             }, (response: { success: boolean, message: string }) => {
@@ -70,130 +78,165 @@ export default function LobbyPage() {
             });
         } else if (!isConnected) {
             setError("Nejsi připojen k serveru. Čekám na spojení...");
+        } else if (!gamePin) {
+            setError("Chybí PIN hry. Vrať se na hlavní stránku.");
         }
     };
 
+    if (!gamePin) {
+        return (
+            <div style={{ textAlign: 'center', marginTop: '4rem' }}>
+                <h1>Chybí PIN hry</h1>
+                <p>Prosím, vrať se na hlavní stránku a zadej PIN.</p>
+            </div>
+        );
+    }
+
     return (
-        <main>
-            {/* Video Background */}
-            <video autoPlay loop muted playsInline className="video-background">
-                <source src="/otamat/logo.mp4" type="video/mp4" />
-            </video>
-            <div className="video-overlay" />
-
-            <div style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                {/* Header */}
-                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                    <h1 style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>OtaMat</h1>
-                    <div style={{ background: 'rgba(255,255,255,0.1)', padding: '0.5rem 1.5rem', borderRadius: '999px', display: 'inline-block', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.1)' }}>
-                        PIN: {GAME_PIN}
-                    </div>
-
-                    {/* Connection Status Indicator */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', fontSize: '0.875rem', color: isConnected ? '#10b981' : '#ef4444' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isConnected ? '#10b981' : '#ef4444' }} />
-                        {isConnected ? 'Online' : 'Offline'}
-                    </div>
+        <div style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                <h1 style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>OtaMat</h1>
+                <div style={{ background: 'rgba(255,255,255,0.1)', padding: '0.5rem 1.5rem', borderRadius: '999px', display: 'inline-block', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    PIN: {gamePin}
                 </div>
 
-                {/* Error Message */}
-                {error && (
-                    <div style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', width: '100%', textAlign: 'center', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                        {error}
-                    </div>
-                )}
+                {/* Connection Status Indicator */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', fontSize: '0.875rem', color: isConnected ? '#10b981' : '#ef4444' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isConnected ? '#10b981' : '#ef4444' }} />
+                    {isConnected ? 'Online' : 'Offline'}
+                </div>
+            </div>
 
-                {/* STEP 1: Nickname */}
-                {step === "nickname" && (
-                    <div className="glass-card">
-                        <h2>Jak ti máme říkat?</h2>
-                        <form onSubmit={handleNicknameSubmit}>
-                            <div className="input-wrapper">
-                                <input
-                                    type="text"
-                                    value={nickname}
-                                    onChange={(e) => setNickname(e.target.value)}
-                                    placeholder="Tvoje přezdívka"
-                                    autoFocus
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={!nickname.trim()}
-                                className="btn btn-primary"
-                            >
-                                Pokračovat
-                            </button>
-                        </form>
-                    </div>
-                )}
+            {/* Error Message */}
+            {error && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', width: '100%', textAlign: 'center', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                    {error}
+                </div>
+            )}
 
-                {/* STEP 2: Avatar Selection */}
-                {step === "avatar" && (
-                    <div className="glass-card">
-                        <h2>Vyber si avatara</h2>
-
-                        <div className="avatar-grid">
-                            {avatars.map((avatar, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => setSelectedAvatar(avatar)}
-                                    className={`avatar-option ${selectedAvatar === avatar ? 'selected' : ''}`}
-                                >
-                                    {avatar === "cow" ? "🐮" : avatar}
-                                </button>
-                            ))}
+            {/* STEP 1: Nickname */}
+            {step === "nickname" && (
+                <div className="glass-card">
+                    <h2>Jak ti máme říkat?</h2>
+                    <form onSubmit={handleNicknameSubmit}>
+                        <div className="input-wrapper">
+                            <input
+                                type="text"
+                                value={nickname}
+                                onChange={(e) => setNickname(e.target.value)}
+                                placeholder="Tvoje přezdívka"
+                                autoFocus
+                            />
                         </div>
-
                         <button
-                            onClick={handleJoinGame}
-                            disabled={!selectedAvatar || !isConnected}
+                            type="submit"
+                            disabled={!nickname.trim()}
                             className="btn btn-primary"
-                            style={{ background: isConnected ? 'var(--success)' : undefined }}
                         >
-                            {isConnected ? (
-                                <>Připojit se do hry <Check size={20} /></>
-                            ) : (
-                                <><Loader2 size={20} className="animate-spin" /> Připojování...</>
-                            )}
+                            Pokračovat
                         </button>
+                    </form>
+                </div>
+            )}
+
+            {/* STEP 2: Avatar Selection */}
+            {step === "avatar" && (
+                <div className="glass-card">
+                    <h2>Vyber si avatara</h2>
+
+                    <div className="avatar-grid">
+                        {avatars.map((avatar, index) => (
+                            <button
+                                key={index}
+                                onClick={() => setSelectedAvatar(avatar)}
+                                className={`avatar-option ${selectedAvatar === avatar ? 'selected' : ''}`}
+                            >
+                                {avatar === "cow" ? "🐮" : avatar}
+                            </button>
+                        ))}
                     </div>
-                )}
 
-                {/* STEP 3: Waiting Room */}
-                {step === "waiting" && (
-                    <div style={{ width: '100%' }}>
-                        <div className="glass-card" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                    <button
+                        onClick={handleJoinGame}
+                        disabled={!selectedAvatar || !isConnected}
+                        className="btn btn-primary"
+                        style={{ background: isConnected ? 'var(--success)' : undefined }}
+                    >
+                        {isConnected ? (
+                            <>Připojit se do hry <Check size={20} /></>
+                        ) : (
+                            <><Loader2 size={20} className="animate-spin" /> Připojování...</>
+                        )}
+                    </button>
+                </div>
+            )}
 
-                            <div style={{
-                                width: '120px',
-                                height: '120px',
-                                background: 'rgba(255,255,255,0.1)',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '4rem',
-                                margin: '0 auto 1.5rem auto',
-                                border: '4px solid var(--primary)',
-                                boxShadow: '0 0 30px rgba(255, 255, 255, 0.2)'
-                            }}>
-                                {selectedAvatar === "cow" ? "🐮" : selectedAvatar}
-                            </div>
-                            <h2 style={{ marginBottom: '0.5rem', fontSize: '2.5rem' }}>{nickname}</h2>
-                            <div style={{ color: '#10b981', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '1.2rem' }}>
-                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
-                                Jsi ve hře!
-                            </div>
+            {/* STEP 3: Waiting Room */}
+            {step === "waiting" && (
+                <div style={{ width: '100%' }}>
+                    <div className="glass-card" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+
+                        <div style={{
+                            width: '120px',
+                            height: '120px',
+                            background: 'rgba(255,255,255,0.1)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '4rem',
+                            margin: '0 auto 1.5rem auto',
+                            border: '4px solid var(--primary)',
+                            boxShadow: '0 0 30px rgba(255, 255, 255, 0.2)'
+                        }}>
+                            {selectedAvatar === "cow" ? "🐮" : selectedAvatar}
                         </div>
-
-                        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>
-                            <Loader2 size={32} style={{ margin: '0 auto 1rem auto', animation: 'spin 1s linear infinite' }} />
-                            <p style={{ marginBottom: '0.5rem', fontSize: '1.1rem' }}>Čekáme na spuštění hry...</p>
-                            <p style={{ fontSize: '0.9rem' }}>Vidíš své jméno na hlavní obrazovce?</p>
+                        <h2 style={{ marginBottom: '0.5rem', fontSize: '2.5rem' }}>{nickname}</h2>
+                        <div style={{ color: '#10b981', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '1.2rem' }}>
+                            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
+                            Jsi ve hře!
                         </div>
                     </div>
-                )}
+
+                    <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                        <Loader2 size={32} style={{ margin: '0 auto 1rem auto', animation: 'spin 1s linear infinite' }} />
+                        <p style={{ marginBottom: '0.5rem', fontSize: '1.1rem' }}>Čekáme na spuštění hry...</p>
+                        <p style={{ fontSize: '0.9rem' }}>Vidíš své jméno na hlavní obrazovce?</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default function LobbyPage() {
+    return (
+        <main>
+            <div style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                {/* Logo */}
+                <div style={{
+                    width: '100%',
+                    maxWidth: '300px',
+                    marginBottom: '2rem',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}>
+                    <img
+                        src="/otamat/logo.png"
+                        alt="OtaMat Logo"
+                        style={{
+                            width: '100%',
+                            height: 'auto',
+                            objectFit: 'contain',
+                        }}
+                    />
+                </div>
+                <Suspense fallback={<div style={{ color: 'white', textAlign: 'center' }}>Načítám...</div>}>
+                    <LobbyContent />
+                </Suspense>
             </div>
         </main>
     );

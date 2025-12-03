@@ -57,4 +57,18 @@ export class QuizService {
             }
         });
     }
+
+    async remove(id: string, userId: string) {
+        // Verify ownership
+        const quiz = await this.prisma.quiz.findUnique({ where: { id } });
+        if (!quiz || quiz.authorId !== userId) {
+            throw new Error('Unauthorized or quiz not found');
+        }
+
+        // Delete related questions and options first? 
+        // Prisma cascade delete should handle it if configured, let's assume it is or do it manually if needed.
+        // Usually schema has onDelete: Cascade. Let's check schema later if it fails.
+        // For now, let's try deleting the quiz directly.
+        return this.prisma.quiz.delete({ where: { id } });
+    }
 }

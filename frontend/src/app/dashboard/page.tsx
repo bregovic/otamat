@@ -59,6 +59,28 @@ export default function DashboardPage() {
         });
     };
 
+    const handleDelete = async (quizId: string) => {
+        if (!confirm("Opravdu chcete smazat tento kvíz?")) return;
+
+        try {
+            const res = await fetch(`${BACKEND_URL}/quiz/${quizId}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                setQuizzes(quizzes.filter((q) => q.id !== quizId));
+            } else {
+                alert("Nepodařilo se smazat kvíz.");
+            }
+        } catch (err) {
+            console.error("Failed to delete quiz", err);
+        }
+    };
+
+    const handleEdit = (quizId: string) => {
+        router.push(`/admin/create?edit=${quizId}`);
+    };
+
     if (isLoading || !user) {
         return (
             <div className="flex min-h-screen items-center justify-center">
@@ -130,10 +152,18 @@ export default function DashboardPage() {
                                         >
                                             {startingGameId === quiz.id ? <Loader2 className="animate-spin" size={20} /> : <Play size={20} />}
                                         </button>
-                                        <button className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Upravit">
+                                        <button
+                                            onClick={() => handleEdit(quiz.id)}
+                                            className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                            title="Upravit"
+                                        >
                                             <Edit size={20} />
                                         </button>
-                                        <button className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Smazat">
+                                        <button
+                                            onClick={() => handleDelete(quiz.id)}
+                                            className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                            title="Smazat"
+                                        >
                                             <Trash2 size={20} />
                                         </button>
                                     </div>

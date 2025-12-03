@@ -140,7 +140,7 @@ function HostGameContent() {
                             ))}
                         </div>
 
-                        <Link href="/otamat/dashboard" className="btn btn-primary" style={{ marginTop: '3rem', display: 'inline-block' }}>
+                        <Link href="/dashboard" className="btn btn-primary" style={{ marginTop: '3rem', display: 'inline-block' }}>
                             Zpět na dashboard
                         </Link>
                     </div>
@@ -242,7 +242,7 @@ function HostGameContent() {
                     )}
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <Link href="/otamat/dashboard" className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>Ukončit hru</Link>
+                    <Link href="/dashboard" className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>Ukončit hru</Link>
                     <button onClick={handleStartGame} className="btn btn-primary" style={{ display: 'inline-flex', width: 'auto', padding: '1rem 3rem', fontSize: '1.25rem' }} disabled={players.length === 0}>
                         <Play size={24} /> Spustit hru
                     </button>

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request, Param } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, UseGuards, Request, Param } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { QuizService } from './quiz.service';
 
@@ -26,5 +26,11 @@ export class QuizController {
     @Get(':id')
     findOne(@Param('id') id: string) {
         return this.quizService.findOne(id);
+    }
+
+    @UseGuards(AuthGuard('jwt'))
+    @Delete(':id')
+    remove(@Param('id') id: string, @Request() req: any) {
+        return this.quizService.remove(id, req.user.userId);
     }
 }

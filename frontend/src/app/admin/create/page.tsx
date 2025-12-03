@@ -1,17 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { Loader2, Users, Play, Check } from "lucide-react";
-import { useAuth } from "../../../context/AuthContext"; // Import AuthContext
+import { useAuth } from "../../../context/AuthContext";
 
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
 
-export default function CreateQuizPage() {
-    const { user } = useAuth(); // Get user from context
+function CreateQuizContent() {
+    const { user } = useAuth();
+    const searchParams = useSearchParams();
+    const editQuizId = searchParams.get("edit");
+
     const [title, setTitle] = useState("");
     const [isPublic, setIsPublic] = useState(false);
     const [questions, setQuestions] = useState([{ text: "", options: ["", "", "", ""], correct: 0 }]);
@@ -20,6 +24,7 @@ export default function CreateQuizPage() {
     const [gamePin, setGamePin] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [players, setPlayers] = useState<any[]>([]);
+    const [isLoadingData, setIsLoadingData] = useState(false);
 
     // Game Running State
     const [gameStarted, setGameStarted] = useState(false);
@@ -30,6 +35,38 @@ export default function CreateQuizPage() {
     const [resultsData, setResultsData] = useState<{ correctIndex: number, players: any[] } | null>(null);
     const [gameFinished, setGameFinished] = useState(false);
     const [finalPlayers, setFinalPlayers] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (editQuizId) {
+            fetchQuizData(editQuizId);
+        }
+    }, [editQuizId]);
+
+    const fetchQuizData = async (id: string) => {
+        setIsLoadingData(true);
+        try {
+            const res = await fetch(`${BACKEND_URL}/quiz/${id}`);
+            if (res.ok) {
+                const data = await res.json();
+                setTitle(data.title);
+                setIsPublic(data.isPublic);
+                if (data.questions && data.questions.length > 0) {
+                    setQuestions(data.questions.map((q: any) => ({
+                        text: q.text,
+                        options: q.options.sort((a: any, b: any) => a.order - b.order).map((o: any) => o.text),
+                        correct: q.options.findIndex((o: any) => o.isCorrect)
+                    })));
+                }
+            } else {
+                setError("Nepodařilo se načíst kvíz.");
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Chyba při načítání kvízu.");
+        } finally {
+            setIsLoadingData(false);
+        }
+    };
 
     useEffect(() => {
         const newSocket = io(BACKEND_URL);
@@ -101,20 +138,21 @@ export default function CreateQuizPage() {
         setIsSaving(true);
         setError(null);
 
-        // Send userId if available
         const payload = {
+            quizId: editQuizId || undefined,
             title,
             questions,
             isPublic,
-            userId: user?.id // Pass userId
+            userId: user?.id
         };
 
-        socket.emit("createGame", payload, (response: { success: boolean, pin: string }) => {
-            setIsSaving(false);
+        socket.emit("saveQuiz", payload, (response: { success: boolean, message: string }) => {
             if (response.success) {
-                setGamePin(response.pin);
+                alert("Pro spuštění upraveného kvízu použijte tlačítko 'Pouze uložit' a poté ho spusťte z Dashboardu.");
+                setIsSaving(false);
             } else {
-                setError("Chyba při vytváření hry.");
+                setError(response.message || "Chyba při ukládání.");
+                setIsSaving(false);
             }
         });
     };
@@ -136,8 +174,8 @@ export default function CreateQuizPage() {
         setIsSaving(true);
         setError(null);
 
-        // Send userId
         const payload = {
+            quizId: editQuizId || undefined,
             title,
             questions,
             isPublic,
@@ -147,8 +185,8 @@ export default function CreateQuizPage() {
         socket.emit("saveQuiz", payload, (response: { success: boolean, message: string }) => {
             setIsSaving(false);
             if (response.success) {
-                alert("Kvíz byl úspěšně uložen!");
-                window.location.href = "/otamat/dashboard"; // Redirect to dashboard
+                alert(editQuizId ? "Kvíz byl úspěšně aktualizován!" : "Kvíz byl úspěšně uložen!");
+                window.location.href = "/dashboard";
             } else {
                 setError(response.message || "Chyba při ukládání kvízu.");
             }
@@ -160,6 +198,10 @@ export default function CreateQuizPage() {
             socket.emit("startGame", { pin: gamePin });
         }
     };
+
+    if (isLoadingData) {
+        return <div className="flex justify-center items-center min-h-screen"><Loader2 className="animate-spin text-white" size={48} /></div>;
+    }
 
     if (gameFinished) {
         return (
@@ -342,7 +384,7 @@ export default function CreateQuizPage() {
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '4rem' }}>
                     <button onClick={handleAddQuestion} className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>+ Přidat otázku</button>
                     <button onClick={handleSaveOnly} className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }} disabled={isSaving}>
-                        {isSaving ? <Loader2 className="animate-spin" /> : <Check size={24} />} Pouze uložit
+                        {isSaving ? <Loader2 className="animate-spin" /> : <Check size={24} />} {editQuizId ? "Uložit změny" : "Pouze uložit"}
                     </button>
                     <button onClick={handleSaveAndStart} className="btn btn-primary" style={{ display: 'inline-flex', width: 'auto' }} disabled={isSaving}>
                         {isSaving ? <Loader2 className="animate-spin" /> : <Play size={24} />} Uložit a spustit
@@ -350,5 +392,13 @@ export default function CreateQuizPage() {
                 </div>
             </div>
         </main>
+    );
+}
+
+export default function CreateQuizPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center items-center min-h-screen"><Loader2 className="animate-spin text-white" size={48} /></div>}>
+            <CreateQuizContent />
+        </Suspense>
     );
 }

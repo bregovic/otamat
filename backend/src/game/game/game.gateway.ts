@@ -188,11 +188,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('saveQuiz')
   async handleSaveQuiz(
-    @MessageBody() data: { title: string; questions: any[]; isPublic: boolean; userId?: string },
+    @MessageBody() data: { quizId?: string; title: string; questions: any[]; isPublic: boolean; userId?: string },
     @ConnectedSocket() client: Socket,
   ) {
-    let { title, questions, isPublic, userId } = data;
-    this.logger.log(`Client ${client.id} saving quiz (no start): ${title} for user ${userId}`);
+    let { quizId, title, questions, isPublic, userId } = data;
+    this.logger.log(`Client ${client.id} saving quiz: ${title} (ID: ${quizId}) for user ${userId}`);
 
     try {
       let host;
@@ -216,29 +216,57 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
       }
 
-      await this.prisma.quiz.create({
-        data: {
-          title: title,
-          isPublic: isPublic || false,
-          authorId: host.id,
-          questions: {
-            create: questions.map((q, index) => ({
-              text: q.text,
-              type: 'MULTIPLE_CHOICE',
-              order: index,
-              timeLimit: 30,
-              options: {
-                create: q.options.map((opt: string, optIndex: number) => ({
-                  text: opt,
-                  isCorrect: optIndex === q.correct,
-                  order: optIndex
-                }))
-              }
-            }))
+      if (quizId) {
+        // Update existing quiz
+        await this.prisma.question.deleteMany({ where: { quizId: quizId } });
+        await this.prisma.quiz.update({
+          where: { id: quizId },
+          data: {
+            title: title,
+            isPublic: isPublic || false,
+            questions: {
+              create: questions.map((q, index) => ({
+                text: q.text,
+                type: 'MULTIPLE_CHOICE',
+                order: index,
+                timeLimit: 30,
+                options: {
+                  create: q.options.map((opt: string, optIndex: number) => ({
+                    text: opt,
+                    isCorrect: optIndex === q.correct,
+                    order: optIndex
+                  }))
+                }
+              }))
+            }
           }
-        }
-      });
-      return { success: true, message: 'Kvíz byl úspěšně uložen.' };
+        });
+        return { success: true, message: 'Kvíz byl úspěšně aktualizován.' };
+      } else {
+        await this.prisma.quiz.create({
+          data: {
+            title: title,
+            isPublic: isPublic || false,
+            authorId: host.id,
+            questions: {
+              create: questions.map((q, index) => ({
+                text: q.text,
+                type: 'MULTIPLE_CHOICE',
+                order: index,
+                timeLimit: 30,
+                options: {
+                  create: q.options.map((opt: string, optIndex: number) => ({
+                    text: opt,
+                    isCorrect: optIndex === q.correct,
+                    order: optIndex
+                  }))
+                }
+              }))
+            }
+          }
+        });
+        return { success: true, message: 'Kvíz byl úspěšně uložen.' };
+      }
     } catch (error) {
       console.error("Error saving quiz:", error);
       return { success: false, message: 'Chyba při ukládání do databáze.' };

@@ -1,0 +1,173 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  USER
+  ADMIN
+  HOST
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  PUZZLE
+  MATCHING
+  IMAGE_GUESS
+  REVEAL
+  OPEN_ENDED
+  WORD_CLOUD
+  POLL
+}
+
+enum GameStatus {
+  WAITING
+  ACTIVE
+  FINISHED
+}
+
+// Models
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?  // Nullable for OAuth users
+  nickname  String?
+  avatar    String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quizzes   Quiz[]
+  games     Game[]   @relation("GameHost")
+  history   Player[] // History of games played as a player
+}
+
+model Quiz {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  coverImage  String?
+  isPublic    Boolean  @default(false)
+  language    String   @default("cs")
+  category    String?
+  tags        String[] // Array of strings for tags
+  
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+
+  questions   Question[]
+  games       Game[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Question {
+  id            String       @id @default(uuid())
+  quizId        String
+  quiz          Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  
+  type          QuestionType
+  text          String
+  mediaUrl      String?      // Image, video, audio
+  timeLimit     Int          @default(30) // Seconds
+  points        Int          @default(1000)
+  order         Int          // To keep questions in order
+
+  options       AnswerOption[]
+  gameQuestions GameQuestion[]
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model AnswerOption {
+  id          String   @id @default(uuid())
+  questionId  String
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  text        String?
+  imageUrl    String?
+  isCorrect   Boolean  @default(false)
+  order       Int      // Display order
+}
+
+model Game {
+  id          String     @id @default(uuid())
+  pinCode     String     @unique // 6-digit PIN
+  status      GameStatus @default(WAITING)
+  
+  quizId      String
+  quiz        Quiz       @relation(fields: [quizId], references: [id])
+  
+  hostId      String
+  host        User       @relation("GameHost", fields: [hostId], references: [id])
+
+  currentQuestionIndex Int @default(-1) // -1 = lobby, 0 = first question
+  
+  players     Player[]
+  gameQuestions GameQuestion[] // Snapshot of questions for this game instance
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Player {
+  id          String   @id @default(uuid())
+  gameId      String
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  
+  userId      String?  // Optional link to registered user
+  user        User?    @relation(fields: [userId], references: [id])
+  
+  nickname    String
+  avatar      String?
+  score       Int      @default(0)
+  streak      Int      @default(0)
+  
+  answers     PlayerAnswer[]
+
+  joinedAt    DateTime @default(now())
+}
+
+model GameQuestion {
+  id          String   @id @default(uuid())
+  gameId      String
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  
+  questionId  String
+  question    Question @relation(fields: [questionId], references: [id])
+  
+  startTime   DateTime? // When the question was shown
+  endTime     DateTime? // When voting ended
+
+  playerAnswers PlayerAnswer[]
+}
+
+model PlayerAnswer {
+  id             String       @id @default(uuid())
+  playerId       String
+  player         Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  
+  gameQuestionId String
+  gameQuestion   GameQuestion @relation(fields: [gameQuestionId], references: [id], onDelete: Cascade)
+  
+  answerOptionId String?      // Which option they chose (nullable for open text)
+  responseText   String?      // For open text answers
+  
+  isCorrect      Boolean
+  pointsAwarded  Int
+  responseTime   Int          // Milliseconds
+  
+  answeredAt     DateTime     @default(now())
+}

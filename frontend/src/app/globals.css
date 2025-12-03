@@ -92,9 +92,6 @@ h2 {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
   border-radius: 24px;
-  padding: 3rem;
-  width: 100%;
-  max-width: 480px;
   box-shadow: var(--glass-shadow);
   transition: transform 0.3s ease, border-color 0.3s ease;
 }

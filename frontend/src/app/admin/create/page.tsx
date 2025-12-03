@@ -231,7 +231,7 @@ export default function CreateQuizPage() {
                             {players.length > 0 && <span className="text-emerald-400 font-bold animate-pulse">Čekáme na start...</span>}
                         </div>
 
-                        <div className="glass-card p-6 min-h-[200px] max-h-[400px] overflow-y-auto custom-scrollbar">
+                        <div className="glass-card w-full p-6 min-h-[200px] max-h-[400px] overflow-y-auto custom-scrollbar">
                             {players.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full text-gray-500 py-12">
                                     <Loader2 className="w-12 h-12 animate-spin mb-4 opacity-20" />

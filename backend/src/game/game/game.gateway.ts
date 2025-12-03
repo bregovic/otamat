@@ -10,6 +10,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { QuizService } from '../../quiz/quiz.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @WebSocketGateway({
   cors: {
@@ -22,7 +23,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private logger: Logger = new Logger('GameGateway');
 
-  constructor(private quizService: QuizService) { }
+  constructor(
+    private quizService: QuizService,
+    private prisma: PrismaService
+  ) { }
 
   // In-memory storage for games
   private games = new Map<string, {
@@ -47,29 +51,65 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('createGame')
   async handleCreateGame(
-    @MessageBody() data: { title?: string; questions?: any[]; quizId?: string },
+    @MessageBody() data: { title: string; questions: any[]; isPublic: boolean },
     @ConnectedSocket() client: Socket,
   ) {
-    let title = data.title;
-    let questions = data.questions;
+    let { title, questions, isPublic } = data;
 
-    if (data.quizId) {
-      const quiz = await this.quizService.findOne(data.quizId);
-      if (!quiz) return { success: false, message: 'Kvíz nenalezen' };
-
-      title = quiz.title;
-      questions = quiz.questions.map(q => ({
-        text: q.text,
-        options: q.options.map(o => o.text),
-        correct: q.options.findIndex(o => o.isCorrect)
-      }));
-    }
-
-    if (!title || !questions) {
+    if (!title || !questions || questions.length === 0) {
       return { success: false, message: 'Neplatná data kvízu' };
     }
 
     this.logger.log(`Client ${client.id} creating game: ${title}`);
+
+    // --- SAVE TO DATABASE ---
+    try {
+      // 1. Find or create a default host user (temporary solution)
+      let host = await this.prisma.user.findFirst({ where: { role: 'ADMIN' } });
+      if (!host) {
+        // Fallback if no admin exists, try to find ANY user or create one
+        host = await this.prisma.user.findFirst();
+        if (!host) {
+          host = await this.prisma.user.create({
+            data: {
+              email: 'admin@hollyhop.cz',
+              nickname: 'Admin',
+              role: 'ADMIN'
+            }
+          });
+        }
+      }
+
+      // 2. Create Quiz
+      await this.prisma.quiz.create({
+        data: {
+          title: title,
+          isPublic: isPublic || false,
+          authorId: host.id,
+          questions: {
+            create: questions.map((q, index) => ({
+              text: q.text,
+              type: 'MULTIPLE_CHOICE',
+              order: index,
+              timeLimit: 30,
+              options: {
+                create: q.options.map((opt: string, optIndex: number) => ({
+                  text: opt,
+                  isCorrect: optIndex === q.correct,
+                  order: optIndex
+                }))
+              }
+            }))
+          }
+        }
+      });
+      this.logger.log(`Quiz '${title}' saved to database.`);
+    } catch (error) {
+      this.logger.error(`Failed to save quiz to DB: ${error}`);
+      // Continue creating the game in memory even if DB save fails (or should we fail?)
+      // For now, let's continue so the user can play.
+    }
+    // ------------------------
 
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
 

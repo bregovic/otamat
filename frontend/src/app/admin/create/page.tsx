@@ -11,6 +11,7 @@ const BACKEND_URL = "https://otamat-production.up.railway.app";
 
 export default function CreateQuizPage() {
     const [title, setTitle] = useState("");
+    const [isPublic, setIsPublic] = useState(false);
     const [questions, setQuestions] = useState([{ text: "", options: ["", "", "", ""], correct: 0 }]);
     const [socket, setSocket] = useState<Socket | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -31,24 +32,21 @@ export default function CreateQuizPage() {
         setSocket(newSocket);
 
         newSocket.on("playerJoined", (player) => {
-            console.log("Player joined:", player);
             setPlayers((prev) => [...prev, player]);
         });
 
         newSocket.on("updatePlayerList", (playerList) => {
-            console.log("Updated player list:", playerList);
             setPlayers(playerList);
         });
 
         newSocket.on("questionStart", (data) => {
-            console.log("Host: Question started", data);
             setCurrentQuestion({
                 text: data.text,
                 options: data.options,
                 index: data.questionIndex,
                 total: data.totalQuestions
             });
-            setAnswerStats({ count: 0, total: players.length }); // Reset stats
+            setAnswerStats({ count: 0, total: players.length });
             setTimeLeft(data.timeLimit);
             setShowResults(false);
             setGameStarted(true);
@@ -59,7 +57,6 @@ export default function CreateQuizPage() {
         });
 
         newSocket.on("questionEnd", (data) => {
-            console.log("Host: Question ended", data);
             setResultsData(data);
             setShowResults(true);
         });
@@ -73,14 +70,11 @@ export default function CreateQuizPage() {
         };
     }, []);
 
-    // Timer effect
     useEffect(() => {
         if (!gameStarted || showResults || timeLeft <= 0) return;
-
         const timer = setInterval(() => {
             setTimeLeft((prev) => prev - 1);
         }, 1000);
-
         return () => clearInterval(timer);
     }, [gameStarted, showResults, timeLeft]);
 
@@ -101,7 +95,7 @@ export default function CreateQuizPage() {
         setIsSaving(true);
         setError(null);
 
-        socket.emit("createGame", { title, questions }, (response: { success: boolean, pin: string }) => {
+        socket.emit("createGame", { title, questions, isPublic }, (response: { success: boolean, pin: string }) => {
             setIsSaving(false);
             if (response.success) {
                 setGamePin(response.pin);
@@ -121,8 +115,6 @@ export default function CreateQuizPage() {
         return (
             <main>
                 <div style={{ width: '100%', maxWidth: '1000px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-
-                    {/* Top Bar */}
                     <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', padding: '0 1rem' }}>
                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#a1a1aa' }}>
                             Otázka {currentQuestion.index} / {currentQuestion.total}
@@ -137,12 +129,9 @@ export default function CreateQuizPage() {
 
                     <div className="glass-card" style={{ width: '100%', maxWidth: '800px', marginBottom: '2rem', padding: '4rem' }}>
                         <h2 style={{ fontSize: '3.5rem', marginBottom: '3rem', lineHeight: '1.2' }}>{currentQuestion.text}</h2>
-
                         <div style={{ marginTop: '3rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                             {currentQuestion.options.map((opt, i) => {
                                 const isCorrect = showResults && resultsData?.correctIndex === i;
-                                const isWrong = showResults && resultsData?.correctIndex !== i;
-                                // Use CSS variables for colors
                                 const gradientClass = [
                                     'from-[var(--opt-1-from)] to-[var(--opt-1-to)]',
                                     'from-[var(--opt-2-from)] to-[var(--opt-2-to)]',
@@ -166,7 +155,6 @@ export default function CreateQuizPage() {
                             })}
                         </div>
                     </div>
-
                     {showResults && (
                         <div style={{ marginTop: '1rem', fontSize: '1.5rem', color: '#a1a1aa' }}>
                             Další otázka za 5 sekund...
@@ -183,21 +171,14 @@ export default function CreateQuizPage() {
                 <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
                     <h1 style={{ fontSize: '3rem', marginBottom: '1rem' }}>Hra vytvořena!</h1>
                     <p style={{ fontSize: '1.5rem', marginBottom: '2rem', color: '#a1a1aa' }}>Připojte se pomocí PINu:</p>
-
                     <div style={{
-                        fontSize: '6rem',
-                        fontWeight: 'bold',
-                        color: 'var(--primary)',
-                        background: 'rgba(255,255,255,0.1)',
-                        padding: '2rem 4rem',
-                        borderRadius: '24px',
-                        border: '2px solid var(--primary)',
-                        marginBottom: '3rem',
+                        fontSize: '6rem', fontWeight: 'bold', color: 'var(--primary)',
+                        background: 'rgba(255,255,255,0.1)', padding: '2rem 4rem', borderRadius: '24px',
+                        border: '2px solid var(--primary)', marginBottom: '3rem',
                         textShadow: '0 0 30px rgba(255,255,255,0.3)'
                     }}>
                         {gamePin}
                     </div>
-
                     <div className="glass-card" style={{ width: '100%', marginBottom: '2rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                             <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -207,7 +188,6 @@ export default function CreateQuizPage() {
                                 <div style={{ color: '#10b981', fontWeight: 'bold' }}>Připraveni</div>
                             )}
                         </div>
-
                         {players.length === 0 ? (
                             <p style={{ color: '#a1a1aa', padding: '2rem' }}>Čekání na hráče...</p>
                         ) : (
@@ -223,17 +203,9 @@ export default function CreateQuizPage() {
                             </div>
                         )}
                     </div>
-
                     <div style={{ display: 'flex', gap: '1rem' }}>
-                        <Link href="/" className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>
-                            Ukončit hru
-                        </Link>
-                        <button
-                            onClick={handleStartGame}
-                            className="btn btn-primary"
-                            style={{ display: 'inline-flex', width: 'auto', padding: '1rem 3rem', fontSize: '1.25rem' }}
-                            disabled={players.length === 0}
-                        >
+                        <Link href="/" className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>Ukončit hru</Link>
+                        <button onClick={handleStartGame} className="btn btn-primary" style={{ display: 'inline-flex', width: 'auto', padding: '1rem 3rem', fontSize: '1.25rem' }} disabled={players.length === 0}>
                             <Play size={24} /> Spustit hru
                         </button>
                     </div>
@@ -245,123 +217,47 @@ export default function CreateQuizPage() {
     return (
         <main>
             <div style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-
-                {/* Consistent Logo Header */}
-                <div style={{
-                    width: '100%',
-                    maxWidth: '350px',
-                    marginBottom: '2rem',
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                }}>
-                    <Image
-                        src="/otamat/logo.png"
-                        alt="OtaMat Logo"
-                        width={350}
-                        height={150}
-                        style={{
-                            width: '100%',
-                            height: 'auto',
-                            objectFit: 'contain',
-                        }}
-                        priority
-                    />
+                <div style={{ width: '100%', maxWidth: '350px', marginBottom: '2rem', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Image src="/otamat/logo.png" alt="OtaMat Logo" width={350} height={150} style={{ width: '100%', height: 'auto', objectFit: 'contain' }} priority />
                 </div>
-
                 {error && (
                     <div style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', width: '100%', textAlign: 'center', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
                         {error}
                     </div>
                 )}
-
                 <div className="glass-card" style={{ maxWidth: '100%', marginBottom: '2rem' }}>
                     <div className="input-wrapper">
                         <label style={{ display: 'block', marginBottom: '0.5rem', color: '#a1a1aa', fontWeight: '500', textAlign: 'left' }}>Název kvízu</label>
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Např. Hlavní města Evropy"
-                            style={{ textAlign: 'left' }}
-                        />
+                        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Např. Hlavní města Evropy" style={{ textAlign: 'left' }} />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
+                        <input type="checkbox" id="isPublic" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }} />
+                        <label htmlFor="isPublic" style={{ color: '#fff', cursor: 'pointer' }}>Veřejný kvíz (viditelný pro ostatní)</label>
                     </div>
                 </div>
-
                 {questions.map((q, qIndex) => (
                     <div key={qIndex} className="glass-card" style={{ maxWidth: '100%', marginBottom: '2rem', position: 'relative' }}>
                         <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', fontWeight: 'bold' }}>Otázka {qIndex + 1}</h3>
-
                         <div className="input-wrapper">
-                            <input
-                                type="text"
-                                placeholder="Zadejte otázku..."
-                                value={q.text}
-                                onChange={(e) => {
-                                    const newQuestions = [...questions];
-                                    newQuestions[qIndex].text = e.target.value;
-                                    setQuestions(newQuestions);
-                                }}
-                                style={{ textAlign: 'left', background: 'rgba(255,255,255,0.05)' }}
-                            />
+                            <input type="text" placeholder="Zadejte otázku..." value={q.text} onChange={(e) => { const newQuestions = [...questions]; newQuestions[qIndex].text = e.target.value; setQuestions(newQuestions); }} style={{ textAlign: 'left', background: 'rgba(255,255,255,0.05)' }} />
                         </div>
-
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                             {q.options.map((opt, oIndex) => (
                                 <div key={oIndex} style={{ position: 'relative' }}>
-                                    <input
-                                        type="text"
-                                        placeholder={`Možnost ${oIndex + 1}`}
-                                        value={opt}
-                                        onChange={(e) => {
-                                            const newQuestions = [...questions];
-                                            newQuestions[qIndex].options[oIndex] = e.target.value;
-                                            setQuestions(newQuestions);
-                                        }}
-                                        style={{
-                                            textAlign: 'left',
-                                            fontSize: '1rem',
-                                            padding: '1rem',
-                                            borderColor: q.correct === oIndex ? 'var(--success)' : 'var(--border-light)'
-                                        }}
-                                    />
-                                    <div
-                                        onClick={() => {
-                                            const newQuestions = [...questions];
-                                            newQuestions[qIndex].correct = oIndex;
-                                            setQuestions(newQuestions);
-                                        }}
-                                        style={{
-                                            position: 'absolute',
-                                            right: '10px',
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            width: '24px',
-                                            height: '24px',
-                                            borderRadius: '50%',
-                                            border: '2px solid ' + (q.correct === oIndex ? 'var(--success)' : '#666'),
-                                            background: q.correct === oIndex ? 'var(--success)' : 'transparent',
-                                            cursor: 'pointer'
-                                        }}
-                                    />
+                                    <input type="text" placeholder={`Možnost ${oIndex + 1}`} value={opt} onChange={(e) => { const newQuestions = [...questions]; newQuestions[qIndex].options[oIndex] = e.target.value; setQuestions(newQuestions); }} style={{ textAlign: 'left', fontSize: '1rem', padding: '1rem', borderColor: q.correct === oIndex ? 'var(--success)' : 'var(--border-light)' }} />
+                                    <div onClick={() => { const newQuestions = [...questions]; newQuestions[qIndex].correct = oIndex; setQuestions(newQuestions); }} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', width: '24px', height: '24px', borderRadius: '50%', border: '2px solid ' + (q.correct === oIndex ? 'var(--success)' : '#666'), background: q.correct === oIndex ? 'var(--success)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {q.correct === oIndex && <Check size={16} color="white" />}
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     </div>
                 ))}
-
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '4rem' }}>
-                    <button onClick={handleAddQuestion} className="btn btn-secondary">
-                        + Přidat otázku
+                    <button onClick={handleAddQuestion} className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>+ Přidat otázku</button>
+                    <button onClick={handleSaveAndStart} className="btn btn-primary" style={{ display: 'inline-flex', width: 'auto' }} disabled={isSaving}>
+                        {isSaving ? <Loader2 className="animate-spin" /> : <Play size={24} />} Uložit a spustit
                     </button>
-                    <button onClick={handleSaveAndStart} className="btn btn-primary" disabled={isSaving}>
-                        {isSaving ? <Loader2 className="animate-spin" /> : "Uložit a spustit"}
-                    </button>
-                </div>
-
-                <div style={{ textAlign: 'center' }}>
-                    <Link href="/" className="link-text" prefetch={false}>← Zpět na hlavní stránku</Link>
                 </div>
             </div>
         </main>

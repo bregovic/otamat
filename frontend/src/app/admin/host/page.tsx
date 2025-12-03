@@ -145,24 +145,24 @@ function HostGameContent() {
 
                 {/* Question & Image Area */}
                 <div className="flex-1 flex flex-col items-center justify-center mb-4 relative">
-                    <div className="glass-card w-full max-w-6xl p-8 flex flex-col items-center justify-center h-full relative overflow-hidden">
-                        <h2 className="text-4xl md:text-5xl font-bold text-center mb-8 leading-tight z-10">
+                    <div className="glass-card w-full max-w-[95vw] p-8 flex flex-col items-center justify-center h-full relative overflow-hidden">
+                        <h2 className="text-4xl md:text-6xl font-bold text-center mb-8 leading-tight z-10 text-white drop-shadow-lg">
                             {currentQuestion.text}
                         </h2>
 
                         {/* Image Placeholder or Actual Image */}
-                        <div className="flex-1 w-full flex items-center justify-center bg-black/20 rounded-xl mb-4 relative overflow-hidden" style={{ minHeight: '200px' }}>
+                        <div className="flex-1 w-full flex items-center justify-center rounded-xl mb-4 relative overflow-hidden" style={{ minHeight: '200px' }}>
                             {currentQuestion.mediaUrl ? (
-                                <img src={currentQuestion.mediaUrl} alt="Question Media" className="max-h-full max-w-full object-contain" />
+                                <img src={currentQuestion.mediaUrl} alt="Question Media" className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" />
                             ) : (
-                                <div className="text-white/20 text-6xl font-bold">?</div>
+                                <div className="text-white/10 text-9xl font-bold">?</div>
                             )}
                         </div>
                     </div>
                 </div>
 
                 {/* Options Area - Compact Height */}
-                <div className="grid grid-cols-4 gap-4 h-32 md:h-40">
+                <div className="grid grid-cols-4 gap-6 h-32 md:h-40 w-full max-w-[95vw] mx-auto">
                     {currentQuestion.options.map((opt, i) => {
                         const isCorrect = showResults && resultsData?.correctIndex === i;
                         const gradientClass = [
@@ -174,22 +174,22 @@ function HostGameContent() {
 
                         return (
                             <div key={i} className={`
-                                rounded-xl text-2xl font-bold text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden
+                                rounded-2xl text-2xl md:text-3xl font-bold text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-2 border-white/10
                                 ${showResults
-                                    ? (isCorrect ? 'bg-emerald-500' : 'bg-white/5 opacity-30')
+                                    ? (isCorrect ? 'bg-emerald-500 scale-105 z-10' : 'bg-white/5 opacity-30 grayscale')
                                     : `bg-gradient-to-br ${gradientClass}`
                                 }
                             `}>
                                 <span className="absolute left-4 text-3xl opacity-50">{['▲', '◆', '●', '■'][i]}</span>
-                                <span className="z-10 text-center px-8 truncate w-full">{opt}</span>
-                                {isCorrect && <Check size={40} className="absolute right-4" />}
+                                <span className="z-10 text-center px-8 truncate w-full drop-shadow-md">{opt}</span>
+                                {isCorrect && <Check size={48} className="absolute right-4 text-white drop-shadow-md" />}
                             </div>
                         );
                     })}
                 </div>
 
                 {showResults && (
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-white px-8 py-4 rounded-xl text-2xl backdrop-blur-md z-50">
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/90 text-white px-12 py-6 rounded-2xl text-4xl font-bold backdrop-blur-xl z-50 border border-white/20 shadow-2xl animate-bounce">
                         Další otázka za 5 sekund...
                     </div>
                 )}
@@ -215,7 +215,7 @@ function HostGameContent() {
                 }
             `}</style>
 
-            <div className="w-full max-w-[1400px] flex flex-col items-center text-center z-10">
+            <div className="w-full max-w-[95vw] flex flex-col items-center text-center z-10">
                 <h1 className="text-6xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
                     Lobby
                 </h1>
@@ -225,44 +225,44 @@ function HostGameContent() {
                     {pin}
                 </div>
 
-                <div className="glass-card w-full p-8 min-h-[400px] flex flex-col">
+                <div className="glass-card w-full p-8 min-h-[500px] flex flex-col">
                     <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
-                        <h2 className="text-3xl font-bold flex items-center gap-3">
-                            <Users size={32} /> Hráči ({players.length})
+                        <h2 className="text-4xl font-bold flex items-center gap-3">
+                            <Users size={40} /> Hráči ({players.length})
                         </h2>
                         {players.length > 0 && (
-                            <div className="text-emerald-400 font-bold text-xl animate-pulse">Připraveni ke hře</div>
+                            <div className="text-emerald-400 font-bold text-2xl animate-pulse">Připraveni ke hře</div>
                         )}
                     </div>
 
                     {players.length === 0 ? (
-                        <div className="flex-1 flex items-center justify-center text-gray-500 text-2xl">
+                        <div className="flex-1 flex items-center justify-center text-gray-500 text-3xl">
                             Čekání na hráče...
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12">
                             {players.map((player, i) => (
-                                <div key={player.id} className="flex flex-col items-center gap-2 avatar-float" style={{ animationDelay: `${i * 0.1}s` }}>
-                                    <div className="text-6xl bg-white/10 w-24 h-24 rounded-full flex items-center justify-center border-2 border-white/20 shadow-lg">
+                                <div key={player.id} className="flex flex-col items-center gap-4 avatar-float" style={{ animationDelay: `${i * 0.1}s` }}>
+                                    <div className="text-7xl bg-white/10 w-32 h-32 rounded-full flex items-center justify-center border-4 border-white/20 shadow-lg">
                                         {avatarMap[player.avatar] || player.avatar}
                                     </div>
-                                    <div className="font-bold text-xl truncate w-full">{player.nickname}</div>
+                                    <div className="font-bold text-2xl text-white w-full break-words leading-tight drop-shadow-md">{player.nickname}</div>
                                 </div>
                             ))}
                         </div>
                     )}
                 </div>
 
-                <div className="flex gap-4 mt-8">
-                    <Link href="/dashboard" className="btn btn-secondary text-xl px-8 py-4">
+                <div className="flex gap-6 mt-12">
+                    <Link href="/dashboard" className="btn btn-secondary text-2xl px-10 py-5">
                         Ukončit hru
                     </Link>
                     <button
                         onClick={handleStartGame}
-                        className="btn btn-primary text-xl px-12 py-4 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all"
+                        className="btn btn-primary text-2xl px-16 py-5 flex items-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all shadow-xl"
                         disabled={players.length === 0}
                     >
-                        <Play size={28} /> Spustit hru
+                        <Play size={32} /> Spustit hru
                     </button>
                 </div>
             </div>

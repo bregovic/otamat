@@ -39,7 +39,7 @@ export default function Home() {
             <a href="/otamat/login" className="text-gray-300 hover:text-white font-semibold py-2 px-4 transition-colors text-sm uppercase tracking-wider">
               Přihlásit
             </a>
-            <a href="/otamat/register" className="btn btn-primary py-2 px-6 text-sm !w-auto shadow-lg hover:shadow-primary/20">
+            <a href="/otamat/register" className="btn btn-primary py-2 px-4 text-xs font-bold uppercase tracking-wider !w-auto shadow-lg hover:shadow-primary/20">
               Registrovat
             </a>
           </div>

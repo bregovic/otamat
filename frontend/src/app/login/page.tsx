@@ -53,25 +53,25 @@ export default function LoginPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="input-wrapper">
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
+                        <label className="block text-base font-medium text-gray-300 mb-2">Email</label>
                         <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
-                            className="w-full"
+                            className="w-full p-4 text-lg bg-black/20 border border-white/10 rounded-xl text-white focus:border-primary focus:outline-none transition-colors placeholder-gray-500"
                             placeholder="vas@email.cz"
                         />
                     </div>
 
                     <div className="input-wrapper">
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Heslo</label>
+                        <label className="block text-base font-medium text-gray-300 mb-2">Heslo</label>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
-                            className="w-full"
+                            className="w-full p-4 text-lg bg-black/20 border border-white/10 rounded-xl text-white focus:border-primary focus:outline-none transition-colors placeholder-gray-500"
                             placeholder="••••••••"
                         />
                     </div>

@@ -71,11 +71,7 @@ export default function CreateQuizPage() {
         return () => {
             newSocket.disconnect();
         };
-    }, [players.length]); // Re-run if players length changes to have correct total for answer stats reset? Actually socket on inside useEffect might be tricky with closures. 
-    // Better to rely on the data from backend for total. Backend sends total in answerSubmitted.
-    // For reset, we can use players.length but inside the callback it might be stale if not in dep array.
-    // However, recreating socket connection on players change is bad.
-    // Let's fix the closure issue by using a ref or just trusting the backend data.
+    }, []);
 
     // Timer effect
     useEffect(() => {

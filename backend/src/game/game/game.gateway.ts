@@ -326,8 +326,22 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!game) return { success: false };
 
     this.logger.log(`Starting game ${data.pin}`);
-    this.nextQuestion(data.pin);
+    this.startCountdown(data.pin);
     return { success: true };
+  }
+
+  @SubscribeMessage('nextQuestion')
+  handleNextQuestion(@MessageBody() data: { pin: string }) {
+    const game = this.games.get(data.pin);
+    if (!game) return;
+    this.startCountdown(data.pin);
+  }
+
+  private startCountdown(pin: string) {
+    this.server.to(pin).emit('countdownStart', { duration: 3 });
+    setTimeout(() => {
+      this.nextQuestion(pin);
+    }, 3000);
   }
 
   @SubscribeMessage('submitAnswer')
@@ -425,9 +439,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       players: game.players // Send updated scores
     });
 
-    // Wait 5 seconds then next question (or let host trigger it? Let's auto-advance for now for simplicity)
-    game.timer = setTimeout(() => {
-      this.nextQuestion(pin);
-    }, 5000);
+    // Wait for host to trigger next question
+    // game.timer = setTimeout(() => {
+    //   this.nextQuestion(pin);
+    // }, 5000);
   }
 }

@@ -25,6 +25,7 @@ function HostGameContent() {
     const [resultsData, setResultsData] = useState<{ correctIndex: number, players: any[] } | null>(null);
     const [gameFinished, setGameFinished] = useState(false);
     const [finalPlayers, setFinalPlayers] = useState<any[]>([]);
+    const [countdown, setCountdown] = useState<number | null>(null);
 
     useEffect(() => {
         if (!pin) return;
@@ -71,18 +72,41 @@ function HostGameContent() {
             setGameStarted(false);
         });
 
+        newSocket.on("countdownStart", (data) => {
+            setCountdown(data.duration);
+            setShowResults(false); // Hide results if showing
+        });
+
         return () => {
             newSocket.disconnect();
         };
     }, [pin]);
 
     useEffect(() => {
-        if (!gameStarted || showResults || timeLeft <= 0) return;
-        const timer = setInterval(() => {
-            setTimeLeft((prev) => prev - 1);
-        }, 1000);
-        return () => clearInterval(timer);
-    }, [gameStarted, showResults, timeLeft]);
+        // Game Timer
+        if (gameStarted && !showResults && timeLeft > 0 && countdown === null) {
+            const timer = setInterval(() => {
+                setTimeLeft((prev) => prev - 1);
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+
+        // Countdown Timer
+        if (countdown !== null && countdown > 0) {
+            const timer = setInterval(() => {
+                setCountdown((prev) => (prev !== null ? prev - 1 : null));
+            }, 1000);
+            return () => clearInterval(timer);
+        } else if (countdown === 0) {
+            setCountdown(null);
+        }
+    }, [gameStarted, showResults, timeLeft, countdown]);
+
+    const handleNextQuestion = () => {
+        if (socket && pin) {
+            socket.emit("nextQuestion", { pin });
+        }
+    };
 
     const handleStartGame = () => {
         if (socket && pin) {
@@ -131,7 +155,7 @@ function HostGameContent() {
         return (
             <main className="h-screen flex flex-col p-4">
                 {/* Header Info */}
-                <div className="flex justify-between items-center mb-4 px-4">
+                <div className="flex justify-between items-center mb-4 px-4 w-full max-w-[95vw] mx-auto">
                     <div className="text-xl font-bold text-gray-400">
                         Otázka {currentQuestion.index} / {currentQuestion.total}
                     </div>
@@ -145,7 +169,7 @@ function HostGameContent() {
 
                 {/* Question & Image Area */}
                 <div className="flex-1 flex flex-col items-center justify-center mb-4 relative">
-                    <div className="glass-card w-full max-w-[95vw] p-8 flex flex-col items-center justify-center h-full relative overflow-hidden">
+                    <div className="glass-card w-full !max-w-[95vw] p-8 flex flex-col items-center justify-center h-full relative overflow-hidden">
                         <h2 className="text-4xl md:text-6xl font-bold text-center mb-8 leading-tight z-10 text-white drop-shadow-lg">
                             {currentQuestion.text}
                         </h2>
@@ -161,8 +185,8 @@ function HostGameContent() {
                     </div>
                 </div>
 
-                {/* Options Area - Compact Height */}
-                <div className="grid grid-cols-4 gap-6 h-32 md:h-40 w-full max-w-[95vw] mx-auto">
+                {/* Options Area - 2x2 Grid */}
+                <div className="grid grid-cols-2 gap-4 w-full !max-w-[95vw] mx-auto mb-4" style={{ height: '35vh', minHeight: '250px' }}>
                     {currentQuestion.options.map((opt, i) => {
                         const isCorrect = showResults && resultsData?.correctIndex === i;
                         const gradientClass = [
@@ -189,8 +213,21 @@ function HostGameContent() {
                 </div>
 
                 {showResults && (
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/90 text-white px-12 py-6 rounded-2xl text-4xl font-bold backdrop-blur-xl z-50 border border-white/20 shadow-2xl animate-bounce">
-                        Další otázka za 5 sekund...
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+                        <button
+                            onClick={handleNextQuestion}
+                            className="bg-white text-black px-12 py-6 rounded-2xl text-4xl font-bold shadow-2xl hover:scale-105 transition-transform flex items-center gap-4"
+                        >
+                            <Play size={48} /> Další otázka
+                        </button>
+                    </div>
+                )}
+
+                {countdown !== null && (
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center">
+                        <div className="text-[15rem] font-black text-white animate-pulse">
+                            {countdown}
+                        </div>
                     </div>
                 )}
             </main>
@@ -225,7 +262,7 @@ function HostGameContent() {
                     {pin}
                 </div>
 
-                <div className="glass-card w-full p-8 min-h-[500px] flex flex-col">
+                <div className="glass-card w-full !max-w-[95vw] p-8 min-h-[500px] flex flex-col">
                     <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
                         <h2 className="text-4xl font-bold flex items-center gap-3">
                             <Users size={40} /> Hráči ({players.length})

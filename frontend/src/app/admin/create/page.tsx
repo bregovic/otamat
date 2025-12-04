@@ -420,6 +420,15 @@ function CreateQuizContent() {
             userId: user.id
         };
 
+        console.log("Saving quiz payload:", {
+            title,
+            coverImageLength: coverImage ? coverImage.length : 0,
+            questionsCount: questions.length,
+            firstQuestionMediaUrlLength: questions[0]?.mediaUrl ? questions[0].mediaUrl.length : 0
+        });
+        const payloadSize = JSON.stringify(payload).length;
+        console.log(`Payload size: ${(payloadSize / 1024 / 1024).toFixed(2)} MB`);
+
         socket.emit("saveQuiz", payload, (response: { success: boolean, message: string }) => {
             setIsSaving(false);
             if (response.success) {

@@ -236,16 +236,16 @@ function HostGameContent() {
                 </div>
 
                 {/* Question & Image Area */}
-                <div className="flex-1 flex flex-col items-center justify-center mb-4 relative">
-                    <div className="glass-card w-full !max-w-[95vw] p-8 flex flex-col items-center justify-center h-full relative overflow-hidden">
-                        <h2 className="text-4xl md:text-6xl font-bold text-center mb-8 leading-tight z-10 text-white drop-shadow-lg">
+                <div className="flex-1 flex flex-col items-center justify-center mb-4 relative overflow-hidden">
+                    <div className="glass-card w-full !max-w-[95vw] p-4 md:p-8 flex flex-col items-center justify-center h-full relative overflow-hidden">
+                        <h2 className="text-3xl md:text-5xl font-bold text-center mb-4 leading-tight z-10 text-white drop-shadow-lg shrink-0">
                             {currentQuestion.text}
                         </h2>
 
                         {/* Image Placeholder or Actual Image */}
-                        <div className="flex-1 w-full flex items-center justify-center rounded-xl mb-4 relative overflow-hidden" style={{ minHeight: '200px' }}>
+                        <div className="flex-1 w-full flex items-center justify-center rounded-xl mb-4 relative overflow-hidden" style={{ minHeight: '100px', maxHeight: '45vh' }}>
                             {currentQuestion.mediaUrl ? (
-                                <img src={currentQuestion.mediaUrl} alt="Question Media" className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" />
+                                <img src={currentQuestion.mediaUrl} alt="Question Media" className="h-full w-full object-contain rounded-lg shadow-2xl" />
                             ) : (
                                 <div className="text-white/10 text-9xl font-bold">?</div>
                             )}
@@ -254,7 +254,7 @@ function HostGameContent() {
                 </div>
 
                 {/* Options Area - Based on Type */}
-                <div className={`grid gap-4 w-full !max-w-[95vw] mx-auto mb-4 ${currentQuestion.type === 'TRUE_FALSE' ? 'grid-cols-2' : 'grid-cols-2'}`} style={{ height: '35vh', minHeight: '250px' }}>
+                <div className={`grid gap-4 w-full !max-w-[95vw] mx-auto mb-4 shrink-0 ${currentQuestion.type === 'TRUE_FALSE' ? 'grid-cols-2' : 'grid-cols-2'}`} style={{ height: '30vh', minHeight: '200px' }}>
                     {currentQuestion.options.map((opt, i) => {
                         const isCorrect = showResults && resultsData?.correctIndex === i;
                         const gradientClass = [

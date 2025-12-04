@@ -1,19 +1,11 @@
 import { NestFactory } from '@nestjs/core';
-import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
-import { Request, Response, NextFunction } from 'express';
+import { json, urlencoded } from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
-
-  app.useBodyParser('json', { limit: '50mb' });
-  app.useBodyParser('urlencoded', { limit: '50mb', extended: true });
-
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    // console.log('Request URL:', req.url);
-    // console.log('Request Body:', req.body); 
-    next();
-  });
+  const app = await NestFactory.create(AppModule);
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ limit: '50mb', extended: true }));
 
   app.enableCors({
     origin: [
@@ -28,7 +20,7 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
-  console.log("Backend starting with CORS enabled for hollyhop.cz... VERSION: FIX_LOGIN_V6");
+  console.log("Backend starting with CORS enabled for hollyhop.cz... VERSION: RESTORE_LOGIN_V7");
   await app.listen(process.env.PORT ?? 4000);
 }
 bootstrap();

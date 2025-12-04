@@ -144,60 +144,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { success: true, pin: pin };
   }
 
-  @SubscribeMessage('createGameFromQuiz')
-  async handleCreateGameFromQuiz(
-    @MessageBody() data: { quizId: string },
-    @ConnectedSocket() client: Socket,
-  ) {
-    const { quizId } = data;
-    this.logger.log(`Creating game from quiz ID: ${quizId}`);
-
-    const quiz = await this.prisma.quiz.findUnique({
-      where: { id: quizId },
-      include: {
-        questions: {
-          include: { options: true },
-          orderBy: { order: 'asc' }
-        }
-      }
-    });
-
-    if (!quiz) {
-      return { success: false, message: 'Kvíz nenalezen.' };
-    }
-
-    // Transform DB questions to Game questions structure
-    const gameQuestions = quiz.questions.map(q => {
-      // Sort options by order to ensure correct index matches
-      const sortedOptions = q.options.sort((a, b) => a.order - b.order);
-      return {
-        text: q.text,
-        mediaUrl: q.mediaUrl,
-        options: sortedOptions.map(o => ({ text: o.text, mediaUrl: o.imageUrl })),
-        correct: sortedOptions.findIndex(o => o.isCorrect),
-        timeLimit: q.timeLimit || 30
-      };
-    });
-
-    const pin = Math.floor(100000 + Math.random() * 900000).toString();
-
-    this.games.set(pin, {
-      title: quiz.title,
-      questions: gameQuestions,
-      players: [],
-      currentQuestionIndex: -1,
-      answers: new Map(),
-      state: 'lobby',
-      timer: null,
-      questionStartTime: 0
-    });
-
-    client.join(pin);
-    this.logger.log(`Game created from saved quiz with PIN: ${pin}`);
-
-    return { success: true, pin: pin };
-  }
-
   @SubscribeMessage('saveQuiz')
   async handleSaveQuiz(
     @MessageBody() data: { quizId?: string; title: string; questions: any[]; isPublic: boolean; userId?: string },
@@ -205,6 +151,30 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     let { quizId, title, questions, isPublic, userId } = data;
     this.logger.log(`Client ${client.id} saving quiz: ${title} (ID: ${quizId}) for user ${userId}`);
+
+    // Debug logging
+    try {
+      const payloadSize = JSON.stringify(data).length;
+      this.logger.log(`Payload size: ${(payloadSize / 1024 / 1024).toFixed(2)} MB`);
+
+      // Check for cover image in data (it might be in a different property depending on frontend implementation, 
+      // but based on previous context it seemed to be part of quizData. Here 'data' IS the payload)
+      // The frontend sends { quizId, title, questions, isPublic, userId, coverImage? }
+      // Let's check if 'coverImage' exists in data
+      if ('coverImage' in data) {
+        const coverImg = (data as any).coverImage;
+        this.logger.log(`Cover image present. Length: ${coverImg ? coverImg.length : 'NULL'}`);
+      } else {
+        this.logger.log('Cover image property missing in payload');
+      }
+
+      if (questions && questions.length > 0) {
+        const q = questions[0];
+        this.logger.log(`First question mediaUrl: ${q.mediaUrl ? 'Present (' + q.mediaUrl.length + ')' : 'Missing'}`);
+      }
+    } catch (e) {
+      this.logger.error('Error logging payload details', e);
+    }
 
     try {
       let host;

@@ -7,6 +7,7 @@ import { Loader2, Check, X } from "lucide-react";
 
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
+// const BACKEND_URL = "http://localhost:4000";
 
 const avatarMap: { [key: string]: string } = {
     cow: '🐮', fox: '🦊', cat: '🐱', dog: '🐶', lion: '🦁', panda: '🐼', koala: '🐨', pig: '🐷',
@@ -37,7 +38,7 @@ function LobbyContent() {
     const [players, setPlayers] = useState<any[]>([]);
 
     // Game State
-    const [currentQuestion, setCurrentQuestion] = useState<{ index: number, total: number, timeLimit: number, options?: { text: string, mediaUrl?: string }[] } | null>(null);
+    const [currentQuestion, setCurrentQuestion] = useState<{ index: number, total: number, timeLimit: number, type?: string, options?: { text: string, mediaUrl?: string }[] } | null>(null);
     const [answerSubmitted, setAnswerSubmitted] = useState<number | null>(null);
     const [result, setResult] = useState<{ correct: boolean, points: number, rank: number } | null>(null);
     const [showResultScreen, setShowResultScreen] = useState(false);
@@ -75,6 +76,7 @@ function LobbyContent() {
                 index: data.questionIndex,
                 total: data.totalQuestions,
                 timeLimit: data.timeLimit,
+                type: data.type,
                 options: data.options
             });
             setTimeLeft(data.timeLimit); // Start timer
@@ -235,42 +237,81 @@ function LobbyContent() {
                     <span style={{ fontSize: '0.9rem' }}>Skóre: {score}</span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', height: '50vh' }}>
-                    {['▲', '◆', '●', '■'].map((symbol, i) => {
-                        const gradientClass = [
-                            'from-[var(--opt-1-from)] to-[var(--opt-1-to)]',
-                            'from-[var(--opt-2-from)] to-[var(--opt-2-to)]',
-                            'from-[var(--opt-3-from)] to-[var(--opt-3-to)]',
-                            'from-[var(--opt-4-from)] to-[var(--opt-4-to)]'
-                        ][i % 4];
-
-                        return (
+                <div style={{ display: 'grid', gridTemplateColumns: currentQuestion?.type === 'TRUE_FALSE' ? '1fr 1fr' : '1fr 1fr', gap: '0.75rem', height: '50vh' }}>
+                    {currentQuestion?.type === 'TRUE_FALSE' ? (
+                        // True/False Buttons
+                        <>
                             <button
-                                key={i}
-                                onClick={() => submitAnswer(i)}
+                                onClick={() => submitAnswer(0)}
                                 disabled={answerSubmitted !== null}
                                 className={`
                                     rounded-xl flex flex-col items-center justify-center text-white transition-all duration-200 relative overflow-hidden
                                     ${answerSubmitted === null
-                                        ? `bg-gradient-to-br ${gradientClass} shadow-md active:scale-95`
-                                        : answerSubmitted === i
+                                        ? `bg-blue-600 shadow-md active:scale-95`
+                                        : answerSubmitted === 0
                                             ? 'bg-white text-black scale-105 z-10 ring-4 ring-white/50'
                                             : 'bg-gray-800 opacity-20 grayscale'
                                     }
                                 `}
-                                style={{ fontSize: '2.5rem' }}
+                                style={{ fontSize: '2rem', fontWeight: 'bold' }}
                             >
-                                {currentQuestion?.options?.[i]?.mediaUrl ? (
-                                    <img
-                                        src={currentQuestion.options[i].mediaUrl}
-                                        alt="Option"
-                                        className="absolute inset-0 w-full h-full object-cover opacity-90"
-                                    />
-                                ) : null}
-                                <span className="z-10 drop-shadow-md">{symbol}</span>
+                                PRAVDA
                             </button>
-                        );
-                    })}
+                            <button
+                                onClick={() => submitAnswer(1)}
+                                disabled={answerSubmitted !== null}
+                                className={`
+                                    rounded-xl flex flex-col items-center justify-center text-white transition-all duration-200 relative overflow-hidden
+                                    ${answerSubmitted === null
+                                        ? `bg-red-600 shadow-md active:scale-95`
+                                        : answerSubmitted === 1
+                                            ? 'bg-white text-black scale-105 z-10 ring-4 ring-white/50'
+                                            : 'bg-gray-800 opacity-20 grayscale'
+                                    }
+                                `}
+                                style={{ fontSize: '2rem', fontWeight: 'bold' }}
+                            >
+                                LEŽ
+                            </button>
+                        </>
+                    ) : (
+                        // Standard & Image Options
+                        ['▲', '◆', '●', '■'].map((symbol, i) => {
+                            const gradientClass = [
+                                'from-[var(--opt-1-from)] to-[var(--opt-1-to)]',
+                                'from-[var(--opt-2-from)] to-[var(--opt-2-to)]',
+                                'from-[var(--opt-3-from)] to-[var(--opt-3-to)]',
+                                'from-[var(--opt-4-from)] to-[var(--opt-4-to)]'
+                            ][i % 4];
+
+                            return (
+                                <button
+                                    key={i}
+                                    onClick={() => submitAnswer(i)}
+                                    disabled={answerSubmitted !== null}
+                                    className={`
+                                        rounded-xl flex flex-col items-center justify-center text-white transition-all duration-200 relative overflow-hidden
+                                        ${answerSubmitted === null
+                                            ? `bg-gradient-to-br ${gradientClass} shadow-md active:scale-95`
+                                            : answerSubmitted === i
+                                                ? 'bg-white text-black scale-105 z-10 ring-4 ring-white/50'
+                                                : 'bg-gray-800 opacity-20 grayscale'
+                                        }
+                                    `}
+                                    style={{ fontSize: '2.5rem' }}
+                                >
+                                    {currentQuestion?.options?.[i]?.mediaUrl ? (
+                                        <img
+                                            src={currentQuestion.options[i].mediaUrl}
+                                            alt="Option"
+                                            className="absolute inset-0 w-full h-full object-cover opacity-90"
+                                        />
+                                    ) : null}
+                                    <span className="z-10 drop-shadow-md">{symbol}</span>
+                                </button>
+                            );
+                        })
+                    )}
                 </div>
 
                 {answerSubmitted !== null && (

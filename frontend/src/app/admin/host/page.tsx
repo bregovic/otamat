@@ -8,6 +8,7 @@ import { Users, Play, Check } from "lucide-react";
 
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
+// const BACKEND_URL = "http://localhost:4000";
 
 function HostGameContent() {
     const searchParams = useSearchParams();
@@ -18,7 +19,7 @@ function HostGameContent() {
 
     // Game State
     const [gameStarted, setGameStarted] = useState(false);
-    const [currentQuestion, setCurrentQuestion] = useState<{ text: string, mediaUrl?: string, options: { text: string, mediaUrl?: string }[], index: number, total: number } | null>(null);
+    const [currentQuestion, setCurrentQuestion] = useState<{ text: string, mediaUrl?: string, type?: string, options: { text: string, mediaUrl?: string }[], index: number, total: number } | null>(null);
     const [answerStats, setAnswerStats] = useState<{ count: number, total: number }>({ count: 0, total: 0 });
     const [timeLeft, setTimeLeft] = useState(30);
     const [showResults, setShowResults] = useState(false);
@@ -48,6 +49,7 @@ function HostGameContent() {
             setCurrentQuestion({
                 text: data.text,
                 mediaUrl: data.mediaUrl,
+                type: data.type,
                 options: data.options,
                 index: data.questionIndex,
                 total: data.totalQuestions
@@ -251,8 +253,8 @@ function HostGameContent() {
                     </div>
                 </div>
 
-                {/* Options Area - 2x2 Grid */}
-                <div className="grid grid-cols-2 gap-4 w-full !max-w-[95vw] mx-auto mb-4" style={{ height: '35vh', minHeight: '250px' }}>
+                {/* Options Area - Based on Type */}
+                <div className={`grid gap-4 w-full !max-w-[95vw] mx-auto mb-4 ${currentQuestion.type === 'TRUE_FALSE' ? 'grid-cols-2' : 'grid-cols-2'}`} style={{ height: '35vh', minHeight: '250px' }}>
                     {currentQuestion.options.map((opt, i) => {
                         const isCorrect = showResults && resultsData?.correctIndex === i;
                         const gradientClass = [
@@ -261,6 +263,24 @@ function HostGameContent() {
                             'from-[var(--opt-3-from)] to-[var(--opt-3-to)]',
                             'from-[var(--opt-4-from)] to-[var(--opt-4-to)]'
                         ][i % 4];
+
+                        // True/False specific styling
+                        if (currentQuestion.type === 'TRUE_FALSE') {
+                            const isTrue = i === 0; // Assuming 0 is True, 1 is False based on editor logic
+                            const bgColor = isTrue ? 'bg-blue-600' : 'bg-red-600';
+                            return (
+                                <div key={i} className={`
+                                    rounded-2xl text-4xl md:text-5xl font-bold text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-2 border-white/10
+                                    ${showResults
+                                        ? (isCorrect ? 'opacity-100 scale-105 z-10 ring-4 ring-white' : 'opacity-30 grayscale')
+                                        : bgColor
+                                    }
+                                `}>
+                                    <span className="drop-shadow-md">{opt.text}</span>
+                                    {isCorrect && <Check size={64} className="absolute right-8 top-1/2 -translate-y-1/2 text-white drop-shadow-md" />}
+                                </div>
+                            );
+                        }
 
                         return (
                             <div key={i} className={`
@@ -274,8 +294,9 @@ function HostGameContent() {
 
                                 {opt.mediaUrl ? (
                                     <div className="w-full h-full absolute inset-0">
-                                        <img src={opt.mediaUrl} alt="Option" className="w-full h-full object-cover opacity-80" />
-                                        {opt.text && (
+                                        <img src={opt.mediaUrl} alt="Option" className="w-full h-full object-cover" />
+                                        {/* Hide text overlay for Image Guess type if no text provided, or show small caption */}
+                                        {opt.text && currentQuestion.type !== 'IMAGE_GUESS' && (
                                             <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-center text-xl backdrop-blur-sm">
                                                 {opt.text}
                                             </div>

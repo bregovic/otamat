@@ -205,11 +205,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           where: { id: quizId },
           data: {
             title: title,
+            coverImage: (data as any).coverImage, // Add coverImage
             isPublic: isPublic || false,
             questions: {
               create: questions.map((q, index) => ({
                 text: q.text,
                 type: 'MULTIPLE_CHOICE',
+                mediaUrl: q.mediaUrl, // Add mediaUrl
                 order: index,
                 timeLimit: 30,
                 options: {
@@ -229,12 +231,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         const newQuiz = await this.prisma.quiz.create({
           data: {
             title: title,
+            coverImage: (data as any).coverImage, // Add coverImage
             isPublic: isPublic || false,
             authorId: host.id,
             questions: {
               create: questions.map((q, index) => ({
                 text: q.text,
                 type: 'MULTIPLE_CHOICE',
+                mediaUrl: q.mediaUrl, // Add mediaUrl
                 order: index,
                 timeLimit: 30,
                 options: {

@@ -19,7 +19,7 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
-  console.log("Backend starting with CORS enabled for hollyhop.cz...");
+  console.log("Backend starting with CORS enabled for hollyhop.cz... VERSION: FIX_IMAGES_V3");
   await app.listen(process.env.PORT ?? 4000);
 }
 bootstrap();

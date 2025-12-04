@@ -125,47 +125,60 @@ export default function DashboardPage() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {quizzes.map((quiz) => (
-                            <div key={quiz.id} className="glass-card p-6 flex flex-col hover:border-primary/50 transition-colors group">
-                                <div className="flex justify-between items-start mb-4">
-                                    <h3 className="text-xl font-bold text-white line-clamp-2">{quiz.title}</h3>
-                                    {quiz.isPublic && (
-                                        <span className="bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded-full border border-green-500/30">
-                                            Veřejný
-                                        </span>
-                                    )}
-                                </div>
-
-                                <p className="text-gray-400 text-sm mb-6 line-clamp-3 flex-1">
-                                    {quiz.description || "Bez popisu"}
-                                </p>
-
-                                <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/10">
-                                    <div className="text-sm text-gray-500">
-                                        {quiz._count?.questions || 0} otázek
+                            <div key={quiz.id} className="glass-card p-0 flex flex-col hover:border-primary/50 transition-colors group overflow-hidden">
+                                {quiz.coverImage ? (
+                                    <div className="w-full h-32 relative">
+                                        <img src={quiz.coverImage} alt={quiz.title} className="w-full h-full object-cover" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => handleStartGame(quiz.id)}
-                                            disabled={startingGameId === quiz.id}
-                                            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors disabled:opacity-50"
-                                            title="Spustit"
-                                        >
-                                            {startingGameId === quiz.id ? <Loader2 className="animate-spin" size={20} /> : <Play size={20} />}
-                                        </button>
-                                        <button
-                                            onClick={() => handleEdit(quiz.id)}
-                                            className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                                            title="Upravit"
-                                        >
-                                            <Edit size={20} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(quiz.id)}
-                                            className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                                            title="Smazat"
-                                        >
-                                            <Trash2 size={20} />
-                                        </button>
+                                ) : (
+                                    <div className="w-full h-24 bg-gradient-to-br from-white/5 to-white/10 flex items-center justify-center">
+                                        <span className="text-4xl opacity-20">📝</span>
+                                    </div>
+                                )}
+
+                                <div className="p-6 flex flex-col flex-1">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h3 className="text-xl font-bold text-white line-clamp-2">{quiz.title}</h3>
+                                        {quiz.isPublic && (
+                                            <span className="bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded-full border border-green-500/30 shrink-0 ml-2">
+                                                Veřejný
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <p className="text-gray-400 text-sm mb-4 line-clamp-2 flex-1">
+                                        {quiz.description || "Bez popisu"}
+                                    </p>
+
+                                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/10">
+                                        <div className="text-sm text-gray-500">
+                                            {quiz._count?.questions || 0} otázek
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleStartGame(quiz.id)}
+                                                disabled={startingGameId === quiz.id}
+                                                className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors disabled:opacity-50"
+                                                title="Spustit"
+                                            >
+                                                {startingGameId === quiz.id ? <Loader2 className="animate-spin" size={20} /> : <Play size={20} />}
+                                            </button>
+                                            <button
+                                                onClick={() => handleEdit(quiz.id)}
+                                                className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                                title="Upravit"
+                                            >
+                                                <Edit size={20} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(quiz.id)}
+                                                className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                title="Smazat"
+                                            >
+                                                <Trash2 size={20} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

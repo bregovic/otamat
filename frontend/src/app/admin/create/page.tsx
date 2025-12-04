@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
-import { Loader2, Users, Play, Check } from "lucide-react";
+import { Loader2, Users, Play, Check, Image as ImageIcon, Trash2 } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 
 // Production Backend URL
@@ -18,8 +18,14 @@ function CreateQuizContent() {
     const editQuizId = searchParams.get("edit");
 
     const [title, setTitle] = useState("");
+    const [coverImage, setCoverImage] = useState("");
     const [isPublic, setIsPublic] = useState(false);
-    const [questions, setQuestions] = useState([{ text: "", options: ["", "", "", ""], correct: 0 }]);
+    const [questions, setQuestions] = useState<{
+        text: string;
+        mediaUrl?: string;
+        options: { text: string; mediaUrl?: string }[];
+        correct: number;
+    }[]>([{ text: "", options: [{ text: "" }, { text: "" }, { text: "" }, { text: "" }], correct: 0 }]);
     const [socket, setSocket] = useState<Socket | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [gamePin, setGamePin] = useState<string | null>(null);
@@ -54,10 +60,15 @@ function CreateQuizContent() {
                 if (data.questions && data.questions.length > 0) {
                     setQuestions(data.questions.map((q: any) => ({
                         text: q.text,
-                        options: q.options.sort((a: any, b: any) => a.order - b.order).map((o: any) => o.text),
+                        mediaUrl: q.mediaUrl,
+                        options: q.options.sort((a: any, b: any) => a.order - b.order).map((o: any) => ({
+                            text: o.text || "",
+                            mediaUrl: o.imageUrl || ""
+                        })),
                         correct: q.options.findIndex((o: any) => o.isCorrect)
                     })));
                 }
+                if (data.coverImage) setCoverImage(data.coverImage);
             } else {
                 setError("Nepodařilo se načíst kvíz.");
             }
@@ -123,7 +134,7 @@ function CreateQuizContent() {
     }, [gameStarted, showResults, timeLeft]);
 
     const handleAddQuestion = () => {
-        setQuestions([...questions, { text: "", options: ["", "", "", ""], correct: 0 }]);
+        setQuestions([...questions, { text: "", options: [{ text: "" }, { text: "" }, { text: "" }, { text: "" }], correct: 0 }]);
     };
 
     const handleSaveAndStart = () => {
@@ -142,6 +153,7 @@ function CreateQuizContent() {
         const payload = {
             quizId: editQuizId || undefined,
             title,
+            coverImage,
             questions,
             isPublic,
             userId: user?.id
@@ -187,6 +199,7 @@ function CreateQuizContent() {
         const payload = {
             quizId: editQuizId || undefined,
             title,
+            coverImage,
             questions,
             isPublic,
             userId: user.id
@@ -365,45 +378,141 @@ function CreateQuizContent() {
                         {error}
                     </div>
                 )}
-                <div className="glass-card" style={{ maxWidth: '100%', marginBottom: '2rem' }}>
-                    <div className="input-wrapper">
-                        <label style={{ display: 'block', marginBottom: '0.5rem', color: '#a1a1aa', fontWeight: '500', textAlign: 'left' }}>Název kvízu</label>
-                        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Např. Hlavní města Evropy" style={{ textAlign: 'left' }} />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
-                        <input type="checkbox" id="isPublic" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }} />
-                        <label htmlFor="isPublic" style={{ color: '#fff', cursor: 'pointer' }}>Veřejný kvíz (viditelný pro ostatní)</label>
+                <div className="input-wrapper">
+                    <label style={{ display: 'block', marginBottom: '0.5rem', color: '#a1a1aa', fontWeight: '500', textAlign: 'left' }}>Název kvízu</label>
+                    <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Např. Hlavní města Evropy" style={{ textAlign: 'left' }} />
+                </div>
+
+                <div className="mt-4">
+                    <label className="block text-gray-400 mb-2 text-left">Titulní obrázek</label>
+                    <div className="flex items-center gap-4">
+                        {coverImage && (
+                            <div className="relative w-32 h-20 rounded-lg overflow-hidden border border-white/20">
+                                <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+                                <button onClick={() => setCoverImage("")} className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-bl-lg"><Trash2 size={14} /></button>
+                            </div>
+                        )}
+                        <label className="cursor-pointer bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+                            <ImageIcon size={20} /> Nahrát obrázek
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => setCoverImage(reader.result as string);
+                                    reader.readAsDataURL(file);
+                                }
+                            }} />
+                        </label>
                     </div>
                 </div>
-                {questions.map((q, qIndex) => (
-                    <div key={qIndex} className="glass-card" style={{ maxWidth: '100%', marginBottom: '2rem', position: 'relative' }}>
-                        <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', fontWeight: 'bold' }}>Otázka {qIndex + 1}</h3>
-                        <div className="input-wrapper">
-                            <input type="text" placeholder="Zadejte otázku..." value={q.text} onChange={(e) => { const newQuestions = [...questions]; newQuestions[qIndex].text = e.target.value; setQuestions(newQuestions); }} style={{ textAlign: 'left', background: 'rgba(255,255,255,0.05)' }} />
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            {q.options.map((opt, oIndex) => (
-                                <div key={oIndex} style={{ position: 'relative' }}>
-                                    <input type="text" placeholder={`Možnost ${oIndex + 1}`} value={opt} onChange={(e) => { const newQuestions = [...questions]; newQuestions[qIndex].options[oIndex] = e.target.value; setQuestions(newQuestions); }} style={{ textAlign: 'left', fontSize: '1rem', padding: '1rem', borderColor: q.correct === oIndex ? 'var(--success)' : 'var(--border-light)' }} />
-                                    <div onClick={() => { const newQuestions = [...questions]; newQuestions[qIndex].correct = oIndex; setQuestions(newQuestions); }} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', width: '24px', height: '24px', borderRadius: '50%', border: '2px solid ' + (q.correct === oIndex ? 'var(--success)' : '#666'), background: q.correct === oIndex ? 'var(--success)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        {q.correct === oIndex && <Check size={16} color="white" />}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ))}
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '4rem' }}>
-                    <button onClick={handleAddQuestion} className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>+ Přidat otázku</button>
-                    <button onClick={handleSaveOnly} className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }} disabled={isSaving}>
-                        {isSaving ? <Loader2 className="animate-spin" /> : <Check size={24} />} {editQuizId ? "Uložit změny" : "Pouze uložit"}
-                    </button>
-                    <button onClick={handleSaveAndStart} className="btn btn-primary" style={{ display: 'inline-flex', width: 'auto' }} disabled={isSaving}>
-                        {isSaving ? <Loader2 className="animate-spin" /> : <Play size={24} />} Uložit a spustit
-                    </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
+                    <input type="checkbox" id="isPublic" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }} />
+                    <label htmlFor="isPublic" style={{ color: '#fff', cursor: 'pointer' }}>Veřejný kvíz (viditelný pro ostatní)</label>
                 </div>
             </div>
-        </main>
+            {questions.map((q, qIndex) => (
+                <div key={qIndex} className="glass-card" style={{ maxWidth: '100%', marginBottom: '2rem', position: 'relative' }}>
+                    <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', fontWeight: 'bold' }}>Otázka {qIndex + 1}</h3>
+
+                    {/* Question Image */}
+                    <div className="mb-4">
+                        <div className="flex items-center gap-4 mb-2">
+                            <label className="text-gray-400">Obrázek k otázce</label>
+                            {q.mediaUrl && (
+                                <button onClick={() => { const newQuestions = [...questions]; newQuestions[qIndex].mediaUrl = ""; setQuestions(newQuestions); }} className="text-red-400 text-sm hover:text-red-300">Odstranit</button>
+                            )}
+                        </div>
+                        {q.mediaUrl ? (
+                            <div className="relative w-full h-48 rounded-xl overflow-hidden border border-white/20 mb-2 bg-black/20">
+                                <img src={q.mediaUrl} alt="Question" className="w-full h-full object-contain" />
+                            </div>
+                        ) : (
+                            <label className="cursor-pointer block w-full border-2 border-dashed border-white/10 rounded-xl p-8 text-center hover:bg-white/5 transition-colors">
+                                <ImageIcon className="mx-auto mb-2 text-gray-400" size={32} />
+                                <span className="text-gray-400">Klikněte pro nahrání obrázku</span>
+                                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                            const newQuestions = [...questions];
+                                            newQuestions[qIndex].mediaUrl = reader.result as string;
+                                            setQuestions(newQuestions);
+                                        };
+                                        reader.readAsDataURL(file);
+                                    }
+                                }} />
+                            </label>
+                        )}
+                    </div>
+
+                    <div className="input-wrapper">
+                        <input type="text" placeholder="Zadejte otázku..." value={q.text} onChange={(e) => { const newQuestions = [...questions]; newQuestions[qIndex].text = e.target.value; setQuestions(newQuestions); }} style={{ textAlign: 'left', background: 'rgba(255,255,255,0.05)' }} />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        {q.options.map((opt, oIndex) => (
+                            <div key={oIndex} style={{ position: 'relative' }} className="group">
+                                <div className="flex flex-col gap-2">
+                                    {/* Option Image Toggle/Preview */}
+                                    {opt.mediaUrl ? (
+                                        <div className="relative w-full h-32 rounded-lg overflow-hidden border border-white/20 bg-black/20 group-hover:border-white/40 transition-colors">
+                                            <img src={opt.mediaUrl} alt="Option" className="w-full h-full object-cover" />
+                                            <button
+                                                onClick={() => { const newQuestions = [...questions]; newQuestions[qIndex].options[oIndex].mediaUrl = ""; setQuestions(newQuestions); }}
+                                                className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-full hover:bg-red-500 transition-colors"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder={`Možnost ${oIndex + 1}`}
+                                                value={opt.text}
+                                                onChange={(e) => { const newQuestions = [...questions]; newQuestions[qIndex].options[oIndex].text = e.target.value; setQuestions(newQuestions); }}
+                                                style={{ textAlign: 'left', fontSize: '1rem', padding: '1rem', borderColor: q.correct === oIndex ? 'var(--success)' : 'var(--border-light)', flex: 1 }}
+                                            />
+                                            <label className="cursor-pointer bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl w-14 flex items-center justify-center transition-colors" title="Nahrát obrázek">
+                                                <ImageIcon size={20} className="text-gray-400" />
+                                                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => {
+                                                            const newQuestions = [...questions];
+                                                            newQuestions[qIndex].options[oIndex].mediaUrl = reader.result as string;
+                                                            setQuestions(newQuestions);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }} />
+                                            </label>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div onClick={() => { const newQuestions = [...questions]; newQuestions[qIndex].correct = oIndex; setQuestions(newQuestions); }} style={{ position: 'absolute', right: '10px', top: opt.mediaUrl ? '10px' : '50%', transform: opt.mediaUrl ? 'none' : 'translateY(-50%)', cursor: 'pointer', width: '24px', height: '24px', borderRadius: '50%', border: '2px solid ' + (q.correct === oIndex ? 'var(--success)' : '#666'), background: q.correct === oIndex ? 'var(--success)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+                                    {q.correct === oIndex && <Check size={16} color="white" />}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '4rem' }}>
+                <button onClick={handleAddQuestion} className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }}>+ Přidat otázku</button>
+                <button onClick={handleSaveOnly} className="btn btn-secondary" style={{ display: 'inline-flex', width: 'auto' }} disabled={isSaving}>
+                    {isSaving ? <Loader2 className="animate-spin" /> : <Check size={24} />} {editQuizId ? "Uložit změny" : "Pouze uložit"}
+                </button>
+                <button onClick={handleSaveAndStart} className="btn btn-primary" style={{ display: 'inline-flex', width: 'auto' }} disabled={isSaving}>
+                    {isSaving ? <Loader2 className="animate-spin" /> : <Play size={24} />} Uložit a spustit
+                </button>
+            </div>
+        </div>
+        </main >
     );
 }
 

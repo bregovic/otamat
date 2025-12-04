@@ -37,7 +37,7 @@ function LobbyContent() {
     const [players, setPlayers] = useState<any[]>([]);
 
     // Game State
-    const [currentQuestion, setCurrentQuestion] = useState<{ index: number, total: number, timeLimit: number } | null>(null);
+    const [currentQuestion, setCurrentQuestion] = useState<{ index: number, total: number, timeLimit: number, options?: { text: string, mediaUrl?: string }[] } | null>(null);
     const [answerSubmitted, setAnswerSubmitted] = useState<number | null>(null);
     const [result, setResult] = useState<{ correct: boolean, points: number, rank: number } | null>(null);
     const [showResultScreen, setShowResultScreen] = useState(false);
@@ -74,7 +74,8 @@ function LobbyContent() {
             setCurrentQuestion({
                 index: data.questionIndex,
                 total: data.totalQuestions,
-                timeLimit: data.timeLimit
+                timeLimit: data.timeLimit,
+                options: data.options
             });
             setTimeLeft(data.timeLimit); // Start timer
             setAnswerSubmitted(null);
@@ -249,7 +250,7 @@ function LobbyContent() {
                                 onClick={() => submitAnswer(i)}
                                 disabled={answerSubmitted !== null}
                                 className={`
-                                    rounded-xl flex flex-col items-center justify-center text-white transition-all duration-200
+                                    rounded-xl flex flex-col items-center justify-center text-white transition-all duration-200 relative overflow-hidden
                                     ${answerSubmitted === null
                                         ? `bg-gradient-to-br ${gradientClass} shadow-md active:scale-95`
                                         : answerSubmitted === i
@@ -259,7 +260,14 @@ function LobbyContent() {
                                 `}
                                 style={{ fontSize: '2.5rem' }}
                             >
-                                {symbol}
+                                {currentQuestion?.options?.[i]?.mediaUrl ? (
+                                    <img
+                                        src={currentQuestion.options[i].mediaUrl}
+                                        alt="Option"
+                                        className="absolute inset-0 w-full h-full object-cover opacity-90"
+                                    />
+                                ) : null}
+                                <span className="z-10 drop-shadow-md">{symbol}</span>
                             </button>
                         );
                     })}

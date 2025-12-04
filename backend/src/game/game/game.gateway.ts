@@ -107,8 +107,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
               order: index,
               timeLimit: 30,
               options: {
-                create: q.options.map((opt: string, optIndex: number) => ({
-                  text: opt,
+                create: q.options.map((opt: any, optIndex: number) => ({
+                  text: typeof opt === 'string' ? opt : opt.text,
+                  imageUrl: typeof opt === 'string' ? null : opt.mediaUrl,
                   isCorrect: optIndex === q.correct,
                   order: optIndex
                 }))
@@ -171,7 +172,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return {
         text: q.text,
         mediaUrl: q.mediaUrl,
-        options: sortedOptions.map(o => o.text),
+        options: sortedOptions.map(o => ({ text: o.text, mediaUrl: o.imageUrl })),
         correct: sortedOptions.findIndex(o => o.isCorrect),
         timeLimit: q.timeLimit || 30
       };
@@ -241,8 +242,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 order: index,
                 timeLimit: 30,
                 options: {
-                  create: q.options.map((opt: string, optIndex: number) => ({
-                    text: opt,
+                  create: q.options.map((opt: any, optIndex: number) => ({
+                    text: typeof opt === 'string' ? opt : opt.text,
+                    imageUrl: typeof opt === 'string' ? null : opt.mediaUrl,
                     isCorrect: optIndex === q.correct,
                     order: optIndex
                   }))
@@ -265,8 +267,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 order: index,
                 timeLimit: 30,
                 options: {
-                  create: q.options.map((opt: string, optIndex: number) => ({
-                    text: opt,
+                  create: q.options.map((opt: any, optIndex: number) => ({
+                    text: typeof opt === 'string' ? opt : opt.text,
+                    imageUrl: typeof opt === 'string' ? null : opt.mediaUrl,
                     isCorrect: optIndex === q.correct,
                     order: optIndex
                   }))

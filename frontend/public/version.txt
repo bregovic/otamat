@@ -1,1 +1,1 @@
-Version: 24.24 - Manual next question & Countdown
+Version: 24.25 - Animated results & Leaderboard

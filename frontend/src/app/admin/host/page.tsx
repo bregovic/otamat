@@ -18,7 +18,7 @@ function HostGameContent() {
 
     // Game State
     const [gameStarted, setGameStarted] = useState(false);
-    const [currentQuestion, setCurrentQuestion] = useState<{ text: string, mediaUrl?: string, options: string[], index: number, total: number } | null>(null);
+    const [currentQuestion, setCurrentQuestion] = useState<{ text: string, mediaUrl?: string, options: { text: string, mediaUrl?: string }[], index: number, total: number } | null>(null);
     const [answerStats, setAnswerStats] = useState<{ count: number, total: number }>({ count: 0, total: 0 });
     const [timeLeft, setTimeLeft] = useState(30);
     const [showResults, setShowResults] = useState(false);
@@ -270,9 +270,22 @@ function HostGameContent() {
                                     : `bg-gradient-to-br ${gradientClass}`
                                 }
                             `}>
-                                <span className="absolute left-4 text-3xl opacity-50">{['▲', '◆', '●', '■'][i]}</span>
-                                <span className="z-10 text-center px-8 truncate w-full drop-shadow-md">{opt}</span>
-                                {isCorrect && <Check size={48} className="absolute right-4 text-white drop-shadow-md" />}
+                                <span className="absolute left-4 top-4 text-3xl opacity-50 z-20">{['▲', '◆', '●', '■'][i]}</span>
+
+                                {opt.mediaUrl ? (
+                                    <div className="w-full h-full absolute inset-0">
+                                        <img src={opt.mediaUrl} alt="Option" className="w-full h-full object-cover opacity-80" />
+                                        {opt.text && (
+                                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-center text-xl backdrop-blur-sm">
+                                                {opt.text}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <span className="z-10 text-center px-8 truncate w-full drop-shadow-md">{opt.text}</span>
+                                )}
+
+                                {isCorrect && <Check size={48} className="absolute right-4 top-4 text-white drop-shadow-md z-20" />}
                             </div>
                         );
                     })}

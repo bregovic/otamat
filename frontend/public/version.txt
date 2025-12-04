@@ -1,1 +1,1 @@
-Version: 24.23 - Header fix
+Version: 24.24 - Manual next question & Countdown

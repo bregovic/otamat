@@ -26,6 +26,7 @@ function HostGameContent() {
     const [gameFinished, setGameFinished] = useState(false);
     const [finalPlayers, setFinalPlayers] = useState<any[]>([]);
     const [countdown, setCountdown] = useState<number | null>(null);
+    const [revealCount, setRevealCount] = useState(0);
 
     useEffect(() => {
         if (!pin) return;
@@ -100,7 +101,15 @@ function HostGameContent() {
         } else if (countdown === 0) {
             setCountdown(null);
         }
-    }, [gameStarted, showResults, timeLeft, countdown]);
+
+        // Final Results Reveal Animation
+        if (gameFinished && finalPlayers.length > 0 && revealCount < Math.min(5, finalPlayers.length)) {
+            const timer = setInterval(() => {
+                setRevealCount((prev) => prev + 1);
+            }, 1500); // Reveal one player every 1.5 seconds
+            return () => clearInterval(timer);
+        }
+    }, [gameStarted, showResults, timeLeft, countdown, gameFinished, finalPlayers, revealCount]);
 
     const handleNextQuestion = () => {
         if (socket && pin) {
@@ -117,35 +126,92 @@ function HostGameContent() {
     if (!pin) return <div className="text-white text-center mt-20">Chybí PIN hry.</div>;
 
     if (gameFinished) {
+        const topPlayers = finalPlayers.slice(0, 5).reverse(); // Get top 5 and reverse for display (5th to 1st)
+        // Adjust reveal logic: we want to show from bottom (lowest rank) to top (1st place)
+        // If revealCount is 1, show the last item of topPlayers.
+        // If revealCount is 5, show all.
+
+        const visiblePlayers = topPlayers.slice(Math.max(0, topPlayers.length - revealCount));
+
         return (
-            <main>
-                <div style={{ width: '100%', maxWidth: '800px', textAlign: 'center', margin: '0 auto', paddingTop: '4rem' }}>
-                    <h1 style={{ fontSize: '4rem', marginBottom: '2rem', background: 'linear-gradient(to right, #facc15, #fbbf24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        Konec hry!
+            <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#09090b] to-black">
+                <style jsx global>{`
+                    @keyframes popIn {
+                        0% { transform: scale(0); opacity: 0; }
+                        80% { transform: scale(1.1); opacity: 1; }
+                        100% { transform: scale(1); opacity: 1; }
+                    }
+                    @keyframes confetti {
+                        0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+                        100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+                    }
+                    .pop-in { animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+                    .confetti-piece {
+                        position: absolute;
+                        width: 10px;
+                        height: 10px;
+                        background: #ffd700;
+                        top: -10px;
+                        animation: confetti 3s linear infinite;
+                    }
+                `}</style>
+
+                {/* Confetti Effect (Simple CSS) */}
+                {revealCount >= topPlayers.length && (
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        {[...Array(50)].map((_, i) => (
+                            <div key={i} className="confetti-piece" style={{
+                                left: `${Math.random() * 100}%`,
+                                animationDelay: `${Math.random() * 3}s`,
+                                backgroundColor: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'][Math.floor(Math.random() * 5)]
+                            }} />
+                        ))}
+                    </div>
+                )}
+
+                <div style={{ width: '100%', maxWidth: '1000px', textAlign: 'center', margin: '0 auto', zIndex: 10 }}>
+                    <h1 className="text-6xl md:text-8xl font-black mb-12 bg-clip-text text-transparent bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-700 drop-shadow-2xl">
+                        VÍTĚZOVÉ
                     </h1>
 
-                    <div className="glass-card" style={{ padding: '3rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {finalPlayers.slice(0, 5).map((player, index) => (
-                                <div key={player.id} style={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    padding: '1rem', background: index === 0 ? 'rgba(250, 204, 21, 0.2)' : 'rgba(255,255,255,0.05)',
-                                    borderRadius: '12px', border: index === 0 ? '1px solid #facc15' : 'none'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                        <span style={{ fontSize: '2rem', fontWeight: 'bold', width: '40px' }}>#{index + 1}</span>
-                                        <span style={{ fontSize: '2.5rem' }}>{avatarMap[player.avatar] || player.avatar}</span>
-                                        <span style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{player.nickname}</span>
-                                    </div>
-                                    <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{player.score} b</span>
-                                </div>
-                            ))}
-                        </div>
+                    <div className="flex flex-col-reverse gap-4 items-center justify-end min-h-[600px]">
+                        {visiblePlayers.map((player, index) => {
+                            // Calculate actual rank (since we reversed the array)
+                            const rank = topPlayers.length - index;
+                            const isWinner = rank === 1;
 
-                        <Link href="/dashboard" className="btn btn-primary" style={{ marginTop: '3rem', display: 'inline-block' }}>
+                            return (
+                                <div key={player.id} className={`pop-in flex items-center justify-between w-full max-w-3xl p-6 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-md
+                                    ${isWinner ? 'bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border-yellow-500/50 scale-110 mb-8' : 'bg-white/5'}
+                                `}>
+                                    <div className="flex items-center gap-6">
+                                        <div className={`
+                                            w-16 h-16 rounded-full flex items-center justify-center text-3xl font-bold border-4
+                                            ${rank === 1 ? 'bg-yellow-500 text-black border-yellow-300' :
+                                                rank === 2 ? 'bg-gray-400 text-black border-gray-300' :
+                                                    rank === 3 ? 'bg-orange-700 text-white border-orange-500' :
+                                                        'bg-slate-800 text-white border-slate-700'}
+                                        `}>
+                                            {rank}
+                                        </div>
+                                        <div className="text-6xl">{avatarMap[player.avatar] || player.avatar}</div>
+                                        <div className={`text-3xl md:text-4xl font-bold ${isWinner ? 'text-yellow-400' : 'text-white'}`}>
+                                            {player.nickname}
+                                        </div>
+                                    </div>
+                                    <div className="text-4xl md:text-5xl font-black text-white">
+                                        {player.score} <span className="text-2xl text-gray-400 font-normal">b</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {revealCount >= topPlayers.length && (
+                        <Link href="/dashboard" className="btn btn-primary text-2xl px-12 py-4 mt-12 inline-flex animate-bounce">
                             Zpět na dashboard
                         </Link>
-                    </div>
+                    )}
                 </div>
             </main>
         );
@@ -213,12 +279,27 @@ function HostGameContent() {
                 </div>
 
                 {showResults && (
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+                    <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-40 flex flex-col items-center justify-center p-8">
+                        <h2 className="text-5xl font-bold text-white mb-8">Průběžné výsledky</h2>
+
+                        <div className="w-full max-w-4xl space-y-4 mb-12">
+                            {resultsData?.players.sort((a: any, b: any) => b.score - a.score).slice(0, 5).map((player: any, index: number) => (
+                                <div key={player.id} className="flex items-center justify-between bg-white/10 p-4 rounded-xl border border-white/5">
+                                    <div className="flex items-center gap-4">
+                                        <span className={`text-2xl font-bold w-8 ${index === 0 ? 'text-yellow-400' : 'text-gray-400'}`}>#{index + 1}</span>
+                                        <span className="text-4xl">{avatarMap[player.avatar] || player.avatar}</span>
+                                        <span className="text-2xl font-bold text-white">{player.nickname}</span>
+                                    </div>
+                                    <span className="text-3xl font-bold text-emerald-400">{player.score} b</span>
+                                </div>
+                            ))}
+                        </div>
+
                         <button
                             onClick={handleNextQuestion}
-                            className="bg-white text-black px-12 py-6 rounded-2xl text-4xl font-bold shadow-2xl hover:scale-105 transition-transform flex items-center gap-4"
+                            className="btn btn-primary text-3xl px-12 py-6 flex items-center gap-4 shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:scale-105 transition-transform"
                         >
-                            <Play size={48} /> Další otázka
+                            <Play size={40} /> Další otázka
                         </button>
                     </div>
                 )}

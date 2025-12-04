@@ -338,6 +338,16 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private startCountdown(pin: string) {
+    const game = this.games.get(pin);
+    if (!game) return;
+
+    // If this is the last question (current index is length - 1), skip countdown and finish immediately
+    // Note: currentQuestionIndex is incremented inside nextQuestion, so we check if we are at the end
+    if (game.currentQuestionIndex >= game.questions.length - 1) {
+      this.nextQuestion(pin);
+      return;
+    }
+
     this.server.to(pin).emit('countdownStart', { duration: 3 });
     setTimeout(() => {
       this.nextQuestion(pin);

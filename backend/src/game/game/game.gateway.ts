@@ -25,7 +25,7 @@ import { PrismaService } from '../../prisma/prisma.service';
     ],
     credentials: true,
   },
-  maxHttpBufferSize: 1e8 // 100 MB
+  maxHttpBufferSize: 1e7 // 10 MB
 })
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()

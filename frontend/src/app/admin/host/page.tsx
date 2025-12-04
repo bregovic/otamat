@@ -236,16 +236,16 @@ function HostGameContent() {
                 </div>
 
                 {/* Question & Image Area */}
-                <div className="flex-1 flex flex-col items-center justify-center mb-4 relative overflow-hidden">
-                    <div className="glass-card w-full !max-w-[95vw] p-4 md:p-8 flex flex-col items-center justify-center h-full relative overflow-hidden">
+                <div className="flex-1 min-h-0 flex flex-col items-center justify-center mb-2 relative">
+                    <div className="glass-card w-full !max-w-[95vw] p-4 flex flex-col items-center justify-center h-full relative overflow-hidden">
                         <h2 className="text-3xl md:text-5xl font-bold text-center mb-4 leading-tight z-10 text-white drop-shadow-lg shrink-0">
                             {currentQuestion.text}
                         </h2>
 
                         {/* Image Placeholder or Actual Image */}
-                        <div className="flex-1 w-full flex items-center justify-center rounded-xl mb-4 relative overflow-hidden" style={{ minHeight: '100px', maxHeight: '45vh' }}>
+                        <div className="flex-1 w-full flex items-center justify-center rounded-xl relative overflow-hidden min-h-0">
                             {currentQuestion.mediaUrl ? (
-                                <img src={currentQuestion.mediaUrl} alt="Question Media" className="h-full w-full object-contain rounded-lg shadow-2xl" />
+                                <img src={currentQuestion.mediaUrl} alt="Question Media" className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" />
                             ) : (
                                 <div className="text-white/10 text-9xl font-bold">?</div>
                             )}
@@ -254,7 +254,7 @@ function HostGameContent() {
                 </div>
 
                 {/* Options Area - Based on Type */}
-                <div className={`grid gap-4 w-full !max-w-[95vw] mx-auto mb-4 shrink-0 ${currentQuestion.type === 'TRUE_FALSE' ? 'grid-cols-2' : 'grid-cols-2'}`} style={{ height: '30vh', minHeight: '200px' }}>
+                <div className={`grid gap-4 w-full !max-w-[95vw] mx-auto shrink-0 ${currentQuestion.type === 'TRUE_FALSE' ? 'grid-cols-2' : 'grid-cols-2'}`} style={{ height: '20vh', minHeight: '150px' }}>
                     {currentQuestion.options.map((opt, i) => {
                         const isCorrect = showResults && resultsData?.correctIndex === i;
                         const gradientClass = [
@@ -270,34 +270,34 @@ function HostGameContent() {
                             const bgColor = isTrue ? 'bg-blue-600' : 'bg-red-600';
                             return (
                                 <div key={i} className={`
-                                    rounded-2xl text-4xl md:text-5xl font-bold text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-2 border-white/10
+                                    rounded-2xl text-3xl md:text-4xl font-bold text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-2 border-white/10
                                     ${showResults
                                         ? (isCorrect ? 'opacity-100 scale-105 z-10 ring-4 ring-white' : 'opacity-30 grayscale')
                                         : bgColor
                                     }
                                 `}>
                                     <span className="drop-shadow-md">{opt.text}</span>
-                                    {isCorrect && <Check size={64} className="absolute right-8 top-1/2 -translate-y-1/2 text-white drop-shadow-md" />}
+                                    {isCorrect && <Check size={48} className="absolute right-8 top-1/2 -translate-y-1/2 text-white drop-shadow-md" />}
                                 </div>
                             );
                         }
 
                         return (
                             <div key={i} className={`
-                                rounded-2xl text-2xl md:text-3xl font-bold text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-2 border-white/10
+                                rounded-2xl text-xl md:text-2xl font-bold text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-2 border-white/10
                                 ${showResults
                                     ? (isCorrect ? 'bg-emerald-500 scale-105 z-10' : 'bg-white/5 opacity-30 grayscale')
                                     : `bg-gradient-to-br ${gradientClass}`
                                 }
                             `}>
-                                <span className="absolute left-4 top-4 text-3xl opacity-50 z-20">{['▲', '◆', '●', '■'][i]}</span>
+                                <span className="absolute left-4 top-4 text-2xl opacity-50 z-20">{['▲', '◆', '●', '■'][i]}</span>
 
                                 {opt.mediaUrl ? (
                                     <div className="w-full h-full absolute inset-0">
                                         <img src={opt.mediaUrl} alt="Option" className="w-full h-full object-cover" />
                                         {/* Hide text overlay for Image Guess type if no text provided, or show small caption */}
                                         {opt.text && currentQuestion.type !== 'IMAGE_GUESS' && (
-                                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-center text-xl backdrop-blur-sm">
+                                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-center text-lg backdrop-blur-sm">
                                                 {opt.text}
                                             </div>
                                         )}
@@ -306,7 +306,7 @@ function HostGameContent() {
                                     <span className="z-10 text-center px-8 truncate w-full drop-shadow-md">{opt.text}</span>
                                 )}
 
-                                {isCorrect && <Check size={48} className="absolute right-4 top-4 text-white drop-shadow-md z-20" />}
+                                {isCorrect && <Check size={32} className="absolute right-4 top-4 text-white drop-shadow-md z-20" />}
                             </div>
                         );
                     })}

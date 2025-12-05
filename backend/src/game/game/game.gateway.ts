@@ -104,7 +104,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           questions: {
             create: questions.map((q, index) => ({
               text: q.text,
-              type: 'MULTIPLE_CHOICE',
+              type: q.type || 'MULTIPLE_CHOICE',
               order: index,
               timeLimit: 30,
               options: {
@@ -264,7 +264,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
             questions: {
               create: questions.map((q, index) => ({
                 text: q.text,
-                type: 'MULTIPLE_CHOICE',
+                type: q.type || 'MULTIPLE_CHOICE',
                 mediaUrl: q.mediaUrl, // Add mediaUrl
                 order: index,
                 timeLimit: 30,
@@ -291,7 +291,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
             questions: {
               create: questions.map((q, index) => ({
                 text: q.text,
-                type: 'MULTIPLE_CHOICE',
+                type: q.type || 'MULTIPLE_CHOICE',
                 mediaUrl: q.mediaUrl, // Add mediaUrl
                 order: index,
                 timeLimit: 30,
@@ -371,141 +371,141 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { success: true, playerId: client.id };
   }
 
-    return { success: true, message: 'Joined' };
+
+
+  @SubscribeMessage('startGame')
+  handleStartGame(@MessageBody() data: { pin: string }) {
+    const game = this.games.get(data.pin);
+    if (!game) return { success: false };
+
+    this.logger.log(`Starting game ${data.pin}`);
+    this.startCountdown(data.pin);
+    return { success: true };
   }
 
-@SubscribeMessage('startGame')
-handleStartGame(@MessageBody() data: { pin: string }) {
-  const game = this.games.get(data.pin);
-  if (!game) return { success: false };
-
-  this.logger.log(`Starting game ${data.pin}`);
-  this.startCountdown(data.pin);
-  return { success: true };
-}
-
-@SubscribeMessage('nextQuestion')
-handleNextQuestion(@MessageBody() data: { pin: string }) {
-  const game = this.games.get(data.pin);
-  if (!game) return;
-  this.startCountdown(data.pin);
-}
+  @SubscribeMessage('nextQuestion')
+  handleNextQuestion(@MessageBody() data: { pin: string }) {
+    const game = this.games.get(data.pin);
+    if (!game) return;
+    this.startCountdown(data.pin);
+  }
 
   private startCountdown(pin: string) {
-  const game = this.games.get(pin);
-  if (!game) return;
+    const game = this.games.get(pin);
+    if (!game) return;
 
-  // If this is the last question (current index is length - 1), skip countdown and finish immediately
-  // Note: currentQuestionIndex is incremented inside nextQuestion, so we check if we are at the end
-  if (game.currentQuestionIndex >= game.questions.length - 1) {
-    this.nextQuestion(pin);
-    return;
-  }
-
-  this.server.to(pin).emit('countdownStart', { duration: 3 });
-  setTimeout(() => {
-    this.nextQuestion(pin);
-  }, 3000);
-}
-
-@SubscribeMessage('submitAnswer')
-handleSubmitAnswer(
-  @MessageBody() data: { pin: string; answerIndex: number },
-  @ConnectedSocket() client: Socket
-) {
-  const game = this.games.get(data.pin);
-  if (!game || game.state !== 'question') return;
-
-  // Record answer
-  if (!game.answers.has(client.id)) {
-    game.answers.set(client.id, { index: data.answerIndex, time: Date.now() });
-
-    // Notify host about answer count update
-    this.server.to(data.pin).emit('answerSubmitted', { count: game.answers.size, total: game.players.length });
-
-    // Check if all players answered
-    if (game.answers.size === game.players.length) {
-      this.finishQuestion(data.pin);
+    // If this is the last question (current index is length - 1), skip countdown and finish immediately
+    // Note: currentQuestionIndex is incremented inside nextQuestion, so we check if we are at the end
+    if (game.currentQuestionIndex >= game.questions.length - 1) {
+      this.nextQuestion(pin);
+      return;
     }
-  }
-}
 
-  private nextQuestion(pin: string) {
-  const game = this.games.get(pin);
-  if (!game) return;
-
-  game.currentQuestionIndex++;
-
-  if (game.currentQuestionIndex >= game.questions.length) {
-    // Game Over
-    game.state = 'finished';
-    this.server.to(pin).emit('gameOver', { players: game.players }); // Send final scores
-    return;
+    this.server.to(pin).emit('countdownStart', { duration: 3 });
+    setTimeout(() => {
+      this.nextQuestion(pin);
+    }, 3000);
   }
 
-  game.state = 'question';
-  game.answers.clear();
-  game.questionStartTime = Date.now();
+  @SubscribeMessage('submitAnswer')
+  handleSubmitAnswer(
+    @MessageBody() data: { pin: string; answerIndex: number },
+    @ConnectedSocket() client: Socket
+  ) {
+    const game = this.games.get(data.pin);
+    if (!game || game.state !== 'question') return;
 
-  const question = game.questions[game.currentQuestionIndex];
-  const timeLimit = 30; // 30 seconds per question
+    // Record answer
+    if (!game.answers.has(client.id)) {
+      game.answers.set(client.id, { index: data.answerIndex, time: Date.now() });
 
-  // Send question to everyone (Players get options count, Host gets text)
-  this.server.to(pin).emit('questionStart', {
-    questionIndex: game.currentQuestionIndex + 1,
-    totalQuestions: game.questions.length,
-    text: question.text,
-    mediaUrl: question.mediaUrl,
-    options: question.options,
-    timeLimit: timeLimit
-  });
+      // Notify host about answer count update
+      this.server.to(data.pin).emit('answerSubmitted', { count: game.answers.size, total: game.players.length });
 
-  // Start Timer
-  if (game.timer) clearTimeout(game.timer);
-  game.timer = setTimeout(() => {
-    this.finishQuestion(pin);
-  }, timeLimit * 1000);
-}
-
-  private finishQuestion(pin: string) {
-  const game = this.games.get(pin);
-  if (!game || game.state !== 'question') return;
-
-  if (game.timer) clearTimeout(game.timer);
-  game.state = 'results';
-
-  const currentQ = game.questions[game.currentQuestionIndex];
-  const correctIndex = currentQ.correct;
-  const timeLimit = 30 * 1000; // 30s in ms
-
-  // Calculate scores
-  game.answers.forEach((answer, playerId) => {
-    if (answer.index === correctIndex) {
-      const player = game.players.find(p => p.id === playerId);
-      if (player) {
-        // Calculate score based on speed
-        const timeTaken = answer.time - game.questionStartTime;
-        // Formula: 1000 * (1 - (timeTaken / timeLimit) / 2)
-        // If timeTaken = 0, score = 1000
-        // If timeTaken = timeLimit, score = 500
-        let score = Math.round(1000 * (1 - (timeTaken / timeLimit) / 2));
-        if (score < 500) score = 500; // Minimum points for correct answer
-        if (score > 1000) score = 1000; // Cap at 1000
-
-        player.score += score;
+      // Check if all players answered
+      if (game.answers.size === game.players.length) {
+        this.finishQuestion(data.pin);
       }
     }
-  });
+  }
 
-  // Send results
-  this.server.to(pin).emit('questionEnd', {
-    correctIndex: correctIndex,
-    players: game.players // Send updated scores
-  });
+  private nextQuestion(pin: string) {
+    const game = this.games.get(pin);
+    if (!game) return;
 
-  // Wait for host to trigger next question
-  // game.timer = setTimeout(() => {
-  //   this.nextQuestion(pin);
-  // }, 5000);
-}
+    game.currentQuestionIndex++;
+
+    if (game.currentQuestionIndex >= game.questions.length) {
+      // Game Over
+      game.state = 'finished';
+      this.server.to(pin).emit('gameOver', { players: game.players }); // Send final scores
+      return;
+    }
+
+    game.state = 'question';
+    game.answers.clear();
+    game.questionStartTime = Date.now();
+
+    const question = game.questions[game.currentQuestionIndex];
+    const timeLimit = 30; // 30 seconds per question
+
+    // Send question to everyone (Players get options count, Host gets text)
+    this.server.to(pin).emit('questionStart', {
+      questionIndex: game.currentQuestionIndex + 1,
+      totalQuestions: game.questions.length,
+      text: question.text,
+      mediaUrl: question.mediaUrl,
+      type: question.type,
+      options: question.options,
+      timeLimit: timeLimit
+    });
+
+    // Start Timer
+    if (game.timer) clearTimeout(game.timer);
+    game.timer = setTimeout(() => {
+      this.finishQuestion(pin);
+    }, timeLimit * 1000);
+  }
+
+  private finishQuestion(pin: string) {
+    const game = this.games.get(pin);
+    if (!game || game.state !== 'question') return;
+
+    if (game.timer) clearTimeout(game.timer);
+    game.state = 'results';
+
+    const currentQ = game.questions[game.currentQuestionIndex];
+    const correctIndex = currentQ.correct;
+    const timeLimit = 30 * 1000; // 30s in ms
+
+    // Calculate scores
+    game.answers.forEach((answer, playerId) => {
+      if (answer.index === correctIndex) {
+        const player = game.players.find(p => p.id === playerId);
+        if (player) {
+          // Calculate score based on speed
+          const timeTaken = answer.time - game.questionStartTime;
+          // Formula: 1000 * (1 - (timeTaken / timeLimit) / 2)
+          // If timeTaken = 0, score = 1000
+          // If timeTaken = timeLimit, score = 500
+          let score = Math.round(1000 * (1 - (timeTaken / timeLimit) / 2));
+          if (score < 500) score = 500; // Minimum points for correct answer
+          if (score > 1000) score = 1000; // Cap at 1000
+
+          player.score += score;
+        }
+      }
+    });
+
+    // Send results
+    this.server.to(pin).emit('questionEnd', {
+      correctIndex: correctIndex,
+      players: game.players // Send updated scores
+    });
+
+    // Wait for host to trigger next question
+    // game.timer = setTimeout(() => {
+    //   this.nextQuestion(pin);
+    // }, 5000);
+  }
 }

@@ -296,7 +296,10 @@ function CreateQuizContent() {
     };
 
     useEffect(() => {
-        const newSocket = io(BACKEND_URL);
+        const newSocket = io(BACKEND_URL, {
+            transports: ['websocket'], // Force websocket to avoid polling SSL issues
+            upgrade: false
+        });
         setSocket(newSocket);
 
         newSocket.on("playerJoined", (player) => {

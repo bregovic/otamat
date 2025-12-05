@@ -1,32 +1,49 @@
-parametr na čtení zadání - AI
-zvuky na zobrazujícím zařízení
-překlad do jiných jazyků
-login
+
+
+
+
 přehled kvízů
-hádání osobnosti odkrývání
+
 Sdílení v televizi - otevření odkazu a ovládání adminem přes session z telefonu
 možnost vyhodit hráče z lobby
-mazání kvízů
+
 
 po skončení všem ukázat výsledky a pořad
 nespouštět další otázku po čase ale potvrzením
 testovací mód
+Animace
 qr kód
+Nastavení času a výchozí hodnota
 animace
+obrázek do odpovědi
 import export
 REporty o průběhu her
 Odpočet před startem
 počítání 1000 - 500. POslendí chvíle 500, hned 1000 a poměrem rozdělit
 zámek 
 seřadit podle úkol
-
 typ otázek
 videa
 obrázky
+zvuky na zobrazujícím zařízení
+hádání osobnosti odkrývání
+překlad do jiných jazyků
+parametr na čtení zadání - AI
+
+fetures done
+login
+mazání kvízů
 
 
 
 bugy
+odpočet 3 2 1 i na zařázení hráče.
+Mazání otázek
+není synchronní čas odpočtu
+při změně kvízu se nezmění možnosti zpět
+obrázky v otázce
+nejde spustit rychlí kvíz
+chyba loby
 Malé text přihlášení
 velké tlačítko registrace
 

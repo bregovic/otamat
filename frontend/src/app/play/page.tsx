@@ -124,7 +124,10 @@ function LobbyContent() {
     const handleJoin = () => {
         if (!nickname.trim()) { setError("Zadej přezdívku."); return; }
 
-        const newSocket = io(BACKEND_URL);
+        const newSocket = io(BACKEND_URL, {
+            transports: ['websocket'], // Force websocket to avoid polling SSL issues
+            upgrade: false
+        });
         setSocket(newSocket);
 
         newSocket.emit("joinGame", { pin, nickname, avatar }, (response: { success: boolean, message: string }) => {

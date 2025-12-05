@@ -10,6 +10,19 @@ import { Users, Play, Check } from "lucide-react";
 const BACKEND_URL = "https://otamat-production.up.railway.app";
 // const BACKEND_URL = "http://localhost:4000";
 
+const avatarMap: { [key: string]: string } = {
+    cow: '🐮', fox: '🦊', cat: '🐱', dog: '🐶', lion: '🦁', panda: '🐼', koala: '🐨', pig: '🐷',
+    mouse: '🐭', frog: '🐸', bear: '🐻', tiger: '🐯', rabbit: '🐰', hamster: '🐹', dragon: '🐲', monkey: '🐵',
+    chicken: '🐔', penguin: '🐧', bird: '🐦', duck: '🦆', eagle: '🦅', owl: '🦉', bat: '🦇', wolf: '🐺',
+    boar: '🐗', horse: '🐴', unicorn: '🦄', bee: '🐝', bug: '🐛', butterfly: '🦋', snail: '🐌', beetle: '🐞',
+    ant: '🐜', spider: '🕷', scorpion: '🦂', turtle: '🐢', snake: '🐍', lizard: '🦎', t_rex: '🦖', sauropod: '🦕',
+    octopus: '🐙', squid: '🦑', shrimp: '🦐', lobster: '🦞', crab: '🦀', puffer: '🐡', fish: '🐠', dolphin: '🐬',
+    whale: '🐳', shark: '🦈', crocodile: '🐊', leopard: '🐆', zebra: '🦓', gorilla: '🦍', orangutan: '🦧', elephant: '🐘',
+    hippo: '🦛', rhino: '🦏', camel: '🐫', llama: '🦙', giraffe: '🦒', buffalo: '🐃', ox: '🐂', ram: '🐏',
+    sheep: '🐑', goat: '🐐', deer: '🦌', turkey: '🦃', rooster: '🐓', peacock: '🦚', parrot: '🦜', swan: '🦢',
+    flamingo: '🦩', dove: '🕊', raccoon: '🦝', skunk: '🦨', badger: '🦡', beaver: '🦫', otter: '🦦', sloth: '🦥'
+};
+
 function HostGameContent() {
     const searchParams = useSearchParams();
     const pin = searchParams.get("pin");
@@ -32,7 +45,10 @@ function HostGameContent() {
     useEffect(() => {
         if (!pin) return;
 
-        const newSocket = io(BACKEND_URL);
+        const newSocket = io(BACKEND_URL, {
+            transports: ['websocket'], // Force websocket to avoid polling SSL issues
+            upgrade: false
+        });
         setSocket(newSocket);
 
         newSocket.emit('watchGame', { pin });
@@ -221,13 +237,13 @@ function HostGameContent() {
 
     if (gameStarted && currentQuestion) {
         return (
-            <main className="h-screen flex flex-col p-4">
+            <main className="h-screen max-h-screen w-full overflow-hidden flex flex-col p-2 md:p-4 relative">
                 {/* Header Info */}
-                <div className="flex justify-between items-center mb-4 px-4 w-full max-w-[95vw] mx-auto">
+                <div className="flex justify-between items-center mb-2 px-4 w-full max-w-[95vw] mx-auto shrink-0 z-10">
                     <div className="text-xl font-bold text-gray-400">
                         Otázka {currentQuestion.index} / {currentQuestion.total}
                     </div>
-                    <div className="text-3xl font-bold text-white bg-white/10 px-6 py-2 rounded-xl">
+                    <div className="text-4xl font-black text-white bg-white/10 px-6 py-2 rounded-xl backdrop-blur-md border border-white/10 shadow-lg">
                         {timeLeft}s
                     </div>
                     <div className="text-xl font-bold text-gray-400">
@@ -236,25 +252,34 @@ function HostGameContent() {
                 </div>
 
                 {/* Question & Image Area */}
-                <div className="flex-1 min-h-0 flex flex-col items-center justify-center mb-2 relative">
-                    <div className="glass-card w-full !max-w-[95vw] p-4 flex flex-col items-center justify-center h-full relative overflow-hidden">
-                        <h2 className="text-3xl md:text-5xl font-bold text-center mb-4 leading-tight z-10 text-white drop-shadow-lg shrink-0">
+                <div className="flex-1 min-h-0 flex flex-col items-center justify-center mb-4 relative w-full">
+                    <div className="glass-card w-full !max-w-[95vw] !p-6 flex flex-col items-center justify-center h-full relative overflow-hidden border-white/10 shadow-2xl">
+                        <h2 className="text-3xl md:text-5xl font-black text-center mb-6 leading-tight z-10 text-white drop-shadow-lg shrink-0 max-h-[20vh] overflow-y-auto custom-scrollbar">
                             {currentQuestion.text}
                         </h2>
 
                         {/* Image Placeholder or Actual Image */}
-                        <div className="flex-1 w-full flex items-center justify-center rounded-xl relative overflow-hidden min-h-0">
+                        <div className="flex-1 w-full flex items-center justify-center rounded-xl relative overflow-hidden min-h-0 bg-black/20">
                             {currentQuestion.mediaUrl ? (
-                                <img src={currentQuestion.mediaUrl} alt="Question Media" className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" />
+                                <img
+                                    src={currentQuestion.mediaUrl}
+                                    alt="Question Media"
+                                    className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
+                                />
                             ) : (
-                                <div className="text-white/10 text-9xl font-bold">?</div>
+                                <div className="text-white/10 text-9xl font-bold flex items-center justify-center w-full h-full">
+                                    ?
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
 
                 {/* Options Area - Based on Type */}
-                <div className={`grid gap-4 w-full !max-w-[95vw] mx-auto shrink-0 ${currentQuestion.type === 'TRUE_FALSE' ? 'grid-cols-2' : 'grid-cols-2'}`} style={{ height: '20vh', minHeight: '150px' }}>
+                <div
+                    className={`grid gap-4 w-full !max-w-[95vw] mx-auto shrink-0 ${currentQuestion.type === 'TRUE_FALSE' ? 'grid-cols-2' : 'grid-cols-2'}`}
+                    style={{ height: '25vh', minHeight: '180px', maxHeight: '300px' }}
+                >
                     {currentQuestion.options.map((opt, i) => {
                         const isCorrect = showResults && resultsData?.correctIndex === i;
                         const gradientClass = [
@@ -270,48 +295,46 @@ function HostGameContent() {
                             const bgColor = isTrue ? 'bg-blue-600' : 'bg-red-600';
                             return (
                                 <div key={i} className={`
-                                    rounded-2xl text-3xl md:text-4xl font-bold text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-2 border-white/10
+                                    rounded-2xl text-3xl md:text-5xl font-black text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-4 border-white/10
                                     ${showResults
                                         ? (isCorrect ? 'opacity-100 scale-105 z-10 ring-4 ring-white' : 'opacity-30 grayscale')
                                         : bgColor
                                     }
                                 `}>
                                     <span className="drop-shadow-md">{opt.text}</span>
-                                    {isCorrect && <Check size={48} className="absolute right-8 top-1/2 -translate-y-1/2 text-white drop-shadow-md" />}
+                                    {isCorrect && <Check size={64} className="absolute right-8 top-1/2 -translate-y-1/2 text-white drop-shadow-md" />}
                                 </div>
                             );
                         }
 
                         return (
                             <div key={i} className={`
-                                rounded-2xl text-xl md:text-2xl font-bold text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-2 border-white/10
+                                rounded-2xl text-2xl md:text-3xl font-bold text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-2 border-white/10
                                 ${showResults
-                                    ? (isCorrect ? 'bg-emerald-500 scale-105 z-10' : 'bg-white/5 opacity-30 grayscale')
+                                    ? (isCorrect ? 'bg-emerald-500 scale-105 z-10 ring-4 ring-white' : 'bg-white/5 opacity-30 grayscale')
                                     : `bg-gradient-to-br ${gradientClass}`
                                 }
                             `}>
-                                <span className="absolute left-4 top-4 text-2xl opacity-50 z-20">{['▲', '◆', '●', '■'][i]}</span>
+                                <span className="absolute left-4 top-4 text-2xl opacity-50 z-20 font-black">{['▲', '◆', '●', '■'][i]}</span>
 
                                 {opt.mediaUrl ? (
                                     <div className="w-full h-full absolute inset-0">
-                                        <img src={opt.mediaUrl} alt="Option" className="w-full h-full object-cover" />
-                                        {/* Hide text overlay for Image Guess type if no text provided, or show small caption */}
-                                        {opt.text && currentQuestion.type !== 'IMAGE_GUESS' && (
-                                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-center text-lg backdrop-blur-sm">
-                                                {opt.text}
-                                            </div>
-                                        )}
+                                        <img src={opt.mediaUrl} alt="Option" className="w-full h-full object-cover opacity-60" />
+                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                            <span className="drop-shadow-xl z-10 px-4 text-center">{opt.text}</span>
+                                        </div>
                                     </div>
                                 ) : (
-                                    <span className="z-10 text-center px-8 truncate w-full drop-shadow-md">{opt.text}</span>
+                                    <span className="drop-shadow-md z-10 px-8 text-center">{opt.text}</span>
                                 )}
 
-                                {isCorrect && <Check size={32} className="absolute right-4 top-4 text-white drop-shadow-md z-20" />}
+                                {isCorrect && <Check size={48} className="absolute right-4 top-4 text-white drop-shadow-md z-30" />}
                             </div>
                         );
                     })}
                 </div>
 
+                {/* Results Overlay */}
                 {showResults && (
                     <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-40 flex flex-col items-center justify-center p-8">
                         <h2 className="text-5xl font-bold text-white mb-8">Průběžné výsledky</h2>
@@ -338,6 +361,7 @@ function HostGameContent() {
                     </div>
                 )}
 
+                {/* Countdown Overlay */}
                 {countdown !== null && (
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center">
                         <div className="text-[15rem] font-black text-white animate-pulse">
@@ -421,19 +445,6 @@ function HostGameContent() {
         </main>
     );
 }
-
-const avatarMap: { [key: string]: string } = {
-    cow: '🐮', fox: '🦊', cat: '🐱', dog: '🐶', lion: '🦁', panda: '🐼', koala: '🐨', pig: '🐷',
-    mouse: '🐭', frog: '🐸', bear: '🐻', tiger: '🐯', rabbit: '🐰', hamster: '🐹', dragon: '🐲', monkey: '🐵',
-    chicken: '🐔', penguin: '🐧', bird: '🐦', duck: '🦆', eagle: '🦅', owl: '🦉', bat: '🦇', wolf: '🐺',
-    boar: '🐗', horse: '🐴', unicorn: '🦄', bee: '🐝', bug: '🐛', butterfly: '🦋', snail: '🐌', beetle: '🐞',
-    ant: '🐜', spider: '🕷', scorpion: '🦂', turtle: '🐢', snake: '🐍', lizard: '🦎', t_rex: '🦖', sauropod: '🦕',
-    octopus: '🐙', squid: '🦑', shrimp: '🦐', lobster: '🦞', crab: '🦀', puffer: '🐡', fish: '🐠', dolphin: '🐬',
-    whale: '🐳', shark: '🦈', crocodile: '🐊', leopard: '🐆', zebra: '🦓', gorilla: '🦍', orangutan: '🦧', elephant: '🐘',
-    hippo: '🦛', rhino: '🦏', camel: '🐫', llama: '🦙', giraffe: '🦒', buffalo: '🐃', ox: '🐂', ram: '🐏',
-    sheep: '🐑', goat: '🐐', deer: '🦌', turkey: '🦃', rooster: '🐓', peacock: '🦚', parrot: '🦜', swan: '🦢',
-    flamingo: '🦩', dove: '🕊', raccoon: '🦝', skunk: '🦨', badger: '🦡', beaver: '🦫', otter: '🦦', sloth: '🦥'
-};
 
 export default function HostGamePage() {
     return (

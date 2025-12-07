@@ -56,7 +56,24 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
-    // TODO: Handle player disconnect during game
+
+    // Find game where this player is
+    for (const [pin, game] of this.games.entries()) {
+      const playerIndex = game.players.findIndex(p => p.id === client.id);
+      if (playerIndex !== -1) {
+        // If game is in lobby, remove player
+        if (game.state === 'lobby') {
+          const removedPlayer = game.players[playerIndex];
+          game.players.splice(playerIndex, 1);
+          this.server.to(pin).emit('updatePlayerList', game.players);
+          this.logger.log(`Player ${removedPlayer.nickname} removed from lobby ${pin}`);
+        } else {
+          // TODO: Handle disconnect during active game (maybe mark as disconnected?)
+          this.logger.log(`Player ${game.players[playerIndex].nickname} disconnected from active game ${pin}`);
+        }
+        break;
+      }
+    }
   }
 
   @SubscribeMessage('createGame')

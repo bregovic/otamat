@@ -667,12 +667,12 @@ function CreateQuizContent() {
                                     }
                                     setQuestions(newQuestions);
                                 }}
-                                className="bg-slate-800 text-white border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                style={{ colorScheme: 'dark' }}
+                                className="rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                style={{ backgroundColor: '#1f2937', color: '#ffffff', border: '1px solid #374151' }}
                             >
-                                <option value="MULTIPLE_CHOICE" className="bg-slate-800 text-white">Kvíz (Text)</option>
-                                <option value="IMAGE_GUESS" className="bg-slate-800 text-white">Obrázkový kvíz</option>
-                                <option value="TRUE_FALSE" className="bg-slate-800 text-white">Pravda / Lež</option>
+                                <option value="MULTIPLE_CHOICE" style={{ backgroundColor: '#1f2937', color: '#ffffff' }}>Kvíz (Text)</option>
+                                <option value="IMAGE_GUESS" style={{ backgroundColor: '#1f2937', color: '#ffffff' }}>Obrázkový kvíz</option>
+                                <option value="TRUE_FALSE" style={{ backgroundColor: '#1f2937', color: '#ffffff' }}>Pravda / Lež</option>
                             </select>
                         </div>
 

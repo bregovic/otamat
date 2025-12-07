@@ -32,6 +32,7 @@ export default function DashboardPage() {
         try {
             const res = await fetch(`${BACKEND_URL}/quiz/my`, {
                 headers: { Authorization: `Bearer ${token}` },
+                credentials: 'include',
             });
             if (res.ok) {
                 const data = await res.json();

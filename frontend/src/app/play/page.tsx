@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { Loader2, Check, X } from "lucide-react";
@@ -38,11 +38,14 @@ function LobbyContent() {
     const [players, setPlayers] = useState<any[]>([]);
 
     // Game State
-    const [currentQuestion, setCurrentQuestion] = useState<{ index: number, total: number, timeLimit: number, type?: string, options?: { text: string, mediaUrl?: string }[] } | null>(null);
+    const [currentQuestion, setCurrentQuestion] = useState<{ index: number, total: number, timeLimit: number, endTime?: number, type?: string, options?: { text: string, mediaUrl?: string }[] } | null>(null);
     const [answerSubmitted, setAnswerSubmitted] = useState<number | null>(null);
     const [result, setResult] = useState<{ correct: boolean, points: number, rank: number } | null>(null);
     const [showResultScreen, setShowResultScreen] = useState(false);
     const [score, setScore] = useState(0);
+
+    // Prevent double submission
+    const isSubmitting = useRef(false);
 
     // Timer State
     const [timeLeft, setTimeLeft] = useState(0);
@@ -54,10 +57,25 @@ function LobbyContent() {
     }, [pinFromUrl]);
 
     useEffect(() => {
-        if (step !== 'game' || timeLeft <= 0 || showResultScreen) return;
-        const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+        if (step !== 'game' || showResultScreen || !currentQuestion) return;
+
+        const updateTimer = () => {
+            if (currentQuestion.endTime) {
+                const now = Date.now();
+                const remaining = Math.max(0, Math.ceil((currentQuestion.endTime - now) / 1000));
+                setTimeLeft(remaining);
+            } else {
+                // Fallback for old behavior
+                setTimeLeft(prev => Math.max(0, prev - 1));
+            }
+        };
+
+        // Update immediately
+        updateTimer();
+
+        const timer = setInterval(updateTimer, 1000);
         return () => clearInterval(timer);
-    }, [timeLeft, step, showResultScreen]);
+    }, [step, showResultScreen, currentQuestion]);
 
     useEffect(() => {
         if (!socket) return;
@@ -76,11 +94,13 @@ function LobbyContent() {
                 index: data.questionIndex,
                 total: data.totalQuestions,
                 timeLimit: data.timeLimit,
+                endTime: data.endTime,
                 type: data.type,
                 options: data.options
             });
-            setTimeLeft(data.timeLimit); // Start timer
+            setTimeLeft(data.timeLimit); // Initial display
             setAnswerSubmitted(null);
+            isSubmitting.current = false; // Reset submission lock
             setShowResultScreen(false);
             setResult(null);
         });
@@ -142,7 +162,9 @@ function LobbyContent() {
     };
 
     const submitAnswer = (index: number) => {
-        if (!socket || answerSubmitted !== null) return;
+        if (!socket || answerSubmitted !== null || isSubmitting.current) return;
+
+        isSubmitting.current = true;
         setAnswerSubmitted(index);
         socket.emit("submitAnswer", { pin, answerIndex: index });
     };

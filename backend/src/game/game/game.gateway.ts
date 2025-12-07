@@ -465,7 +465,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     game.questionStartTime = Date.now();
 
     const question = game.questions[game.currentQuestionIndex];
-    const timeLimit = 30; // 30 seconds per question
+    const timeLimit = question.timeLimit || 30; // Use question time limit or default 30
+    const endTime = Date.now() + timeLimit * 1000;
 
     // Send question to everyone (Players get options count, Host gets text)
     this.server.to(pin).emit('questionStart', {
@@ -475,7 +476,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       mediaUrl: question.mediaUrl,
       type: question.type,
       options: question.options,
-      timeLimit: timeLimit
+      timeLimit: timeLimit,
+      endTime: endTime
     });
 
     // Start Timer

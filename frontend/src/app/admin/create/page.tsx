@@ -13,6 +13,7 @@ const BACKEND_URL = "https://otamat-production.up.railway.app";
 // const BACKEND_URL = "http://localhost:4000";
 
 // Image Editor Component
+// Image Editor Component
 function ImageEditorModal({ src, onSave, onCancel, aspectRatio }: { src: string, onSave: (data: string) => void, onCancel: () => void, aspectRatio: number }) {
     const [zoom, setZoom] = useState(1);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -43,7 +44,7 @@ function ImageEditorModal({ src, onSave, onCancel, aspectRatio }: { src: string,
         if (!ctx) return;
 
         // Set canvas size (fixed preview size)
-        const PREVIEW_WIDTH = 600;
+        const PREVIEW_WIDTH = 800; // Increased resolution
         const PREVIEW_HEIGHT = PREVIEW_WIDTH / aspectRatio;
         canvas.width = PREVIEW_WIDTH;
         canvas.height = PREVIEW_HEIGHT;
@@ -93,59 +94,84 @@ function ImageEditorModal({ src, onSave, onCancel, aspectRatio }: { src: string,
         setIsDragging(false);
     };
 
+    const handleWheel = (e: React.WheelEvent) => {
+        e.stopPropagation();
+        // Calculate new zoom
+        const delta = -e.deltaY * 0.001;
+        const newZoom = Math.min(Math.max(1, zoom + delta), 5);
+        setZoom(newZoom);
+    };
+
+    const handleReset = () => {
+        setZoom(1);
+        setOffset({ x: 0, y: 0 });
+    };
+
     const handleSave = () => {
         const canvas = canvasRef.current;
         if (canvas) {
-            onSave(canvas.toDataURL('image/jpeg', 0.8));
+            onSave(canvas.toDataURL('image/jpeg', 0.9));
         }
     };
 
     return (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-4xl w-full flex flex-col gap-6 shadow-2xl">
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-slate-900/90 border border-white/10 rounded-3xl p-8 max-w-5xl w-full flex flex-col gap-8 shadow-2xl ring-1 ring-white/10">
                 <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                        <Move size={24} /> Úprava obrázku
-                    </h2>
-                    <button onClick={onCancel} className="text-gray-400 hover:text-white transition-colors">
-                        <X size={24} />
+                    <div>
+                        <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+                            <Move className="text-blue-400" size={32} /> Úprava obrázku
+                        </h2>
+                        <p className="text-gray-400 mt-1">Posunutím a přiblížením vyberte výřez</p>
+                    </div>
+                    <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white">
+                        <X size={28} />
                     </button>
                 </div>
 
-                <div className="relative bg-black/50 rounded-xl overflow-hidden border border-white/10 cursor-move touch-none select-none"
+                <div className="relative bg-black/50 rounded-2xl overflow-hidden border border-white/10 cursor-move touch-none select-none group"
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
-                    style={{ height: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onWheel={handleWheel}
+                    style={{ height: '55vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundImage: 'radial-gradient(#333 1px, transparent 1px)', backgroundSize: '20px 20px' }}
                 >
-                    <canvas ref={canvasRef} className="max-w-full max-h-full shadow-lg" />
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 px-4 py-2 rounded-full text-white/70 text-sm pointer-events-none backdrop-blur-md">
-                        Tažením posunete • Kolečkem přiblížíte
+                    <canvas ref={canvasRef} className="max-w-full max-h-full shadow-2xl" />
+
+                    {/* Overlay controls */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/80 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <ZoomIn size={20} className="text-blue-400" />
+                        <input
+                            type="range"
+                            min="1"
+                            max="5"
+                            step="0.1"
+                            value={zoom}
+                            onChange={(e) => setZoom(parseFloat(e.target.value))}
+                            className="w-48 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        />
+                        <span className="text-white font-mono w-12 text-right">{Math.round(zoom * 100)}%</span>
+                        <div className="w-px h-6 bg-white/20 mx-2"></div>
+                        <button onClick={handleReset} className="text-xs font-bold text-gray-300 hover:text-white uppercase tracking-wider hover:underline">
+                            Reset
+                        </button>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4 bg-white/5 p-4 rounded-xl">
-                    <ZoomIn size={20} className="text-gray-400" />
-                    <input
-                        type="range"
-                        min="1"
-                        max="3"
-                        step="0.1"
-                        value={zoom}
-                        onChange={(e) => setZoom(parseFloat(e.target.value))}
-                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                    />
-                    <span className="text-white font-mono w-12 text-right">{Math.round(zoom * 100)}%</span>
-                </div>
-
-                <div className="flex justify-end gap-4">
-                    <button onClick={onCancel} className="px-6 py-3 rounded-xl text-gray-300 hover:bg-white/10 transition-colors font-medium">
-                        Zrušit
-                    </button>
-                    <button onClick={handleSave} className="px-8 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-500/20 transition-all transform hover:scale-105 flex items-center gap-2">
-                        <Check size={20} /> Použít obrázek
-                    </button>
+                <div className="flex justify-between items-center">
+                    <div className="text-sm text-gray-500 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                        Kolečkem myši přiblížíte
+                    </div>
+                    <div className="flex gap-4">
+                        <button onClick={onCancel} className="px-6 py-3 rounded-xl text-gray-300 hover:bg-white/10 transition-colors font-medium">
+                            Zrušit
+                        </button>
+                        <button onClick={handleSave} className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-blue-500/20 transition-all transform hover:scale-105 flex items-center gap-2">
+                            <Check size={20} /> Použít obrázek
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

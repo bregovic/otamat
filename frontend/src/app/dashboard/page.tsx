@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
-import { Plus, Play, Edit, Trash2, Loader2 } from "lucide-react";
+import { Plus, Play, Edit, Trash2, Loader2, Download, Upload } from "lucide-react";
 import { io } from "socket.io-client";
+import { exportQuizToExcel, importQuizFromExcel } from "../../utils/excel";
 
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
@@ -15,6 +16,8 @@ export default function DashboardPage() {
     const [quizzes, setQuizzes] = useState<any[]>([]);
     const [loadingQuizzes, setLoadingQuizzes] = useState(true);
     const [startingGameId, setStartingGameId] = useState<string | null>(null);
+    const [isImporting, setIsImporting] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!isLoading && !user) {
@@ -82,6 +85,64 @@ export default function DashboardPage() {
         router.push(`/admin/create?edit=${quizId}`);
     };
 
+    const handleExport = async (quizId: string) => {
+        try {
+            // Fetch full quiz data first
+            const res = await fetch(`${BACKEND_URL}/quiz/${quizId}`);
+            if (!res.ok) throw new Error("Failed to fetch quiz details");
+            const quiz = await res.json();
+
+            exportQuizToExcel(quiz);
+        } catch (err) {
+            console.error("Export failed:", err);
+            alert("Nepodařilo se exportovat kvíz.");
+        }
+    };
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsImporting(true);
+        try {
+            const quizData = await importQuizFromExcel(file);
+
+            // Save via Socket (reusing existing logic)
+            const socket = io(BACKEND_URL);
+            const payload = {
+                title: quizData.title,
+                description: quizData.description,
+                coverImage: quizData.coverImage,
+                questions: quizData.questions,
+                isPublic: quizData.isPublic,
+                userId: user?.id
+            };
+
+            socket.emit("saveQuiz", payload, (response: { success: boolean, message: string }) => {
+                socket.disconnect();
+                setIsImporting(false);
+                if (response.success) {
+                    alert("Kvíz byl úspěšně importován!");
+                    fetchMyQuizzes();
+                } else {
+                    alert("Chyba při importu: " + response.message);
+                }
+            });
+
+        } catch (err) {
+            console.error("Import failed:", err);
+            alert("Nepodařilo se importovat soubor. Ujistěte se, že má správný formát.");
+            setIsImporting(false);
+        }
+
+        // Reset input
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
     if (isLoading || !user) {
         return (
             <div className="flex min-h-screen items-center justify-center">
@@ -103,6 +164,17 @@ export default function DashboardPage() {
                         <a href="/otamat/" className="btn btn-secondary">
                             Zpět domů
                         </a>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            accept=".xlsx, .xls"
+                            className="hidden"
+                        />
+                        <button onClick={handleImportClick} disabled={isImporting} className="btn btn-secondary flex items-center gap-2">
+                            {isImporting ? <Loader2 className="animate-spin" size={20} /> : <Upload size={20} />}
+                            Importovat
+                        </button>
                         <a href="/otamat/admin/create" className="btn btn-primary flex items-center gap-2">
                             <Plus size={20} /> Vytvořit nový kvíz
                         </a>
@@ -157,6 +229,13 @@ export default function DashboardPage() {
                                             {quiz._count?.questions || 0} otázek
                                         </div>
                                         <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleExport(quiz.id)}
+                                                className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                                title="Exportovat do Excelu"
+                                            >
+                                                <Download size={20} />
+                                            </button>
                                             <button
                                                 onClick={() => handleStartGame(quiz.id)}
                                                 disabled={startingGameId === quiz.id}

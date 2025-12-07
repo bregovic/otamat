@@ -192,7 +192,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         mediaUrl: q.mediaUrl,
         options: sortedOptions.map(o => ({ text: o.text, mediaUrl: o.imageUrl })),
         correct: sortedOptions.findIndex(o => o.isCorrect),
-        timeLimit: q.timeLimit || 30
+        timeLimit: q.timeLimit || 30,
+        type: q.type
       };
     });
 

@@ -1,11 +1,18 @@
 import * as XLSX from 'xlsx';
 
 export const exportQuizToExcel = (quiz: any) => {
+    // Helper to safe string
+    const safeString = (str: string) => {
+        if (!str) return "";
+        if (str.length > 32000) return "[IMAGE TOO LARGE FOR EXCEL]";
+        return str;
+    };
+
     // 1. Quiz Info Sheet
     const quizInfo = [{
         Title: quiz.title,
         Description: quiz.description || "",
-        CoverImage: quiz.coverImage || "",
+        CoverImage: safeString(quiz.coverImage),
         IsPublic: quiz.isPublic ? "Yes" : "No"
     }];
 
@@ -15,7 +22,7 @@ export const exportQuizToExcel = (quiz: any) => {
             Question: q.text,
             Type: q.type,
             TimeLimit: q.timeLimit,
-            Image: q.mediaUrl || ""
+            Image: safeString(q.mediaUrl)
         };
 
         // Add options
@@ -24,7 +31,7 @@ export const exportQuizToExcel = (quiz: any) => {
                 row[`Option ${i + 1}`] = opt.text;
                 row[`Option ${i + 1} Correct`] = opt.isCorrect ? "Yes" : "No";
                 if (opt.imageUrl) {
-                    row[`Option ${i + 1} Image`] = opt.imageUrl;
+                    row[`Option ${i + 1} Image`] = safeString(opt.imageUrl);
                 }
             });
         }

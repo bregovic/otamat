@@ -112,3 +112,44 @@ export const importQuizFromExcel = async (file: File): Promise<any> => {
         reader.readAsArrayBuffer(file);
     });
 };
+
+export const downloadTemplate = () => {
+    // 1. Quiz Info Sheet Template
+    const quizInfo = [{
+        Title: "Název kvízu",
+        Description: "Popis kvízu (volitelné)",
+        CoverImage: "URL obrázku (volitelné)",
+        IsPublic: "No"
+    }];
+
+    // 2. Questions Sheet Template
+    const questions = [{
+        Question: "Příklad otázky?",
+        Type: "MULTIPLE_CHOICE",
+        TimeLimit: 30,
+        Image: "",
+        "Option 1": "Možnost A",
+        "Option 1 Correct": "Yes",
+        "Option 1 Image": "",
+        "Option 2": "Možnost B",
+        "Option 2 Correct": "No",
+        "Option 2 Image": "",
+        "Option 3": "",
+        "Option 3 Correct": "",
+        "Option 3 Image": "",
+        "Option 4": "",
+        "Option 4 Correct": "",
+        "Option 4 Image": ""
+    }];
+
+    const wb = XLSX.utils.book_new();
+
+    const wsInfo = XLSX.utils.json_to_sheet(quizInfo);
+    XLSX.utils.book_append_sheet(wb, wsInfo, "Quiz Info");
+
+    const wsQuestions = XLSX.utils.json_to_sheet(questions);
+    XLSX.utils.book_append_sheet(wb, wsQuestions, "Questions");
+
+    // Generate file
+    XLSX.writeFile(wb, "sablona_kvizu.xlsx");
+};

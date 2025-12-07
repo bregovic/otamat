@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
-import { Plus, Play, Edit, Trash2, Loader2, Download, Upload } from "lucide-react";
+import { Plus, Play, Edit, Trash2, Loader2, Download, Upload, FileSpreadsheet } from "lucide-react";
 import { io } from "socket.io-client";
-import { exportQuizToExcel, importQuizFromExcel } from "../../utils/excel";
+import { exportQuizToExcel, importQuizFromExcel, downloadTemplate } from "../../utils/excel";
 
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
@@ -171,6 +171,9 @@ export default function DashboardPage() {
                             accept=".xlsx, .xls"
                             className="hidden"
                         />
+                        <button onClick={downloadTemplate} className="btn btn-secondary flex items-center gap-2" title="Stáhnout šablonu pro import">
+                            <FileSpreadsheet size={20} /> Šablona
+                        </button>
                         <button onClick={handleImportClick} disabled={isImporting} className="btn btn-secondary flex items-center gap-2">
                             {isImporting ? <Loader2 className="animate-spin" size={20} /> : <Upload size={20} />}
                             Importovat

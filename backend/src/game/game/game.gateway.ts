@@ -375,8 +375,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const game = this.games.get(data.pin);
     if (!game) return { success: false, message: 'Hra neexistuje.' };
-    if (game.state !== 'lobby') return { success: false, message: 'Hra už běží.' };
-
     // Check if player already exists by ID (reconnect)
     const existingPlayerById = game.players.find(p => p.id === client.id);
     if (existingPlayerById) {
@@ -385,6 +383,33 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       existingPlayerById.avatar = data.avatar;
       client.join(data.pin);
       this.server.to(data.pin).emit('updatePlayerList', game.players);
+
+      // If game is running, sync state for reconnecting player
+      if (game.state === 'question') {
+        const question = game.questions[game.currentQuestionIndex];
+        const timeLimit = question.timeLimit || 30;
+        const endTime = game.questionStartTime + timeLimit * 1000;
+
+        client.emit('questionStart', {
+          questionIndex: game.currentQuestionIndex + 1,
+          totalQuestions: game.questions.length,
+          text: question.text,
+          mediaUrl: question.mediaUrl,
+          type: question.type,
+          options: question.options,
+          timeLimit: timeLimit,
+          endTime: endTime
+        });
+      } else if (game.state === 'results') {
+        const question = game.questions[game.currentQuestionIndex];
+        client.emit('questionEnd', {
+          correctIndex: question.correct,
+          players: game.players
+        });
+      } else if (game.state === 'finished') {
+        client.emit('gameOver', { players: game.players });
+      }
+
       return { success: true, playerId: client.id };
     }
 
@@ -403,6 +428,32 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     this.server.to(data.pin).emit('playerJoined', player);
     this.server.to(data.pin).emit('updatePlayerList', game.players);
+
+    // Sync state for new player joining mid-game
+    if (game.state === 'question') {
+      const question = game.questions[game.currentQuestionIndex];
+      const timeLimit = question.timeLimit || 30;
+      const endTime = game.questionStartTime + timeLimit * 1000;
+
+      client.emit('questionStart', {
+        questionIndex: game.currentQuestionIndex + 1,
+        totalQuestions: game.questions.length,
+        text: question.text,
+        mediaUrl: question.mediaUrl,
+        type: question.type,
+        options: question.options,
+        timeLimit: timeLimit,
+        endTime: endTime
+      });
+    } else if (game.state === 'results') {
+      const question = game.questions[game.currentQuestionIndex];
+      client.emit('questionEnd', {
+        correctIndex: question.correct,
+        players: game.players
+      });
+    } else if (game.state === 'finished') {
+      client.emit('gameOver', { players: game.players });
+    }
 
     return { success: true, playerId: client.id };
   }

@@ -286,263 +286,264 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 mediaUrl: q.mediaUrl, // Add mediaUrl
                 order: index,
                 timeLimit: q.timeLimit || 15,
-                create: q.options.map((opt: any, optIndex: number) => {
-                  const text = typeof opt === 'string' ? opt : (opt.text || "");
-                  const imageUrl = typeof opt === 'string' ? null : (opt.mediaUrl || opt.imageUrl);
-                  // Use explicit isCorrect if available (from Excel import), otherwise fallback to index comparison
-                  const isCorrect = (typeof opt === 'object' && opt.isCorrect !== undefined)
-                    ? opt.isCorrect
-                    : optIndex === q.correct;
+                options: {
+                  create: q.options.map((opt: any, optIndex: number) => {
+                    const text = typeof opt === 'string' ? opt : (opt.text || "");
+                    const imageUrl = typeof opt === 'string' ? null : (opt.mediaUrl || opt.imageUrl);
+                    // Use explicit isCorrect if available (from Excel import), otherwise fallback to index comparison
+                    const isCorrect = (typeof opt === 'object' && opt.isCorrect !== undefined)
+                      ? opt.isCorrect
+                      : optIndex === q.correct;
 
-                  return {
-                    text: String(text),
-                    imageUrl: imageUrl,
-                    isCorrect: isCorrect,
-                    order: optIndex
-                  };
-                })
-              }
+                    return {
+                      text: String(text),
+                      imageUrl: imageUrl,
+                      isCorrect: isCorrect,
+                      order: optIndex
+                    };
+                  })
+                }
               }))
-      }
-    }
+            }
+          }
         });
         return { success: true, message: 'Kvíz byl úspěšně aktualizován.', quizId: quizId };
       } else {
-  const newQuiz = await this.prisma.quiz.create({
-    data: {
-      title: title,
-      coverImage: (data as any).coverImage, // Add coverImage
-      isPublic: isPublic || false,
-      authorId: host.id,
-      questions: {
-        create: questions.map((q, index) => ({
-          text: q.text,
-          type: q.type || 'MULTIPLE_CHOICE',
-          mediaUrl: q.mediaUrl, // Add mediaUrl
-          order: index,
-          timeLimit: q.timeLimit || 15,
-          options: {
-            create: q.options.map((opt: any, optIndex: number) => {
-              const text = typeof opt === 'string' ? opt : (opt.text || "");
-              const imageUrl = typeof opt === 'string' ? null : (opt.mediaUrl || opt.imageUrl);
-              // Use explicit isCorrect if available (from Excel import), otherwise fallback to index comparison
-              const isCorrect = (typeof opt === 'object' && opt.isCorrect !== undefined)
-                ? opt.isCorrect
-                : optIndex === q.correct;
+        const newQuiz = await this.prisma.quiz.create({
+          data: {
+            title: title,
+            coverImage: (data as any).coverImage, // Add coverImage
+            isPublic: isPublic || false,
+            authorId: host.id,
+            questions: {
+              create: questions.map((q, index) => ({
+                text: q.text,
+                type: q.type || 'MULTIPLE_CHOICE',
+                mediaUrl: q.mediaUrl, // Add mediaUrl
+                order: index,
+                timeLimit: q.timeLimit || 15,
+                options: {
+                  create: q.options.map((opt: any, optIndex: number) => {
+                    const text = typeof opt === 'string' ? opt : (opt.text || "");
+                    const imageUrl = typeof opt === 'string' ? null : (opt.mediaUrl || opt.imageUrl);
+                    // Use explicit isCorrect if available (from Excel import), otherwise fallback to index comparison
+                    const isCorrect = (typeof opt === 'object' && opt.isCorrect !== undefined)
+                      ? opt.isCorrect
+                      : optIndex === q.correct;
 
-              return {
-                text: String(text),
-                imageUrl: imageUrl,
-                isCorrect: isCorrect,
-                order: optIndex
-              };
-            })
+                    return {
+                      text: String(text),
+                      imageUrl: imageUrl,
+                      isCorrect: isCorrect,
+                      order: optIndex
+                    };
+                  })
+                }
+              }))
+            }
           }
-        }))
+        });
+        return { success: true, message: 'Kvíz byl úspěšně uložen.', quizId: newQuiz.id };
       }
-    }
-  });
-  return { success: true, message: 'Kvíz byl úspěšně uložen.', quizId: newQuiz.id };
-}
     } catch (error: any) {
-  console.error("Error saving quiz:", error);
-  return { success: false, message: 'Chyba při ukládání do databáze: ' + (error.message || error) };
-}
+      console.error("Error saving quiz:", error);
+      return { success: false, message: 'Chyba při ukládání do databáze: ' + (error.message || error) };
+    }
   }
 
-@SubscribeMessage('watchGame')
-handleWatchGame(
-  @MessageBody() data: { pin: string },
-  @ConnectedSocket() client: Socket,
-) {
-  const game = this.games.get(data.pin);
-  if (!game) return { success: false, message: 'Hra neexistuje.' };
+  @SubscribeMessage('watchGame')
+  handleWatchGame(
+    @MessageBody() data: { pin: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const game = this.games.get(data.pin);
+    if (!game) return { success: false, message: 'Hra neexistuje.' };
 
-  client.join(data.pin);
-  this.logger.log(`Client ${client.id} watching game ${data.pin}`);
-
-  // Send current state immediately
-  client.emit('updatePlayerList', game.players);
-
-  return { success: true };
-}
-
-@SubscribeMessage('joinGame')
-handleJoinGame(
-  @MessageBody() data: { pin: string; nickname: string; avatar: string },
-  @ConnectedSocket() client: Socket,
-) {
-  const game = this.games.get(data.pin);
-  if (!game) return { success: false, message: 'Hra neexistuje.' };
-  if (game.state !== 'lobby') return { success: false, message: 'Hra už běží.' };
-
-  // Check if player already exists by ID (reconnect)
-  const existingPlayerById = game.players.find(p => p.id === client.id);
-  if (existingPlayerById) {
-    // Update info just in case
-    existingPlayerById.nickname = data.nickname;
-    existingPlayerById.avatar = data.avatar;
     client.join(data.pin);
+    this.logger.log(`Client ${client.id} watching game ${data.pin}`);
+
+    // Send current state immediately
+    client.emit('updatePlayerList', game.players);
+
+    return { success: true };
+  }
+
+  @SubscribeMessage('joinGame')
+  handleJoinGame(
+    @MessageBody() data: { pin: string; nickname: string; avatar: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const game = this.games.get(data.pin);
+    if (!game) return { success: false, message: 'Hra neexistuje.' };
+    if (game.state !== 'lobby') return { success: false, message: 'Hra už běží.' };
+
+    // Check if player already exists by ID (reconnect)
+    const existingPlayerById = game.players.find(p => p.id === client.id);
+    if (existingPlayerById) {
+      // Update info just in case
+      existingPlayerById.nickname = data.nickname;
+      existingPlayerById.avatar = data.avatar;
+      client.join(data.pin);
+      this.server.to(data.pin).emit('updatePlayerList', game.players);
+      return { success: true, playerId: client.id };
+    }
+
+    // Check if nickname exists and uniquify if needed
+    let nickname = data.nickname;
+    let counter = 2;
+    while (game.players.some(p => p.nickname === nickname)) {
+      nickname = `${data.nickname} ${counter}`;
+      counter++;
+    }
+
+    client.join(data.pin);
+
+    const player = { id: client.id, nickname: nickname, avatar: data.avatar, score: 0 };
+    game.players.push(player);
+
+    this.server.to(data.pin).emit('playerJoined', player);
     this.server.to(data.pin).emit('updatePlayerList', game.players);
+
     return { success: true, playerId: client.id };
   }
 
-  // Check if nickname exists and uniquify if needed
-  let nickname = data.nickname;
-  let counter = 2;
-  while (game.players.some(p => p.nickname === nickname)) {
-    nickname = `${data.nickname} ${counter}`;
-    counter++;
+
+
+  @SubscribeMessage('startGame')
+  handleStartGame(@MessageBody() data: { pin: string }) {
+    const game = this.games.get(data.pin);
+    if (!game) return { success: false };
+
+    this.logger.log(`Starting game ${data.pin}`);
+    this.startCountdown(data.pin);
+    return { success: true };
   }
 
-  client.join(data.pin);
-
-  const player = { id: client.id, nickname: nickname, avatar: data.avatar, score: 0 };
-  game.players.push(player);
-
-  this.server.to(data.pin).emit('playerJoined', player);
-  this.server.to(data.pin).emit('updatePlayerList', game.players);
-
-  return { success: true, playerId: client.id };
-}
-
-
-
-@SubscribeMessage('startGame')
-handleStartGame(@MessageBody() data: { pin: string }) {
-  const game = this.games.get(data.pin);
-  if (!game) return { success: false };
-
-  this.logger.log(`Starting game ${data.pin}`);
-  this.startCountdown(data.pin);
-  return { success: true };
-}
-
-@SubscribeMessage('nextQuestion')
-handleNextQuestion(@MessageBody() data: { pin: string }) {
-  const game = this.games.get(data.pin);
-  if (!game) return;
-  this.startCountdown(data.pin);
-}
+  @SubscribeMessage('nextQuestion')
+  handleNextQuestion(@MessageBody() data: { pin: string }) {
+    const game = this.games.get(data.pin);
+    if (!game) return;
+    this.startCountdown(data.pin);
+  }
 
   private startCountdown(pin: string) {
-  const game = this.games.get(pin);
-  if (!game) return;
+    const game = this.games.get(pin);
+    if (!game) return;
 
-  // If this is the last question (current index is length - 1), skip countdown and finish immediately
-  // Note: currentQuestionIndex is incremented inside nextQuestion, so we check if we are at the end
-  if (game.currentQuestionIndex >= game.questions.length - 1) {
-    this.nextQuestion(pin);
-    return;
-  }
-
-  this.server.to(pin).emit('countdownStart', { duration: 3 });
-  setTimeout(() => {
-    this.nextQuestion(pin);
-  }, 3000);
-}
-
-@SubscribeMessage('submitAnswer')
-handleSubmitAnswer(
-  @MessageBody() data: { pin: string; answerIndex: number },
-  @ConnectedSocket() client: Socket
-) {
-  const game = this.games.get(data.pin);
-  if (!game || game.state !== 'question') return;
-
-  // Record answer
-  if (!game.answers.has(client.id)) {
-    game.answers.set(client.id, { index: data.answerIndex, time: Date.now() });
-
-    // Notify host about answer count update
-    this.server.to(data.pin).emit('answerSubmitted', { count: game.answers.size, total: game.players.length });
-
-    // Check if all players answered
-    if (game.answers.size === game.players.length) {
-      this.finishQuestion(data.pin);
+    // If this is the last question (current index is length - 1), skip countdown and finish immediately
+    // Note: currentQuestionIndex is incremented inside nextQuestion, so we check if we are at the end
+    if (game.currentQuestionIndex >= game.questions.length - 1) {
+      this.nextQuestion(pin);
+      return;
     }
-  }
-}
 
-  private nextQuestion(pin: string) {
-  const game = this.games.get(pin);
-  if (!game) return;
-
-  game.currentQuestionIndex++;
-
-  if (game.currentQuestionIndex >= game.questions.length) {
-    // Game Over
-    game.state = 'finished';
-    this.server.to(pin).emit('gameOver', { players: game.players }); // Send final scores
-    return;
+    this.server.to(pin).emit('countdownStart', { duration: 3 });
+    setTimeout(() => {
+      this.nextQuestion(pin);
+    }, 3000);
   }
 
-  game.state = 'question';
-  game.answers.clear();
-  game.questionStartTime = Date.now();
+  @SubscribeMessage('submitAnswer')
+  handleSubmitAnswer(
+    @MessageBody() data: { pin: string; answerIndex: number },
+    @ConnectedSocket() client: Socket
+  ) {
+    const game = this.games.get(data.pin);
+    if (!game || game.state !== 'question') return;
 
-  const question = game.questions[game.currentQuestionIndex];
-  const timeLimit = question.timeLimit || 30; // Use question time limit or default 30
-  const endTime = Date.now() + timeLimit * 1000;
+    // Record answer
+    if (!game.answers.has(client.id)) {
+      game.answers.set(client.id, { index: data.answerIndex, time: Date.now() });
 
-  // Send question to everyone (Players get options count, Host gets text)
-  this.server.to(pin).emit('questionStart', {
-    questionIndex: game.currentQuestionIndex + 1,
-    totalQuestions: game.questions.length,
-    text: question.text,
-    mediaUrl: question.mediaUrl,
-    type: question.type,
-    options: question.options,
-    timeLimit: timeLimit,
-    endTime: endTime
-  });
+      // Notify host about answer count update
+      this.server.to(data.pin).emit('answerSubmitted', { count: game.answers.size, total: game.players.length });
 
-  // Start Timer
-  if (game.timer) clearTimeout(game.timer);
-  game.timer = setTimeout(() => {
-    this.finishQuestion(pin);
-  }, timeLimit * 1000);
-}
-
-  private finishQuestion(pin: string) {
-  const game = this.games.get(pin);
-  if (!game || game.state !== 'question') return;
-
-  if (game.timer) clearTimeout(game.timer);
-  game.state = 'results';
-
-  const currentQ = game.questions[game.currentQuestionIndex];
-  const correctIndex = currentQ.correct;
-  const timeLimit = 30 * 1000; // 30s in ms
-
-  // Calculate scores
-  game.answers.forEach((answer, playerId) => {
-    if (answer.index === correctIndex) {
-      const player = game.players.find(p => p.id === playerId);
-      if (player) {
-        // Calculate score based on speed
-        const timeTaken = answer.time - game.questionStartTime;
-        // Formula: 1000 * (1 - (timeTaken / timeLimit) / 2)
-        // If timeTaken = 0, score = 1000
-        // If timeTaken = timeLimit, score = 500
-        let score = Math.round(1000 * (1 - (timeTaken / timeLimit) / 2));
-        if (score < 500) score = 500; // Minimum points for correct answer
-        if (score > 1000) score = 1000; // Cap at 1000
-
-        player.score += score;
+      // Check if all players answered
+      if (game.answers.size === game.players.length) {
+        this.finishQuestion(data.pin);
       }
     }
-  });
+  }
 
-  // Send results
-  this.server.to(pin).emit('questionEnd', {
-    correctIndex: correctIndex,
-    players: game.players // Send updated scores
-  });
+  private nextQuestion(pin: string) {
+    const game = this.games.get(pin);
+    if (!game) return;
 
-  // Wait for host to trigger next question
-  // game.timer = setTimeout(() => {
-  //   this.nextQuestion(pin);
-  // }, 5000);
-}
+    game.currentQuestionIndex++;
+
+    if (game.currentQuestionIndex >= game.questions.length) {
+      // Game Over
+      game.state = 'finished';
+      this.server.to(pin).emit('gameOver', { players: game.players }); // Send final scores
+      return;
+    }
+
+    game.state = 'question';
+    game.answers.clear();
+    game.questionStartTime = Date.now();
+
+    const question = game.questions[game.currentQuestionIndex];
+    const timeLimit = question.timeLimit || 30; // Use question time limit or default 30
+    const endTime = Date.now() + timeLimit * 1000;
+
+    // Send question to everyone (Players get options count, Host gets text)
+    this.server.to(pin).emit('questionStart', {
+      questionIndex: game.currentQuestionIndex + 1,
+      totalQuestions: game.questions.length,
+      text: question.text,
+      mediaUrl: question.mediaUrl,
+      type: question.type,
+      options: question.options,
+      timeLimit: timeLimit,
+      endTime: endTime
+    });
+
+    // Start Timer
+    if (game.timer) clearTimeout(game.timer);
+    game.timer = setTimeout(() => {
+      this.finishQuestion(pin);
+    }, timeLimit * 1000);
+  }
+
+  private finishQuestion(pin: string) {
+    const game = this.games.get(pin);
+    if (!game || game.state !== 'question') return;
+
+    if (game.timer) clearTimeout(game.timer);
+    game.state = 'results';
+
+    const currentQ = game.questions[game.currentQuestionIndex];
+    const correctIndex = currentQ.correct;
+    const timeLimit = 30 * 1000; // 30s in ms
+
+    // Calculate scores
+    game.answers.forEach((answer, playerId) => {
+      if (answer.index === correctIndex) {
+        const player = game.players.find(p => p.id === playerId);
+        if (player) {
+          // Calculate score based on speed
+          const timeTaken = answer.time - game.questionStartTime;
+          // Formula: 1000 * (1 - (timeTaken / timeLimit) / 2)
+          // If timeTaken = 0, score = 1000
+          // If timeTaken = timeLimit, score = 500
+          let score = Math.round(1000 * (1 - (timeTaken / timeLimit) / 2));
+          if (score < 500) score = 500; // Minimum points for correct answer
+          if (score > 1000) score = 1000; // Cap at 1000
+
+          player.score += score;
+        }
+      }
+    });
+
+    // Send results
+    this.server.to(pin).emit('questionEnd', {
+      correctIndex: correctIndex,
+      players: game.players // Send updated scores
+    });
+
+    // Wait for host to trigger next question
+    // game.timer = setTimeout(() => {
+    //   this.nextQuestion(pin);
+    // }, 5000);
+  }
 }

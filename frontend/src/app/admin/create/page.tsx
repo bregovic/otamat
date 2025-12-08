@@ -190,9 +190,10 @@ function CreateQuizContent() {
         text: string;
         mediaUrl?: string;
         type: 'MULTIPLE_CHOICE' | 'IMAGE_GUESS' | 'TRUE_FALSE';
+        timeLimit?: number;
         options: { text: string; mediaUrl?: string }[];
         correct: number;
-    }[]>([{ text: "", type: 'MULTIPLE_CHOICE', options: [{ text: "" }, { text: "" }, { text: "" }, { text: "" }], correct: 0 }]);
+    }[]>([{ text: "", type: 'MULTIPLE_CHOICE', timeLimit: 15, options: [{ text: "" }, { text: "" }, { text: "" }, { text: "" }], correct: 0 }]);
     const [socket, setSocket] = useState<Socket | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [gamePin, setGamePin] = useState<string | null>(null);
@@ -302,6 +303,7 @@ function CreateQuizContent() {
                         text: q.text,
                         mediaUrl: q.mediaUrl,
                         type: q.type || 'MULTIPLE_CHOICE',
+                        timeLimit: q.timeLimit || 15,
                         options: q.options.sort((a: any, b: any) => a.order - b.order).map((o: any) => ({
                             text: o.text || "",
                             mediaUrl: o.imageUrl || ""
@@ -378,7 +380,7 @@ function CreateQuizContent() {
     }, [gameStarted, showResults, timeLeft]);
 
     const handleAddQuestion = () => {
-        setQuestions([...questions, { text: "", type: 'MULTIPLE_CHOICE', options: [{ text: "" }, { text: "" }, { text: "" }, { text: "" }], correct: 0 }]);
+        setQuestions([...questions, { text: "", type: 'MULTIPLE_CHOICE', timeLimit: 15, options: [{ text: "" }, { text: "" }, { text: "" }, { text: "" }], correct: 0 }]);
     };
 
     const handleSaveAndStart = () => {
@@ -699,6 +701,27 @@ function CreateQuizContent() {
                                 <option value="MULTIPLE_CHOICE" style={{ backgroundColor: '#1f2937', color: '#ffffff' }}>Kvíz (Text)</option>
                                 <option value="IMAGE_GUESS" style={{ backgroundColor: '#1f2937', color: '#ffffff' }}>Obrázkový kvíz</option>
                                 <option value="TRUE_FALSE" style={{ backgroundColor: '#1f2937', color: '#ffffff' }}>Pravda / Lež</option>
+                            </select>
+
+                            <select
+                                value={q.timeLimit || 15}
+                                onChange={(e) => {
+                                    const newQuestions = [...questions];
+                                    newQuestions[qIndex].timeLimit = parseInt(e.target.value);
+                                    setQuestions(newQuestions);
+                                }}
+                                className="rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none ml-2"
+                                style={{ backgroundColor: '#1f2937', color: '#ffffff', border: '1px solid #374151' }}
+                                title="Časový limit"
+                            >
+                                <option value={5}>5s</option>
+                                <option value={10}>10s</option>
+                                <option value={15}>15s</option>
+                                <option value={20}>20s</option>
+                                <option value={30}>30s</option>
+                                <option value={60}>60s</option>
+                                <option value={90}>90s</option>
+                                <option value={120}>120s</option>
                             </select>
                         </div>
 

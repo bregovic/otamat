@@ -285,7 +285,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 type: q.type || 'MULTIPLE_CHOICE',
                 mediaUrl: q.mediaUrl, // Add mediaUrl
                 order: index,
-                timeLimit: 30,
+                timeLimit: q.timeLimit || 15,
                 options: {
                   create: q.options.map((opt: any, optIndex: number) => ({
                     text: typeof opt === 'string' ? opt : opt.text,
@@ -312,7 +312,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 type: q.type || 'MULTIPLE_CHOICE',
                 mediaUrl: q.mediaUrl, // Add mediaUrl
                 order: index,
-                timeLimit: 30,
+                timeLimit: q.timeLimit || 15,
                 options: {
                   create: q.options.map((opt: any, optIndex: number) => ({
                     text: typeof opt === 'string' ? opt : opt.text,

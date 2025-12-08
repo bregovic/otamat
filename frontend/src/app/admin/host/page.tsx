@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { io, Socket } from "socket.io-client";
 import { Users, Play, Check } from "lucide-react";
+import QRCode from "react-qr-code";
 
 // Production Backend URL
 const BACKEND_URL = "https://otamat-production.up.railway.app";
@@ -391,7 +392,18 @@ function HostGameContent() {
                 }
             `}</style>
 
-            <div className="w-full max-w-[95vw] flex flex-col items-center text-center z-10">
+            <div className="w-full max-w-[95vw] flex flex-col items-center text-center z-10 relative">
+                {/* QR Code Absolute Positioned */}
+                <div className="absolute top-0 right-0 hidden md:flex flex-col items-center bg-white p-4 rounded-xl shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                    <QRCode
+                        value={`https://hollyhop.cz/otamat/play?pin=${pin}`}
+                        size={128}
+                        fgColor="#000000"
+                        bgColor="#ffffff"
+                    />
+                    <span className="text-black font-bold mt-2 text-sm">Naskenuj a hraj!</span>
+                </div>
+
                 <h1 className="text-6xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
                     Lobby
                 </h1>

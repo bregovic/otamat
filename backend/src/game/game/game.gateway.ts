@@ -270,6 +270,21 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
       }
 
+      // Check if quiz with same title exists for this user (if no ID provided)
+      if (!quizId) {
+        const existingQuiz = await this.prisma.quiz.findFirst({
+          where: {
+            title: title,
+            authorId: host.id
+          }
+        });
+
+        if (existingQuiz) {
+          quizId = existingQuiz.id;
+          this.logger.log(`Found existing quiz with title '${title}' (ID: ${quizId}). Updating instead of creating.`);
+        }
+      }
+
       if (quizId) {
         // Update existing quiz
         await this.prisma.question.deleteMany({ where: { quizId: quizId } });

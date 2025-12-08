@@ -6,6 +6,7 @@ přehled kvízů
 
 Sdílení v televizi - otevření odkazu a ovládání adminem přes session z telefonu
 možnost vyhodit hráče z lobby
+Image reveal typ otázky
 
 
 po skončení všem ukázat výsledky a pořad

@@ -60,36 +60,58 @@ export const importQuizFromExcel = async (file: File): Promise<any> => {
                 const wb = XLSX.read(data, { type: 'array' });
 
                 // 1. Parse Quiz Info
-                const wsInfo = wb.Sheets["Quiz Info"];
-                if (!wsInfo) throw new Error("Chybí list 'Quiz Info'");
+                const wsInfo = wb.Sheets["Quiz Info"] || wb.Sheets["Info"] || wb.Sheets["Kvíz"];
+                if (!wsInfo) throw new Error("Chybí list 'Quiz Info' (nebo 'Info', 'Kvíz')");
                 const infoData = XLSX.utils.sheet_to_json(wsInfo);
                 const info: any = infoData[0];
 
-                if (!info || !info.Title) throw new Error("Chybí název kvízu v 'Quiz Info'");
+                const getInfoValue = (keys: string[]) => {
+                    for (const key of keys) {
+                        if (info && info[key] !== undefined) return info[key];
+                    }
+                    return undefined;
+                };
+
+                const title = getInfoValue(['Title', 'Název', 'Nazev', 'Jméno']);
+                if (!title) throw new Error("Chybí název kvízu v 'Quiz Info'");
+
+                const isPublicRaw = getInfoValue(['IsPublic', 'Public', 'Veřejný', 'Verejny']);
 
                 const quiz: any = {
-                    title: info.Title,
-                    description: info.Description || "",
-                    coverImage: info.CoverImage || "",
-                    isPublic: info.IsPublic === "Yes",
+                    title: title,
+                    description: getInfoValue(['Description', 'Popis']) || "",
+                    coverImage: getInfoValue(['CoverImage', 'Image', 'Obrázek', 'Obrazek']) || "",
+                    isPublic: isPublicRaw === "Yes" || isPublicRaw === "Ano" || isPublicRaw === true,
                     questions: []
                 };
 
                 // 2. Parse Questions
-                const wsQuestions = wb.Sheets["Questions"];
+                const wsQuestions = wb.Sheets["Questions"] || wb.Sheets["Otázky"]; // Support Czech sheet name
                 if (wsQuestions) {
                     const questionsData = XLSX.utils.sheet_to_json(wsQuestions);
 
                     quiz.questions = questionsData.map((row: any) => {
                         const options = [];
 
+                        // Helper to find value by multiple keys
+                        const getValue = (keys: string[]) => {
+                            for (const key of keys) {
+                                if (row[key] !== undefined) return row[key];
+                            }
+                            return undefined;
+                        };
+
                         // Try to find up to 4 options
                         for (let i = 1; i <= 4; i++) {
-                            if (row[`Option ${i}`] !== undefined) {
+                            const text = getValue([`Option ${i}`, `Answer ${i}`, `Odpověď ${i}`, `Moznost ${i}`]);
+                            const isCorrectRaw = getValue([`Option ${i} Correct`, `IsCorrect ${i}`, `Správně ${i}`, `Spravne ${i}`, `JeSprávně ${i}`]);
+                            const imageUrl = getValue([`Option ${i} Image`, `Image ${i}`, `Obrázek ${i}`, `Obrazek ${i}`]);
+
+                            if (text !== undefined) {
                                 options.push({
-                                    text: row[`Option ${i}`],
-                                    isCorrect: row[`Option ${i} Correct`] === "Yes",
-                                    imageUrl: row[`Option ${i} Image`] || ""
+                                    text: text,
+                                    isCorrect: isCorrectRaw === "Yes" || isCorrectRaw === "Ano" || isCorrectRaw === true || isCorrectRaw === "TRUE",
+                                    imageUrl: imageUrl || ""
                                 });
                             }
                         }
@@ -100,11 +122,16 @@ export const importQuizFromExcel = async (file: File): Promise<any> => {
                             options.push({ text: "Lež", isCorrect: false });
                         }
 
+                        const questionText = getValue(['Question', 'Otázka', 'Otazka', 'Text']);
+                        const timeLimit = getValue(['TimeLimit', 'Time', 'Čas', 'Cas', 'Limit']);
+                        const mediaUrl = getValue(['Image', 'MediaUrl', 'Obrázek', 'Obrazek', 'URL']);
+                        const type = getValue(['Type', 'Typ']);
+
                         return {
-                            text: row.Question || "",
-                            type: row.Type || "MULTIPLE_CHOICE",
-                            timeLimit: parseInt(row.TimeLimit) || 30,
-                            mediaUrl: row.Image || "",
+                            text: questionText || "",
+                            type: type || "MULTIPLE_CHOICE",
+                            timeLimit: parseInt(timeLimit) || 30,
+                            mediaUrl: mediaUrl || "",
                             options: options
                         };
                     });

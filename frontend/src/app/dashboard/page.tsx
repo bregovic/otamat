@@ -11,7 +11,7 @@ import { exportQuizToExcel, importQuizFromExcel, downloadTemplate } from "../../
 const BACKEND_URL = "https://otamat-production.up.railway.app";
 
 export default function DashboardPage() {
-    const { user, token, isLoading } = useAuth();
+    const { user, token, isLoading, logout } = useAuth();
     const router = useRouter();
     const [quizzes, setQuizzes] = useState<any[]>([]);
     const [loadingQuizzes, setLoadingQuizzes] = useState(true);
@@ -37,6 +37,12 @@ export default function DashboardPage() {
                 headers: { Authorization: `Bearer ${token}` },
                 credentials: 'include',
             });
+
+            if (res.status === 401) {
+                logout();
+                return;
+            }
+
             if (res.ok) {
                 const data = await res.json();
                 setQuizzes(data);

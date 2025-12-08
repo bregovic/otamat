@@ -150,7 +150,7 @@ function HostGameContent() {
         // If revealCount is 1, show the last item of topPlayers.
         // If revealCount is 5, show all.
 
-        const visiblePlayers = topPlayers.slice(Math.max(0, topPlayers.length - revealCount));
+        const visiblePlayers = topPlayers.slice(0, revealCount);
 
         return (
             <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#09090b] to-black">

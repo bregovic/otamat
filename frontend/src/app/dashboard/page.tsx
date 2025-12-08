@@ -118,7 +118,6 @@ export default function DashboardPage() {
             const quizData = await importQuizFromExcel(file);
 
             // Save via Socket (reusing existing logic)
-            const socket = io(BACKEND_URL);
             const payload = {
                 title: quizData.title,
                 description: quizData.description,
@@ -128,15 +127,31 @@ export default function DashboardPage() {
                 userId: user?.id
             };
 
-            socket.emit("saveQuiz", payload, (response: { success: boolean, message: string }) => {
-                socket.disconnect();
+            const socket = io(BACKEND_URL, {
+                transports: ['websocket'],
+                reconnectionAttempts: 3
+            });
+
+            socket.on('connect', () => {
+                console.log("Socket connected for import, sending payload...");
+                socket.emit("saveQuiz", payload, (response: { success: boolean, message: string }) => {
+                    console.log("Import response:", response);
+                    socket.disconnect();
+                    setIsImporting(false);
+                    if (response.success) {
+                        alert("Kvíz byl úspěšně importován!");
+                        fetchMyQuizzes();
+                    } else {
+                        alert("Chyba při importu: " + response.message);
+                    }
+                });
+            });
+
+            socket.on('connect_error', (err) => {
+                console.error("Socket connection error during import:", err);
+                alert("Nepodařilo se připojit k serveru. Zkuste to prosím znovu.");
                 setIsImporting(false);
-                if (response.success) {
-                    alert("Kvíz byl úspěšně importován!");
-                    fetchMyQuizzes();
-                } else {
-                    alert("Chyba při importu: " + response.message);
-                }
+                socket.disconnect();
             });
 
         } catch (err) {

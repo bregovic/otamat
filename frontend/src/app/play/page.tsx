@@ -230,8 +230,8 @@ function LobbyContent() {
                             key={cat}
                             onClick={() => setSelectedCategory(cat as keyof typeof avatarCategories)}
                             className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${selectedCategory === cat
-                                    ? 'bg-white text-black font-bold'
-                                    : 'bg-white/10 text-white hover:bg-white/20'
+                                ? 'bg-white text-black font-bold'
+                                : 'bg-white/10 text-white hover:bg-white/20'
                                 }`}
                         >
                             {cat}
@@ -371,11 +371,13 @@ function LobbyContent() {
                                     style={{ fontSize: '2.5rem' }}
                                 >
                                     {currentQuestion?.options?.[i]?.mediaUrl ? (
-                                        <img
-                                            src={currentQuestion.options[i].mediaUrl}
-                                            alt="Option"
-                                            className="absolute inset-0 w-full h-full object-cover opacity-90"
-                                        />
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                            <img
+                                                src={currentQuestion.options[i].mediaUrl}
+                                                alt="Option"
+                                                className="max-w-full max-h-full object-contain opacity-90"
+                                            />
+                                        </div>
                                     ) : null}
                                     <span className="z-10 drop-shadow-md">{symbol}</span>
                                 </button>

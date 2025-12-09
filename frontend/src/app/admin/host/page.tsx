@@ -348,10 +348,10 @@ function HostGameContent() {
                                 <span className="absolute left-4 top-4 text-2xl opacity-50 z-20 font-black">{['▲', '◆', '●', '■'][i]}</span>
 
                                 {opt.mediaUrl ? (
-                                    <div className="w-full h-full absolute inset-0">
-                                        <img src={opt.mediaUrl} alt="Option" className="w-full h-full object-cover opacity-60" />
-                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                            <span className="drop-shadow-xl z-10 px-4 text-center">{opt.text}</span>
+                                    <div className="w-full h-full absolute inset-0 flex items-center justify-center bg-black/40">
+                                        <img src={opt.mediaUrl} alt="Option" className="max-w-full max-h-full object-contain opacity-80" />
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <span className="drop-shadow-xl z-10 px-4 text-center bg-black/50 p-2 rounded-lg">{opt.text}</span>
                                         </div>
                                     </div>
                                 ) : (

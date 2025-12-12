@@ -76,6 +76,7 @@ function HostGameContent() {
 
     // UI State for results flow
     const [showLeaderboard, setShowLeaderboard] = useState(false);
+    const [showTvModal, setShowTvModal] = useState(false);
 
     // Prevent double clicks
     const [processingAction, setProcessingAction] = useState(false);
@@ -249,11 +250,51 @@ function HostGameContent() {
         }
     };
 
-    const openPresentationMode = () => {
-        window.open(`/otamat/screen?pin=${pin}`, '_blank');
-    };
-
     if (!pin) return <div className="text-white text-center mt-20">Chybí PIN hry.</div>;
+
+    // --- TV CONNECTION MODAL ---
+    if (showTvModal) {
+        const tvUrl = `https://hollyhop.cz/otamat/screen`;
+        const fullLink = `${tvUrl}?pin=${pin}`;
+
+        return (
+            <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-black/90 backdrop-blur-md z-[100] fixed inset-0">
+                <div className="glass-card w-full max-w-lg p-8 flex flex-col items-center text-center border-2 border-white/20 shadow-2xl bg-black/80">
+                    <h2 className="text-4xl font-bold mb-8 text-white flex items-center gap-4">
+                        <Monitor size={40} /> Velká obrazovka
+                    </h2>
+
+                    <div className="bg-white/10 p-6 rounded-xl w-full mb-8">
+                        <p className="text-gray-400 mb-2 uppercase text-sm font-bold tracking-widest">Otevřete na TV prohlížeči</p>
+                        <div className="text-2xl font-bold text-white mb-6 select-all">hollyhop.cz/otamat/screen</div>
+
+                        <p className="text-gray-400 mb-2 uppercase text-sm font-bold tracking-widest">A zadejte PIN</p>
+                        <div className="text-6xl font-black text-white select-all tracking-widest bg-black/30 py-4 rounded-lg border border-white/10">{pin}</div>
+                    </div>
+
+                    <div className="w-full flex flex-col gap-4">
+                        <button
+                            onClick={() => {
+                                navigator.clipboard.writeText(fullLink);
+                                // Optional: Tooltip or toast instead of alert, but alert works for now
+                            }}
+                            className="btn btn-secondary w-full py-4 text-lg flex items-center justify-center gap-2"
+                        >
+                            <span className="truncate max-w-[200px] text-xs opacity-50 mr-2">{fullLink}</span>
+                            Kopírovat odkaz
+                        </button>
+
+                        <button
+                            onClick={() => setShowTvModal(false)}
+                            className="btn btn-primary w-full py-4 text-xl font-bold"
+                        >
+                            Hotovo
+                        </button>
+                    </div>
+                </div>
+            </main>
+        );
+    }
 
     // --- QUIZ SELECTOR MODAL ---
     if (showQuizSelector) {
@@ -306,7 +347,7 @@ function HostGameContent() {
             <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#09090b] to-black">
                 {/* --- HEADER WITH CONTROLS --- */}
                 <div className="absolute top-4 right-4 z-50 flex gap-4">
-                    <button onClick={openPresentationMode} className="bg-white/10 hover:bg-white/20 p-3 rounded-full text-white backdrop-blur-md transition-colors" title="Otevřít Prezentaci (TV)">
+                    <button onClick={() => setShowTvModal(true)} className="bg-white/10 hover:bg-white/20 p-3 rounded-full text-white backdrop-blur-md transition-colors" title="Připojit TV">
                         <Monitor size={24} />
                     </button>
                 </div>
@@ -406,7 +447,7 @@ function HostGameContent() {
             <main className="h-screen max-h-screen w-full overflow-hidden flex flex-col p-2 md:p-4 relative">
                 {/* --- HEADER WITH CONTROLS --- */}
                 <div className="absolute top-4 right-4 z-50 flex gap-4">
-                    <button onClick={openPresentationMode} className="bg-white/10 hover:bg-white/20 p-3 rounded-full text-white backdrop-blur-md transition-colors" title="Otevřít Prezentaci (TV)">
+                    <button onClick={() => setShowTvModal(true)} className="bg-white/10 hover:bg-white/20 p-3 rounded-full text-white backdrop-blur-md transition-colors" title="Připojit TV">
                         <Monitor size={24} />
                     </button>
                 </div>
@@ -571,7 +612,7 @@ function HostGameContent() {
         <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
             {/* --- HEADER WITH CONTROLS --- */}
             <div className="absolute top-4 right-4 z-50 flex gap-4">
-                <button onClick={openPresentationMode} className="bg-white/10 hover:bg-white/20 p-3 rounded-full text-white backdrop-blur-md transition-colors" title="Otevřít Prezentaci (TV)">
+                <button onClick={() => setShowTvModal(true)} className="bg-white/10 hover:bg-white/20 p-3 rounded-full text-white backdrop-blur-md transition-colors" title="Připojit TV">
                     <Monitor size={24} />
                 </button>
             </div>

@@ -176,8 +176,22 @@ function LobbyContent() {
 
     const handleConnect = () => {
         if (pin.length !== 6) { setError("PIN musí mít 6 číslic."); return; }
-        setStep("nickname");
-        setError(null);
+
+        // Validate PIN with backend before proceeding
+        const tempSocket = io(BACKEND_URL, {
+            transports: ['websocket'],
+            upgrade: false
+        });
+
+        tempSocket.emit("checkGame", { pin }, (response: { exists: boolean }) => {
+            tempSocket.disconnect();
+            if (response.exists) {
+                setStep("nickname");
+                setError(null);
+            } else {
+                setError("Hra s tímto PINem neexistuje.");
+            }
+        });
     };
 
     const handleJoin = () => {

@@ -448,6 +448,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { success: true };
   }
 
+  @SubscribeMessage('checkGame')
+  handleCheckGame(@MessageBody() data: { pin: string }) {
+    const game = this.games.get(data.pin);
+    return { exists: !!game };
+  }
+
   @SubscribeMessage('joinGame')
   handleJoinGame(
     @MessageBody() data: { pin: string; nickname: string; avatar: string },

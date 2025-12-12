@@ -232,7 +232,10 @@ function ScreenContent() {
         const visiblePlayers = topPlayers.slice(0, revealCount);
 
         return (
-            <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#09090b] to-black !max-w-none w-full">
+            <main
+                className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#09090b] to-black !max-w-none w-full"
+                style={{ maxWidth: '100vw', width: '100vw', margin: 0, padding: 0 }}
+            >
                 <style jsx global>{`
                     @keyframes popIn {
                         0% { transform: scale(0); opacity: 0; }
@@ -314,7 +317,10 @@ function ScreenContent() {
     if (gameStarted && currentQuestion) {
         // Active Game View (NO CONTROLS)
         return (
-            <main className="h-screen max-h-screen w-full overflow-hidden flex flex-col p-2 md:p-4 relative !max-w-none">
+            <main
+                className="h-screen max-h-screen w-full overflow-hidden flex flex-col p-2 md:p-4 relative !max-w-none"
+                style={{ maxWidth: '100vw', width: '100vw', margin: 0, padding: 0 }}
+            >
                 {/* Sound Toggle */}
                 <button
                     onClick={() => setSoundEnabled(!soundEnabled)}
@@ -430,7 +436,11 @@ function ScreenContent() {
 
     // Lobby View
     return (
-        <main className="min-h-screen flex flex-col items-center justify-center p-8 relative overflow-hidden !max-w-none w-full">
+        <main
+            className="min-h-screen flex flex-col items-center justify-center p-8 relative overflow-hidden !max-w-none w-full"
+            style={{ maxWidth: '100vw', width: '100vw', margin: 0, padding: 0 }}
+        >
+            <div className="absolute bottom-2 right-2 text-white/10 text-xs font-mono">v2.1</div>
             <style jsx global>{`
                 @keyframes float {
                     0% { transform: translateY(0px); }

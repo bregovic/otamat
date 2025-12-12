@@ -383,6 +383,21 @@ function CreateQuizContent() {
         setQuestions([...questions, { text: "", type: 'MULTIPLE_CHOICE', timeLimit: 15, options: [{ text: "" }, { text: "" }, { text: "" }, { text: "" }], correct: 0 }]);
     };
 
+    const validateQuiz = () => {
+        for (let i = 0; i < questions.length; i++) {
+            const q = questions[i];
+            if (q.correct === undefined || q.correct === null || q.correct < 0) {
+                const msg = `Otázka č. ${i + 1} nemá vybranou správnou odpověď.`;
+                setError(msg);
+                alert(msg);
+                const el = document.getElementById(`question-${i}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return false;
+            }
+        }
+        return true;
+    };
+
     const handleSaveAndStart = () => {
         if (!socket) {
             setError("Nepodařilo se připojit k serveru.");
@@ -392,6 +407,8 @@ function CreateQuizContent() {
             setError("Vyplňte název kvízu.");
             return;
         }
+
+        if (!validateQuiz()) return;
 
         setIsSaving(true);
         setError(null);
@@ -434,6 +451,7 @@ function CreateQuizContent() {
             setError("Vyplňte název kvízu.");
             return;
         }
+        if (!validateQuiz()) return;
         if (!user) {
             setError("Pro uložení kvízu musíte být přihlášeni.");
             return;
@@ -677,7 +695,7 @@ function CreateQuizContent() {
                     </div>
                 </div>
                 {questions.map((q, qIndex) => (
-                    <div key={qIndex} className="glass-card" style={{ maxWidth: '100%', marginBottom: '2rem', position: 'relative' }}>
+                    <div key={qIndex} id={`question-${qIndex}`} className="glass-card" style={{ maxWidth: '100%', marginBottom: '2rem', position: 'relative' }}>
                         <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
                             <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Otázka {qIndex + 1}</h3>
                             <select

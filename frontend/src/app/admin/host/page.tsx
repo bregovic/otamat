@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { io, Socket } from "socket.io-client";
-import { Users, Play, Check, Monitor, LayoutGrid, RotateCcw } from "lucide-react";
+import { Users, Play, Check, Monitor, LayoutGrid, RotateCcw, Loader2 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { BACKEND_URL } from "../../../utils/config";
 
@@ -642,19 +642,30 @@ function HostGameContent() {
                     )}
                 </div>
 
-                <div className="flex gap-6 mt-12">
-                    <Link href="/dashboard" className="btn btn-secondary text-2xl px-10 py-5">
+                <div className="flex gap-6 mt-12 flex-col md:flex-row items-center">
+                    <Link href="/dashboard" className="btn btn-secondary text-2xl px-10 py-5 w-full md:w-auto text-center">
                         Ukončit hru
                     </Link>
                     <button
                         onClick={handleStartGame}
-                        className="btn btn-primary text-2xl px-16 py-5 flex items-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all shadow-xl"
-                        disabled={players.length === 0}
+                        className={`btn btn-primary text-2xl px-16 py-5 flex items-center justify-center gap-4 transform transition-all shadow-xl w-full md:w-auto
+                            ${processingAction ? 'opacity-70 cursor-wait scale-95 grayscale' : 'hover:scale-105'}
+                        `}
+                        disabled={players.length === 0 || processingAction}
                     >
-                        <Play size={32} /> Spustit hru
+                        {processingAction ? (
+                            <>
+                                <Loader2 className="animate-spin" size={32} />
+                                <span className="animate-pulse">Spouštění...</span>
+                            </>
+                        ) : (
+                            <>
+                                <Play size={32} /> Spustit hru
+                            </>
+                        )}
                     </button>
-                    <button onClick={handleOpenQuizSelector} className="btn btn-secondary text-2xl px-8 ml-4" title="Změnit kvíz">
-                        <RotateCcw />
+                    <button onClick={handleOpenQuizSelector} className="btn btn-secondary text-2xl px-8 py-5 w-full md:w-auto flex items-center justify-center" title="Změnit kvíz">
+                        <RotateCcw size={32} />
                     </button>
                 </div>
             </div>

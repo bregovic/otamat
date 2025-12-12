@@ -67,6 +67,7 @@ function ScreenContent() {
     const [finalPlayers, setFinalPlayers] = useState<any[]>([]);
     const [countdown, setCountdown] = useState<number | null>(null);
     const [revealCount, setRevealCount] = useState(0);
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
 
     useEffect(() => {
         if (!pin) return;
@@ -95,6 +96,7 @@ function ScreenContent() {
             setResultsData(null);
             setFinalPlayers([]);
             setCurrentQuestion(null);
+            setShowLeaderboard(false);
             // Players persist :)
         });
 
@@ -110,6 +112,7 @@ function ScreenContent() {
             setAnswerStats({ count: 0, total: players.length });
             setTimeLeft(data.timeLimit);
             setShowResults(false);
+            setShowLeaderboard(false);
             setGameStarted(true);
         });
 
@@ -120,6 +123,11 @@ function ScreenContent() {
         newSocket.on("questionEnd", (data) => {
             setResultsData(data);
             setShowResults(true);
+            setShowLeaderboard(false);
+        });
+
+        newSocket.on("showLeaderboard", () => {
+            setShowLeaderboard(true);
         });
 
         newSocket.on("gameOver", (data) => {
@@ -327,7 +335,7 @@ function ScreenContent() {
                 </div>
 
                 {/* Results Overlay */}
-                {showResults && (
+                {showResults && showLeaderboard && (
                     <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-40 flex flex-col items-center justify-center p-8">
                         <h2 className="text-5xl font-bold text-white mb-8">Průběžné výsledky</h2>
                         <div className="w-full max-w-4xl space-y-4 mb-12">

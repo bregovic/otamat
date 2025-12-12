@@ -74,6 +74,9 @@ function HostGameContent() {
     const [myQuizzes, setMyQuizzes] = useState<any[]>([]);
     const [isLoadingQuizzes, setIsLoadingQuizzes] = useState(false);
 
+    // UI State for results flow
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
+
     useEffect(() => {
         if (!pin) return;
 
@@ -103,6 +106,7 @@ function HostGameContent() {
             setFinalPlayers([]);
             setCurrentQuestion(null);
             setRevealCount(0);
+            setShowLeaderboard(false);
         });
 
         newSocket.on("questionStart", (data) => {
@@ -117,6 +121,7 @@ function HostGameContent() {
             setAnswerStats({ count: 0, total: players.length });
             setTimeLeft(data.timeLimit);
             setShowResults(false);
+            setShowLeaderboard(false);
             setGameStarted(true);
         });
 
@@ -127,6 +132,11 @@ function HostGameContent() {
         newSocket.on("questionEnd", (data) => {
             setResultsData(data);
             setShowResults(true);
+            setShowLeaderboard(false); // Enable "Answer Reveal" mode first
+        });
+
+        newSocket.on("showLeaderboard", () => {
+            setShowLeaderboard(true);
         });
 
         newSocket.on("gameOver", (data) => {
@@ -176,6 +186,12 @@ function HostGameContent() {
     const handleNextQuestion = () => {
         if (socket && pin) {
             socket.emit("nextQuestion", { pin });
+        }
+    };
+
+    const handleToggleLeaderboard = () => {
+        if (socket && pin) {
+            socket.emit("showLeaderboard", { pin });
         }
     };
 
@@ -470,8 +486,21 @@ function HostGameContent() {
                     })}
                 </div>
 
+                {/* Reveal Answer Mode Controls */}
+                {showResults && !showLeaderboard && (
+                    <div className="absolute inset-x-0 bottom-8 z-50 flex justify-center pointer-events-auto">
+                        <button
+                            onClick={handleToggleLeaderboard}
+                            className="btn btn-primary text-3xl px-12 py-6 flex items-center gap-4 shadow-2xl animate-bounce"
+                        >
+                            <Users size={32} /> Zobrazit žebříček
+                        </button>
+                    </div>
+                )}
+
+
                 {/* Results Overlay */}
-                {showResults && (
+                {showResults && showLeaderboard && (
                     <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-40 flex flex-col items-center justify-center p-8">
                         <h2 className="text-5xl font-bold text-white mb-8">Průběžné výsledky</h2>
 
@@ -496,6 +525,7 @@ function HostGameContent() {
                         </button>
                     </div>
                 )}
+
 
                 {/* Countdown Overlay */}
                 {countdown !== null && (

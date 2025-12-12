@@ -557,6 +557,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.startCountdown(data.pin);
   }
 
+  @SubscribeMessage('showLeaderboard')
+  handleShowLeaderboard(@MessageBody() data: { pin: string }) {
+    const game = this.games.get(data.pin);
+    if (!game) return;
+    this.server.to(data.pin).emit('showLeaderboard');
+  }
+
   private startCountdown(pin: string) {
     const game = this.games.get(pin);
     if (!game) return;

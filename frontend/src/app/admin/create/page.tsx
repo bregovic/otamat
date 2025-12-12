@@ -98,7 +98,7 @@ function ImageEditorModal({ src, onSave, onCancel, aspectRatio }: { src: string,
         e.stopPropagation();
         // Calculate new zoom
         const delta = -e.deltaY * 0.001;
-        const newZoom = Math.min(Math.max(1, zoom + delta), 5);
+        const newZoom = Math.min(Math.max(0.1, zoom + delta), 5); // Allow zoom out to 0.1
         setZoom(newZoom);
     };
 
@@ -144,7 +144,7 @@ function ImageEditorModal({ src, onSave, onCancel, aspectRatio }: { src: string,
                         <ZoomIn size={20} className="text-blue-400" />
                         <input
                             type="range"
-                            min="1"
+                            min="0.1"
                             max="5"
                             step="0.1"
                             value={zoom}

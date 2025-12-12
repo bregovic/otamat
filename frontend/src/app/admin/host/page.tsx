@@ -77,6 +77,9 @@ function HostGameContent() {
     // UI State for results flow
     const [showLeaderboard, setShowLeaderboard] = useState(false);
 
+    // Prevent double clicks
+    const [processingAction, setProcessingAction] = useState(false);
+
     useEffect(() => {
         if (!pin) return;
 
@@ -107,6 +110,7 @@ function HostGameContent() {
             setCurrentQuestion(null);
             setRevealCount(0);
             setShowLeaderboard(false);
+            setProcessingAction(false);
         });
 
         newSocket.on("questionStart", (data) => {
@@ -123,6 +127,7 @@ function HostGameContent() {
             setShowResults(false);
             setShowLeaderboard(false);
             setGameStarted(true);
+            setProcessingAction(false); // Reset processing lock on new question start
         });
 
         newSocket.on("answerSubmitted", (data) => {
@@ -133,16 +138,19 @@ function HostGameContent() {
             setResultsData(data);
             setShowResults(true);
             setShowLeaderboard(false); // Enable "Answer Reveal" mode first
+            setProcessingAction(false);
         });
 
         newSocket.on("showLeaderboard", () => {
             setShowLeaderboard(true);
+            setProcessingAction(false);
         });
 
         newSocket.on("gameOver", (data) => {
             setFinalPlayers(data.players.sort((a: any, b: any) => b.score - a.score));
             setGameFinished(true);
             setGameStarted(false);
+            setProcessingAction(false);
         });
 
         newSocket.on("countdownStart", (data) => {
@@ -184,20 +192,31 @@ function HostGameContent() {
     }, [gameStarted, showResults, timeLeft, countdown, gameFinished, finalPlayers, revealCount]);
 
     const handleNextQuestion = () => {
+        if (processingAction) return;
         if (socket && pin) {
+            setProcessingAction(true);
             socket.emit("nextQuestion", { pin });
+            // Unlock after 2s if no response (safety net)
+            setTimeout(() => setProcessingAction(false), 2000);
         }
     };
 
     const handleToggleLeaderboard = () => {
+        if (processingAction) return;
         if (socket && pin) {
+            setProcessingAction(true);
             socket.emit("showLeaderboard", { pin });
+            // Unlock after 2s if no response (safety net)
+            setTimeout(() => setProcessingAction(false), 2000);
         }
     };
 
     const handleStartGame = () => {
+        if (processingAction) return;
         if (socket && pin) {
+            setProcessingAction(true);
             socket.emit("startGame", { pin });
+            setTimeout(() => setProcessingAction(false), 2000);
         }
     };
 
@@ -488,12 +507,20 @@ function HostGameContent() {
 
                 {/* Reveal Answer Mode Controls */}
                 {showResults && !showLeaderboard && (
-                    <div className="absolute inset-x-0 bottom-8 z-50 flex justify-center pointer-events-auto">
+                    <div className="absolute inset-x-0 bottom-8 z-50 flex justify-center gap-4 pointer-events-auto">
                         <button
                             onClick={handleToggleLeaderboard}
-                            className="btn btn-primary text-3xl px-12 py-6 flex items-center gap-4 shadow-2xl animate-bounce"
+                            disabled={processingAction}
+                            className={`btn btn-secondary text-2xl px-8 py-6 flex items-center gap-3 shadow-2xl transition-all ${processingAction ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
                         >
                             <Users size={32} /> Zobrazit žebříček
+                        </button>
+                        <button
+                            onClick={handleNextQuestion}
+                            disabled={processingAction}
+                            className={`btn btn-primary text-2xl px-8 py-6 flex items-center gap-3 shadow-2xl transition-all animate-bounce ${processingAction ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+                        >
+                            <Play size={32} /> Další otázka
                         </button>
                     </div>
                 )}
@@ -519,7 +546,8 @@ function HostGameContent() {
 
                         <button
                             onClick={handleNextQuestion}
-                            className="btn btn-primary text-3xl px-12 py-6 flex items-center gap-4 shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:scale-105 transition-transform"
+                            disabled={processingAction}
+                            className={`btn btn-primary text-3xl px-12 py-6 flex items-center gap-4 shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-transform ${processingAction ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
                         >
                             <Play size={40} /> Další otázka
                         </button>

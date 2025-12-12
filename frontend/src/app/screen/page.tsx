@@ -408,9 +408,6 @@ function ScreenContent() {
                     )}
                 </div>
                 {/* NO CONTROLS HERE */}
-                <div className="mt-12 text-4xl text-gray-500 font-bold animate-pulse uppercase tracking-widest">
-                    Sledujte velkou obrazovku
-                </div>
             </div>
         </main>
     );

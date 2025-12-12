@@ -507,18 +507,18 @@ function HostGameContent() {
 
                 {/* Reveal Answer Mode Controls */}
                 {showResults && !showLeaderboard && (
-                    <div className="absolute inset-x-0 bottom-8 z-50 flex justify-center gap-4 pointer-events-auto">
+                    <div className="absolute inset-x-0 bottom-8 z-50 flex flex-col md:flex-row justify-center items-center gap-4 pointer-events-auto px-4 w-full">
                         <button
                             onClick={handleToggleLeaderboard}
                             disabled={processingAction}
-                            className={`btn btn-secondary text-2xl px-8 py-6 flex items-center gap-3 shadow-2xl transition-all ${processingAction ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+                            className={`btn btn-secondary text-xl md:text-2xl px-8 py-4 md:py-6 flex items-center justify-center gap-3 shadow-2xl transition-all w-full md:w-auto ${processingAction ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
                         >
                             <Users size={32} /> Zobrazit žebříček
                         </button>
                         <button
                             onClick={handleNextQuestion}
                             disabled={processingAction}
-                            className={`btn btn-primary text-2xl px-8 py-6 flex items-center gap-3 shadow-2xl transition-all animate-bounce ${processingAction ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+                            className={`btn btn-primary text-xl md:text-2xl px-8 py-4 md:py-6 flex items-center justify-center gap-3 shadow-2xl transition-all w-full md:w-auto ${!processingAction && 'animate-bounce'} ${processingAction ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <Play size={32} /> Další otázka
                         </button>

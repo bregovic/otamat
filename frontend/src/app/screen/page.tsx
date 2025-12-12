@@ -259,36 +259,36 @@ function ScreenContent() {
         return (
             <main className="h-screen max-h-screen w-full overflow-hidden flex flex-col p-2 md:p-4 relative">
                 {/* Header Info */}
-                <div className="flex justify-between items-center mb-2 px-4 w-full max-w-[95vw] mx-auto shrink-0 z-10">
-                    <div className="text-xl font-bold text-gray-400">
+                <div className="flex justify-between items-center mb-6 px-8 w-full max-w-[98vw] mx-auto shrink-0 z-10">
+                    <div className="text-3xl font-bold text-gray-400">
                         Otázka {currentQuestion.index} / {currentQuestion.total}
                     </div>
-                    <div className="text-4xl font-black text-white bg-white/10 px-6 py-2 rounded-xl backdrop-blur-md border border-white/10 shadow-lg">
+                    <div className="text-6xl font-black text-white bg-white/10 px-8 py-4 rounded-2xl backdrop-blur-md border border-white/10 shadow-lg">
                         {timeLeft}s
                     </div>
-                    <div className="text-xl font-bold text-gray-400">
+                    <div className="text-3xl font-bold text-gray-400">
                         Odpovědi: {answerStats.count} / {answerStats.total}
                     </div>
                 </div>
 
                 {/* Question Area */}
-                <div className="flex-1 min-h-0 flex flex-col items-center justify-center mb-4 relative w-full">
-                    <div className="glass-card w-full !max-w-[95vw] !p-6 flex flex-col items-center justify-center h-full relative overflow-hidden border-white/10 shadow-2xl">
-                        <h2 className="text-3xl md:text-5xl font-black text-center mb-6 leading-tight z-10 text-white drop-shadow-lg shrink-0 max-h-[20vh] overflow-y-auto custom-scrollbar">
+                <div className="flex-1 min-h-0 flex flex-col items-center justify-center mb-8 relative w-full">
+                    <div className="glass-card w-full !max-w-[98vw] !p-10 flex flex-col items-center justify-center h-full relative overflow-hidden border-white/10 shadow-2xl">
+                        <h2 className="text-5xl md:text-7xl font-black text-center mb-8 leading-tight z-10 text-white drop-shadow-lg shrink-0 max-h-[25vh] overflow-y-auto custom-scrollbar">
                             {currentQuestion.text}
                         </h2>
-                        <div className="flex-1 w-full flex items-center justify-center rounded-xl relative overflow-hidden min-h-0 bg-black/20">
+                        <div className="flex-1 w-full flex items-center justify-center rounded-2xl relative overflow-hidden min-h-0 bg-black/20">
                             {currentQuestion.mediaUrl ? (
-                                <img src={currentQuestion.mediaUrl} alt="Question Media" className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" />
+                                <img src={currentQuestion.mediaUrl} alt="Question Media" className="max-h-full max-w-full object-contain rounded-xl shadow-2xl" />
                             ) : (
-                                <div className="text-white/10 text-9xl font-bold flex items-center justify-center w-full h-full">?</div>
+                                <div className="text-white/10 text-[12rem] font-bold flex items-center justify-center w-full h-full">?</div>
                             )}
                         </div>
                     </div>
                 </div>
 
                 {/* Options Area */}
-                <div className={`grid gap-4 w-full !max-w-[95vw] mx-auto shrink-0 ${currentQuestion.type === 'TRUE_FALSE' ? 'grid-cols-2' : 'grid-cols-2'}`} style={{ height: '25vh', minHeight: '180px', maxHeight: '300px' }}>
+                <div className={`grid gap-6 w-full !max-w-[98vw] mx-auto shrink-0 ${currentQuestion.type === 'TRUE_FALSE' ? 'grid-cols-2' : 'grid-cols-2'}`} style={{ height: '30vh', minHeight: '220px', maxHeight: '400px' }}>
                     {currentQuestion.options.map((opt, i) => {
                         const isCorrect = showResults && resultsData?.correctIndex === i;
                         const gradientClass = [
@@ -303,32 +303,32 @@ function ScreenContent() {
                             const bgColor = isTrue ? 'bg-blue-600' : 'bg-red-600';
                             return (
                                 <div key={i} className={`
-                                    rounded-2xl text-3xl md:text-5xl font-black text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-4 border-white/10
-                                    ${showResults ? (isCorrect ? 'opacity-100 scale-105 z-10 ring-4 ring-white' : 'opacity-30 grayscale') : bgColor}
+                                    rounded-3xl text-4xl md:text-6xl font-black text-white flex items-center justify-center gap-6 transition-all duration-300 relative overflow-hidden shadow-xl border-8 border-white/10
+                                    ${showResults ? (isCorrect ? 'opacity-100 scale-105 z-10 ring-8 ring-white' : 'opacity-30 grayscale') : bgColor}
                                 `}>
-                                    <span className="drop-shadow-md">{opt.text}</span>
-                                    {isCorrect && <Check size={64} className="absolute right-8 top-1/2 -translate-y-1/2 text-white drop-shadow-md" />}
+                                    <span className="drop-shadow-lg">{opt.text}</span>
+                                    {isCorrect && <Check size={96} className="absolute right-12 top-1/2 -translate-y-1/2 text-white drop-shadow-xl" />}
                                 </div>
                             );
                         }
 
                         return (
                             <div key={i} className={`
-                                rounded-2xl text-2xl md:text-3xl font-bold text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-2 border-white/10
-                                ${showResults ? (isCorrect ? 'bg-emerald-500 scale-105 z-10 ring-4 ring-white' : 'bg-white/5 opacity-30 grayscale') : `bg-gradient-to-br ${gradientClass}`}
+                                rounded-3xl text-3xl md:text-5xl font-bold text-white flex items-center justify-center gap-6 transition-all duration-300 relative overflow-hidden shadow-xl border-4 border-white/10
+                                ${showResults ? (isCorrect ? 'bg-emerald-500 scale-105 z-10 ring-8 ring-white' : 'bg-white/5 opacity-30 grayscale') : `bg-gradient-to-br ${gradientClass}`}
                             `}>
-                                <span className="absolute left-4 top-4 text-2xl opacity-50 z-20 font-black">{['▲', '◆', '●', '■'][i]}</span>
+                                <span className="absolute left-6 top-6 text-4xl opacity-50 z-20 font-black">{['▲', '◆', '●', '■'][i]}</span>
                                 {opt.mediaUrl ? (
                                     <div className="w-full h-full absolute inset-0 flex items-center justify-center bg-black/40">
                                         <img src={opt.mediaUrl} alt="Option" className="max-w-full max-h-full object-contain opacity-80" />
                                         <div className="absolute inset-0 flex items-center justify-center">
-                                            <span className="drop-shadow-xl z-10 px-4 text-center bg-black/50 p-2 rounded-lg">{opt.text}</span>
+                                            <span className="drop-shadow-2xl z-10 px-6 text-center bg-black/60 p-4 rounded-2xl backdrop-blur-sm">{opt.text}</span>
                                         </div>
                                     </div>
                                 ) : (
-                                    <span className="drop-shadow-md z-10 px-8 text-center">{opt.text}</span>
+                                    <span className="drop-shadow-lg z-10 px-12 text-center">{opt.text}</span>
                                 )}
-                                {isCorrect && <Check size={48} className="absolute right-4 top-4 text-white drop-shadow-md z-30" />}
+                                {isCorrect && <Check size={80} className="absolute right-8 top-8 text-white drop-shadow-xl z-30" />}
                             </div>
                         );
                     })}
@@ -336,17 +336,17 @@ function ScreenContent() {
 
                 {/* Results Overlay */}
                 {showResults && showLeaderboard && (
-                    <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-40 flex flex-col items-center justify-center p-8">
-                        <h2 className="text-5xl font-bold text-white mb-8">Průběžné výsledky</h2>
-                        <div className="w-full max-w-4xl space-y-4 mb-12">
+                    <div className="absolute inset-0 bg-black/90 backdrop-blur-xl z-40 flex flex-col items-center justify-center p-12">
+                        <h2 className="text-7xl font-bold text-white mb-16">Průběžné výsledky</h2>
+                        <div className="w-full max-w-6xl space-y-6 mb-16">
                             {resultsData?.players.sort((a: any, b: any) => b.score - a.score).slice(0, 5).map((player: any, index: number) => (
-                                <div key={player.id} className="flex items-center justify-between bg-white/10 p-4 rounded-xl border border-white/5">
-                                    <div className="flex items-center gap-4">
-                                        <span className={`text-2xl font-bold w-8 ${index === 0 ? 'text-yellow-400' : 'text-gray-400'}`}>#{index + 1}</span>
-                                        <span className="text-4xl">{avatarMap[player.avatar] || player.avatar}</span>
-                                        <span className="text-2xl font-bold text-white">{player.nickname}</span>
+                                <div key={player.id} className="flex items-center justify-between bg-white/10 p-8 rounded-3xl border border-white/5 shadow-xl">
+                                    <div className="flex items-center gap-8">
+                                        <span className={`text-4xl font-bold w-12 ${index === 0 ? 'text-yellow-400' : 'text-gray-400'}`}>#{index + 1}</span>
+                                        <span className="text-6xl">{avatarMap[player.avatar] || player.avatar}</span>
+                                        <span className="text-4xl font-bold text-white">{player.nickname}</span>
                                     </div>
-                                    <span className="text-3xl font-bold text-emerald-400">{player.score} b</span>
+                                    <span className="text-5xl font-bold text-emerald-400">{player.score} b</span>
                                 </div>
                             ))}
                         </div>
@@ -354,8 +354,8 @@ function ScreenContent() {
                 )}
                 {/* Countdown Overlay */}
                 {countdown !== null && (
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center">
-                        <div className="text-[15rem] font-black text-white animate-pulse">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center">
+                        <div className="text-[25rem] font-black text-white animate-pulse">
                             {countdown}
                         </div>
                     </div>
@@ -366,7 +366,7 @@ function ScreenContent() {
 
     // Lobby View
     return (
-        <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        <main className="min-h-screen flex flex-col items-center justify-center p-8 relative overflow-hidden">
             <style jsx global>{`
                 @keyframes float {
                     0% { transform: translateY(0px); }
@@ -377,38 +377,38 @@ function ScreenContent() {
                     animation: float 3s ease-in-out infinite;
                 }
             `}</style>
-            <div className="w-full max-w-[95vw] flex flex-col items-center text-center z-10 relative">
-                <div className="absolute top-0 right-0 hidden md:flex flex-col items-center bg-white p-4 rounded-xl shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                    <QRCode value={`https://hollyhop.cz/otamat/play?pin=${pin}`} size={128} fgColor="#000000" bgColor="#ffffff" />
-                    <span className="text-black font-bold mt-2 text-sm">Naskenuj a hraj!</span>
+            <div className="w-full max-w-[98vw] flex flex-col items-center text-center z-10 relative">
+                <div className="absolute top-0 right-0 hidden lg:flex flex-col items-center bg-white p-6 rounded-3xl shadow-2xl transform rotate-2 hover:rotate-0 transition-transform duration-300">
+                    <QRCode value={`https://hollyhop.cz/otamat/play?pin=${pin}`} size={200} fgColor="#000000" bgColor="#ffffff" />
+                    <span className="text-black font-bold mt-4 text-xl">Naskenuj a hraj!</span>
                 </div>
 
-                <h1 className="text-6xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Lobby</h1>
-                <p className="text-2xl text-gray-400 mb-8">Připojte se na <span className="text-white font-bold">hollyhop.cz</span> pomocí PINu:</p>
-                <div className="text-8xl md:text-9xl font-black text-white bg-white/10 px-12 py-8 rounded-3xl border-4 border-white/20 mb-12 backdrop-blur-lg shadow-[0_0_50px_rgba(255,255,255,0.1)] animate-pulse">{pin}</div>
+                <h1 className="text-8xl font-black mb-8 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400 drop-shadow-2xl">Lobby</h1>
+                <p className="text-4xl text-gray-300 mb-12">Připojte se na <span className="text-white font-black">hollyhop.cz</span> pomocí PINu:</p>
+                <div className="text-[10rem] md:text-[12rem] font-black text-white bg-white/5 px-20 py-12 rounded-[3rem] border-8 border-white/10 mb-20 backdrop-blur-xl shadow-[0_0_100px_rgba(255,255,255,0.15)] animate-pulse tracking-widest">{pin}</div>
 
-                <div className="glass-card w-full !max-w-[95vw] p-8 min-h-[500px] flex flex-col">
-                    <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
-                        <h2 className="text-4xl font-bold flex items-center gap-3"><Users size={40} /> Hráči ({players.length})</h2>
-                        {players.length > 0 && <div className="text-emerald-400 font-bold text-2xl animate-pulse">Připraveni ke hře</div>}
+                <div className="glass-card w-full !max-w-[95vw] p-12 min-h-[600px] flex flex-col bg-white/5 border border-white/10">
+                    <div className="flex items-center justify-between mb-12 border-b border-white/10 pb-6">
+                        <h2 className="text-6xl font-bold flex items-center gap-6 text-white"><Users size={64} /> Hráči ({players.length})</h2>
+                        {players.length > 0 && <div className="text-emerald-400 font-bold text-4xl animate-pulse">Připraveni ke hře</div>}
                     </div>
                     {players.length === 0 ? (
-                        <div className="flex-1 flex items-center justify-center text-gray-500 text-3xl">Čekání na hráče...</div>
+                        <div className="flex-1 flex items-center justify-center text-gray-500 text-5xl font-light">Čekání na hráče...</div>
                     ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12">
+                        <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-16">
                             {players.map((player, i) => (
-                                <div key={player.id} className="flex flex-col items-center gap-4 avatar-float" style={{ animationDelay: `${i * 0.1}s` }}>
-                                    <div className="text-7xl bg-white/10 w-32 h-32 rounded-full flex items-center justify-center border-4 border-white/20 shadow-lg">
+                                <div key={player.id} className="flex flex-col items-center gap-6 avatar-float" style={{ animationDelay: `${i * 0.1}s` }}>
+                                    <div className="text-8xl bg-white/10 w-40 h-40 rounded-full flex items-center justify-center border-4 border-white/20 shadow-2xl backdrop-blur-md">
                                         {avatarMap[player.avatar] || player.avatar}
                                     </div>
-                                    <div className="font-bold text-2xl text-white w-full break-words leading-tight drop-shadow-md">{player.nickname}</div>
+                                    <div className="font-bold text-3xl text-white w-full break-words leading-tight drop-shadow-xl">{player.nickname}</div>
                                 </div>
                             ))}
                         </div>
                     )}
                 </div>
                 {/* NO CONTROLS HERE */}
-                <div className="mt-8 text-2xl text-gray-400 font-bold animate-pulse">
+                <div className="mt-12 text-4xl text-gray-500 font-bold animate-pulse uppercase tracking-widest">
                     Sledujte velkou obrazovku
                 </div>
             </div>

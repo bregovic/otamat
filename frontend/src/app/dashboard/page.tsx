@@ -173,16 +173,16 @@ export default function DashboardPage() {
     }
 
     return (
-        <main className="min-h-screen p-8">
+        <main className="min-h-screen p-4 md:p-8">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-8">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
                     <div>
                         <h1 className="text-3xl font-bold text-white mb-2">Vítej, {user.nickname}! 👋</h1>
                         <p className="text-gray-400">Tady jsou tvoje kvízy.</p>
                     </div>
-                    <div className="flex gap-4">
-                        <a href="/otamat/" className="btn btn-secondary">
+                    <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                        <a href="/otamat/" className="btn btn-secondary w-full sm:w-auto justify-center">
                             Zpět domů
                         </a>
                         <input
@@ -192,14 +192,14 @@ export default function DashboardPage() {
                             accept=".xlsx, .xls"
                             className="hidden"
                         />
-                        <button onClick={downloadTemplate} className="btn btn-secondary flex items-center gap-2" title="Stáhnout šablonu pro import">
+                        <button onClick={downloadTemplate} className="btn btn-secondary flex items-center justify-center gap-2 w-full sm:w-auto" title="Stáhnout šablonu pro import">
                             <FileSpreadsheet size={20} /> Šablona
                         </button>
-                        <button onClick={handleImportClick} disabled={isImporting} className="btn btn-secondary flex items-center gap-2">
+                        <button onClick={handleImportClick} disabled={isImporting} className="btn btn-secondary flex items-center justify-center gap-2 w-full sm:w-auto">
                             {isImporting ? <Loader2 className="animate-spin" size={20} /> : <Upload size={20} />}
                             Importovat
                         </button>
-                        <a href="/otamat/admin/create" className="btn btn-primary flex items-center gap-2">
+                        <a href="/otamat/admin/create" className="btn btn-primary flex items-center justify-center gap-2 w-full sm:w-auto">
                             <Plus size={20} /> Vytvořit nový kvíz
                         </a>
                     </div>

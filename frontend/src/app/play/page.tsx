@@ -61,7 +61,7 @@ function LobbyContent() {
     const [avatar, setAvatar] = useState("cow"); // Default avatar
     const [selectedCategory, setSelectedCategory] = useState<keyof typeof avatarCategories>("Zvířátka");
     const [socket, setSocket] = useState<Socket | null>(null);
-    const [step, setStep] = useState<'pin' | 'nickname' | 'lobby' | 'game'>("pin");
+    const [step, setStep] = useState<'pin' | 'nickname' | 'lobby' | 'game' | 'finished'>("pin");
     const [error, setError] = useState<string | null>(null);
     const [players, setPlayers] = useState<any[]>([]);
 
@@ -116,6 +116,17 @@ function LobbyContent() {
             setPlayers(playerList);
         });
 
+        // NEW: Handle loading new quiz
+        socket.on("quizLoaded", () => {
+            setStep("lobby");
+            setScore(0);
+            setResult(null);
+            setShowResultScreen(false);
+            setCurrentQuestion(null);
+            setAnswerSubmitted(null);
+            isSubmitting.current = false;
+        });
+
         socket.on("questionStart", (data) => {
             setStep("game");
             setCurrentQuestion({
@@ -150,8 +161,7 @@ function LobbyContent() {
         });
 
         socket.on("gameOver", (data) => {
-            alert("Konec hry! Tvé skóre: " + (data.players.find((p: any) => p.id === socket.id)?.score || 0));
-            router.push("/");
+            setStep('finished');
         });
 
         return () => {
@@ -160,6 +170,7 @@ function LobbyContent() {
             socket.off("questionStart");
             socket.off("questionEnd");
             socket.off("gameOver");
+            socket.off("quizLoaded");
         };
     }, [socket, answerSubmitted, router]);
 
@@ -275,6 +286,24 @@ function LobbyContent() {
                 <Loader2 className="animate-spin" size={48} style={{ margin: '0 auto', opacity: 0.5 }} />
                 <p style={{ marginTop: '1rem', color: '#a1a1aa' }}>Čekáme na spuštění hry...</p>
                 <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.5rem' }}>Vidíš své jméno na hlavní obrazovce?</p>
+            </div>
+        );
+    }
+
+    if (step === 'finished') {
+        return (
+            <div className="glass-card" style={{ textAlign: 'center' }}>
+                <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Konec hry</h1>
+                <div style={{ fontSize: '4rem', marginBottom: '2rem' }}>
+                    🏆
+                </div>
+                <p style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Tvé konečné skóre:</p>
+                <div style={{ fontSize: '3rem', fontWeight: 'bold', color: '#fbbf24', marginBottom: '2rem' }}>
+                    {score}
+                </div>
+
+                <p style={{ color: '#a1a1aa' }}>Sleduj obrazovku pro vyhlášení vítězů.</p>
+                <p style={{ marginTop: '1rem', color: '#10b981', fontWeight: 'bold' }}>Neodcházej! Hostitel může spustit další hru.</p>
             </div>
         );
     }

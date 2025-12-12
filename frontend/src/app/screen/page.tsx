@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { Users, Check } from "lucide-react";
@@ -69,6 +69,28 @@ function ScreenContent() {
     const [revealCount, setRevealCount] = useState(0);
     const [showLeaderboard, setShowLeaderboard] = useState(false);
 
+    const backgroundMusicRef = useRef<HTMLAudioElement | null>(null);
+
+    const playSound = (file: string, loop = false, volume = 0.5) => {
+        try {
+            const audio = new Audio(`/sounds/${file}`);
+            audio.loop = loop;
+            audio.volume = volume;
+            audio.play().catch(e => console.log("Audio play failed (autoplay policy?):", e));
+            return audio;
+        } catch (e) {
+            console.error("Audio error:", e);
+            return null;
+        }
+    };
+
+    const stopBackgroundMusic = () => {
+        if (backgroundMusicRef.current) {
+            backgroundMusicRef.current.pause();
+            backgroundMusicRef.current = null;
+        }
+    };
+
     useEffect(() => {
         if (!pin) return;
 
@@ -82,6 +104,7 @@ function ScreenContent() {
 
         newSocket.on("playerJoined", (player) => {
             setPlayers((prev) => [...prev, player]);
+            playSound("join.mp3", false, 0.4);
         });
 
         newSocket.on("updatePlayerList", (playerList) => {
@@ -97,7 +120,7 @@ function ScreenContent() {
             setFinalPlayers([]);
             setCurrentQuestion(null);
             setShowLeaderboard(false);
-            // Players persist :)
+            stopBackgroundMusic();
         });
 
         newSocket.on("questionStart", (data) => {
@@ -114,34 +137,50 @@ function ScreenContent() {
             setShowResults(false);
             setShowLeaderboard(false);
             setGameStarted(true);
+
+            // Audio
+            stopBackgroundMusic();
+            playSound("question_start.mp3", false, 0.6);
+            // Start thinking music after a short delay or immediately
+            backgroundMusicRef.current = playSound("thinking.mp3", true, 0.3);
         });
 
         newSocket.on("answerSubmitted", (data) => {
             setAnswerStats({ count: data.count, total: data.total });
+            playSound("pop.mp3", false, 0.2);
         });
 
         newSocket.on("questionEnd", (data) => {
             setResultsData(data);
             setShowResults(true);
             setShowLeaderboard(false);
+
+            stopBackgroundMusic();
+            playSound("time_up.mp3", false, 0.6);
         });
 
         newSocket.on("showLeaderboard", () => {
             setShowLeaderboard(true);
+            playSound("leaderboard.mp3", false, 0.5);
         });
 
         newSocket.on("gameOver", (data) => {
             setFinalPlayers(data.players.sort((a: any, b: any) => b.score - a.score));
             setGameFinished(true);
             setGameStarted(false);
+
+            stopBackgroundMusic();
+            playSound("win.mp3", false, 0.7);
         });
 
         newSocket.on("countdownStart", (data) => {
             setCountdown(data.duration);
             setShowResults(false);
+            playSound("countdown.mp3", false, 0.5);
         });
 
         return () => {
+            stopBackgroundMusic();
             newSocket.disconnect();
         };
     }, [pin]);

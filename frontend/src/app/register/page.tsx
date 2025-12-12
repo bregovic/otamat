@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-// Production Backend URL
-const BACKEND_URL = "https://otamat-production.up.railway.app";
+import { BACKEND_URL } from "../../utils/config";
 
 export default function RegisterPage() {
     const [email, setEmail] = useState("");

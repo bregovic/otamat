@@ -216,6 +216,71 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { success: true, pin: pin };
   }
 
+  @SubscribeMessage('loadQuizToSession')
+  async handleLoadQuizToSession(
+    @MessageBody() data: { pin: string; quizId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { pin, quizId } = data;
+    const game = this.games.get(pin);
+
+    if (!game) {
+      return { success: false, message: 'Hra nebyla nalezena.' };
+    }
+
+    this.logger.log(`Loading new quiz ${quizId} into session ${pin}`);
+
+    const quiz = await this.prisma.quiz.findUnique({
+      where: { id: quizId },
+      include: {
+        questions: {
+          include: { options: true },
+          orderBy: { order: 'asc' }
+        }
+      }
+    });
+
+    if (!quiz) {
+      return { success: false, message: 'Kvíz nenalezen.' };
+    }
+
+    // Transform DB questions
+    const gameQuestions = quiz.questions.map(q => {
+      const sortedOptions = q.options.sort((a, b) => a.order - b.order);
+      return {
+        text: q.text,
+        mediaUrl: q.mediaUrl,
+        options: sortedOptions.map(o => ({ text: o.text, mediaUrl: o.imageUrl })),
+        correct: sortedOptions.findIndex(o => o.isCorrect),
+        timeLimit: q.timeLimit || 30,
+        type: q.type
+      };
+    });
+
+    // Reset Game State but KEEP players
+    game.title = quiz.title;
+    game.questions = gameQuestions;
+    game.currentQuestionIndex = -1;
+    game.answers.clear();
+    game.state = 'lobby';
+    game.timer = null;
+    game.questionStartTime = 0;
+
+    // Reset player scores for the new game
+    game.players.forEach(p => p.score = 0);
+
+    // Notify everyone
+    this.server.to(pin).emit('quizLoaded', {
+      title: game.title,
+      totalQuestions: game.questions.length
+    });
+
+    // Send updated player list (scores reset)
+    this.server.to(pin).emit('updatePlayerList', game.players);
+
+    return { success: true };
+  }
+
   @SubscribeMessage('saveQuiz')
   async handleSaveQuiz(
     @MessageBody() data: { quizId?: string; title: string; questions: any[]; isPublic: boolean; userId?: string },

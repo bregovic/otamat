@@ -2,11 +2,10 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { io, Socket } from "socket.io-client";
-import { Users, Play, Check, Monitor, LayoutGrid, RotateCcw } from "lucide-react";
+import { Users, Check } from "lucide-react";
 import QRCode from "react-qr-code";
-import { BACKEND_URL } from "../../../utils/config";
+import { BACKEND_URL } from "../../utils/config";
 
 const avatarCategories = {
     "Zvířátka": {
@@ -50,7 +49,7 @@ const avatarCategories = {
 // Flatten for lookup
 const avatarMap: { [key: string]: string } = Object.assign({}, ...Object.values(avatarCategories));
 
-function HostGameContent() {
+function ScreenContent() {
     const searchParams = useSearchParams();
     const pin = searchParams.get("pin");
 
@@ -68,11 +67,6 @@ function HostGameContent() {
     const [finalPlayers, setFinalPlayers] = useState<any[]>([]);
     const [countdown, setCountdown] = useState<number | null>(null);
     const [revealCount, setRevealCount] = useState(0);
-
-    // Multi-Game Logic
-    const [showQuizSelector, setShowQuizSelector] = useState(false);
-    const [myQuizzes, setMyQuizzes] = useState<any[]>([]);
-    const [isLoadingQuizzes, setIsLoadingQuizzes] = useState(false);
 
     useEffect(() => {
         if (!pin) return;
@@ -93,16 +87,15 @@ function HostGameContent() {
             setPlayers(playerList);
         });
 
-        // Listen for new quiz loading
+        // Handle loading new quiz into same session
         newSocket.on("quizLoaded", () => {
-            // Reset UI for new game
             setGameStarted(false);
             setGameFinished(false);
             setShowResults(false);
             setResultsData(null);
             setFinalPlayers([]);
             setCurrentQuestion(null);
-            setRevealCount(0);
+            // Players persist :)
         });
 
         newSocket.on("questionStart", (data) => {
@@ -173,110 +166,15 @@ function HostGameContent() {
         }
     }, [gameStarted, showResults, timeLeft, countdown, gameFinished, finalPlayers, revealCount]);
 
-    const handleNextQuestion = () => {
-        if (socket && pin) {
-            socket.emit("nextQuestion", { pin });
-        }
-    };
-
-    const handleStartGame = () => {
-        if (socket && pin) {
-            socket.emit("startGame", { pin });
-        }
-    };
-
-    const fetchMyQuizzes = async () => {
-        setIsLoadingQuizzes(true);
-        try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`${BACKEND_URL}/quiz/my`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (Array.isArray(data)) {
-                setMyQuizzes(data);
-            }
-        } catch (e) {
-            console.error(e);
-        }
-        setIsLoadingQuizzes(false);
-    };
-
-    const handleOpenQuizSelector = () => {
-        setShowQuizSelector(true);
-        fetchMyQuizzes();
-    };
-
-    const handleLoadNewQuiz = (quizId: string) => {
-        if (socket && pin) {
-            socket.emit("loadQuizToSession", { pin, quizId });
-            setShowQuizSelector(false);
-        }
-    };
-
-    const openPresentationMode = () => {
-        window.open(`/otamat/screen?pin=${pin}`, '_blank');
-    };
-
     if (!pin) return <div className="text-white text-center mt-20">Chybí PIN hry.</div>;
 
-    // --- QUIZ SELECTOR MODAL ---
-    if (showQuizSelector) {
-        return (
-            <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                <div className="glass-card w-full max-w-2xl p-8 max-h-[80vh] flex flex-col">
-                    <h2 className="text-3xl font-bold mb-6 text-white flex items-center gap-2">
-                        <LayoutGrid /> Vyberte další kvíz
-                    </h2>
-
-                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
-                        {isLoadingQuizzes ? (
-                            <div className="text-center text-gray-400 py-8">Načítání kvízů...</div>
-                        ) : myQuizzes.length === 0 ? (
-                            <div className="text-center text-gray-400 py-8">Nemáte žádné uložené kvízy.</div>
-                        ) : (
-                            myQuizzes.map((quiz) => (
-                                <button
-                                    key={quiz.id}
-                                    onClick={() => handleLoadNewQuiz(quiz.id)}
-                                    className="w-full text-left p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all flex items-center justify-between group"
-                                >
-                                    <div>
-                                        <div className="text-xl font-bold text-white group-hover:text-primary transition-colors">{quiz.title}</div>
-                                        <div className="text-sm text-gray-400">{quiz.questions?.length || 0} otázek</div>
-                                    </div>
-                                    <Play className="opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
-                                </button>
-                            ))
-                        )}
-                    </div>
-
-                    <button
-                        onClick={() => setShowQuizSelector(false)}
-                        className="btn btn-secondary mt-6 w-full"
-                    >
-                        Zrušit
-                    </button>
-                </div>
-            </main>
-        );
-    }
-
     if (gameFinished) {
-        // ... (Existing Game Over logic, but adding the "Next Game" button)
+        // Final screen WITHOUT buttons
         const topPlayers = finalPlayers.slice(0, 5).reverse();
         const visiblePlayers = topPlayers.slice(0, revealCount);
 
         return (
             <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#09090b] to-black">
-                {/* --- HEADER WITH CONTROLS --- */}
-                <div className="absolute top-4 right-4 z-50 flex gap-4">
-                    <button onClick={openPresentationMode} className="bg-white/10 hover:bg-white/20 p-3 rounded-full text-white backdrop-blur-md transition-colors" title="Otevřít Prezentaci (TV)">
-                        <Monitor size={24} />
-                    </button>
-                </div>
-                {/* --------------------------- */}
-
                 <style jsx global>{`
                     @keyframes popIn {
                         0% { transform: scale(0); opacity: 0; }
@@ -297,8 +195,6 @@ function HostGameContent() {
                         animation: confetti 3s linear infinite;
                     }
                 `}</style>
-
-                {/* Confetti Effect */}
                 {revealCount >= topPlayers.length && (
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         {[...Array(50)].map((_, i) => (
@@ -315,12 +211,10 @@ function HostGameContent() {
                     <h1 className="text-6xl md:text-8xl font-black mb-12 bg-clip-text text-transparent bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-700 drop-shadow-2xl">
                         VÍTĚZOVÉ
                     </h1>
-
-                    <div className="flex flex-col-reverse gap-4 items-center justify-end min-h-[500px]">
+                    <div className="flex flex-col-reverse gap-4 items-center justify-end min-h-[600px]">
                         {visiblePlayers.map((player, index) => {
                             const rank = topPlayers.length - index;
                             const isWinner = rank === 1;
-
                             return (
                                 <div key={player.id} className={`pop-in flex items-center justify-between w-full max-w-3xl p-6 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-md
                                     ${isWinner ? 'bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border-yellow-500/50 scale-110 mb-8' : 'bg-white/5'}
@@ -347,36 +241,15 @@ function HostGameContent() {
                             );
                         })}
                     </div>
-
-                    {revealCount >= topPlayers.length && (
-                        <div className="flex gap-4 justify-center mt-12 animate-bounce">
-                            <Link href="/dashboard" className="btn btn-secondary text-xl px-8 py-4">
-                                Ukončit
-                            </Link>
-                            <button
-                                onClick={handleOpenQuizSelector}
-                                className="btn btn-primary text-2xl px-12 py-4 flex items-center gap-2"
-                            >
-                                <RotateCcw /> Další Kvíz (Se stejnými hráči)
-                            </button>
-                        </div>
-                    )}
                 </div>
             </main>
         );
     }
 
     if (gameStarted && currentQuestion) {
+        // Active Game View (NO CONTROLS)
         return (
             <main className="h-screen max-h-screen w-full overflow-hidden flex flex-col p-2 md:p-4 relative">
-                {/* --- HEADER WITH CONTROLS --- */}
-                <div className="absolute top-4 right-4 z-50 flex gap-4">
-                    <button onClick={openPresentationMode} className="bg-white/10 hover:bg-white/20 p-3 rounded-full text-white backdrop-blur-md transition-colors" title="Otevřít Prezentaci (TV)">
-                        <Monitor size={24} />
-                    </button>
-                </div>
-                {/* --------------------------- */}
-
                 {/* Header Info */}
                 <div className="flex justify-between items-center mb-2 px-4 w-full max-w-[95vw] mx-auto shrink-0 z-10">
                     <div className="text-xl font-bold text-gray-400">
@@ -390,21 +263,15 @@ function HostGameContent() {
                     </div>
                 </div>
 
-                {/* Question & Image Area */}
+                {/* Question Area */}
                 <div className="flex-1 min-h-0 flex flex-col items-center justify-center mb-4 relative w-full">
                     <div className="glass-card w-full !max-w-[95vw] !p-6 flex flex-col items-center justify-center h-full relative overflow-hidden border-white/10 shadow-2xl">
                         <h2 className="text-3xl md:text-5xl font-black text-center mb-6 leading-tight z-10 text-white drop-shadow-lg shrink-0 max-h-[20vh] overflow-y-auto custom-scrollbar">
                             {currentQuestion.text}
                         </h2>
-
-                        {/* Image Placeholder or Actual Image */}
                         <div className="flex-1 w-full flex items-center justify-center rounded-xl relative overflow-hidden min-h-0 bg-black/20">
                             {currentQuestion.mediaUrl ? (
-                                <img
-                                    src={currentQuestion.mediaUrl}
-                                    alt="Question Media"
-                                    className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
-                                />
+                                <img src={currentQuestion.mediaUrl} alt="Question Media" className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" />
                             ) : (
                                 <div className="text-white/10 text-9xl font-bold flex items-center justify-center w-full h-full">?</div>
                             )}
@@ -412,11 +279,8 @@ function HostGameContent() {
                     </div>
                 </div>
 
-                {/* Options Area - Based on Type */}
-                <div
-                    className={`grid gap-4 w-full !max-w-[95vw] mx-auto shrink-0 ${currentQuestion.type === 'TRUE_FALSE' ? 'grid-cols-2' : 'grid-cols-2'}`}
-                    style={{ height: '25vh', minHeight: '180px', maxHeight: '300px' }}
-                >
+                {/* Options Area */}
+                <div className={`grid gap-4 w-full !max-w-[95vw] mx-auto shrink-0 ${currentQuestion.type === 'TRUE_FALSE' ? 'grid-cols-2' : 'grid-cols-2'}`} style={{ height: '25vh', minHeight: '180px', maxHeight: '300px' }}>
                     {currentQuestion.options.map((opt, i) => {
                         const isCorrect = showResults && resultsData?.correctIndex === i;
                         const gradientClass = [
@@ -432,10 +296,7 @@ function HostGameContent() {
                             return (
                                 <div key={i} className={`
                                     rounded-2xl text-3xl md:text-5xl font-black text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-4 border-white/10
-                                    ${showResults
-                                        ? (isCorrect ? 'opacity-100 scale-105 z-10 ring-4 ring-white' : 'opacity-30 grayscale')
-                                        : bgColor
-                                    }
+                                    ${showResults ? (isCorrect ? 'opacity-100 scale-105 z-10 ring-4 ring-white' : 'opacity-30 grayscale') : bgColor}
                                 `}>
                                     <span className="drop-shadow-md">{opt.text}</span>
                                     {isCorrect && <Check size={64} className="absolute right-8 top-1/2 -translate-y-1/2 text-white drop-shadow-md" />}
@@ -446,13 +307,9 @@ function HostGameContent() {
                         return (
                             <div key={i} className={`
                                 rounded-2xl text-2xl md:text-3xl font-bold text-white flex items-center justify-center gap-4 transition-all duration-300 relative overflow-hidden shadow-lg border-2 border-white/10
-                                ${showResults
-                                    ? (isCorrect ? 'bg-emerald-500 scale-105 z-10 ring-4 ring-white' : 'bg-white/5 opacity-30 grayscale')
-                                    : `bg-gradient-to-br ${gradientClass}`
-                                }
+                                ${showResults ? (isCorrect ? 'bg-emerald-500 scale-105 z-10 ring-4 ring-white' : 'bg-white/5 opacity-30 grayscale') : `bg-gradient-to-br ${gradientClass}`}
                             `}>
                                 <span className="absolute left-4 top-4 text-2xl opacity-50 z-20 font-black">{['▲', '◆', '●', '■'][i]}</span>
-
                                 {opt.mediaUrl ? (
                                     <div className="w-full h-full absolute inset-0 flex items-center justify-center bg-black/40">
                                         <img src={opt.mediaUrl} alt="Option" className="max-w-full max-h-full object-contain opacity-80" />
@@ -463,7 +320,6 @@ function HostGameContent() {
                                 ) : (
                                     <span className="drop-shadow-md z-10 px-8 text-center">{opt.text}</span>
                                 )}
-
                                 {isCorrect && <Check size={48} className="absolute right-4 top-4 text-white drop-shadow-md z-30" />}
                             </div>
                         );
@@ -474,7 +330,6 @@ function HostGameContent() {
                 {showResults && (
                     <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-40 flex flex-col items-center justify-center p-8">
                         <h2 className="text-5xl font-bold text-white mb-8">Průběžné výsledky</h2>
-
                         <div className="w-full max-w-4xl space-y-4 mb-12">
                             {resultsData?.players.sort((a: any, b: any) => b.score - a.score).slice(0, 5).map((player: any, index: number) => (
                                 <div key={player.id} className="flex items-center justify-between bg-white/10 p-4 rounded-xl border border-white/5">
@@ -487,16 +342,8 @@ function HostGameContent() {
                                 </div>
                             ))}
                         </div>
-
-                        <button
-                            onClick={handleNextQuestion}
-                            className="btn btn-primary text-3xl px-12 py-6 flex items-center gap-4 shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:scale-105 transition-transform"
-                        >
-                            <Play size={40} /> Další otázka
-                        </button>
                     </div>
                 )}
-
                 {/* Countdown Overlay */}
                 {countdown !== null && (
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center">
@@ -509,67 +356,36 @@ function HostGameContent() {
         );
     }
 
+    // Lobby View
     return (
         <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
-            {/* --- HEADER WITH CONTROLS --- */}
-            <div className="absolute top-4 right-4 z-50 flex gap-4">
-                <button onClick={openPresentationMode} className="bg-white/10 hover:bg-white/20 p-3 rounded-full text-white backdrop-blur-md transition-colors" title="Otevřít Prezentaci (TV)">
-                    <Monitor size={24} />
-                </button>
-            </div>
-            {/* --------------------------- */}
             <style jsx global>{`
                 @keyframes float {
                     0% { transform: translateY(0px); }
                     50% { transform: translateY(-10px); }
                     100% { transform: translateY(0px); }
                 }
-                @keyframes pulse-glow {
-                    0% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.4); }
-                    70% { box-shadow: 0 0 0 20px rgba(var(--primary-rgb), 0); }
-                    100% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0); }
-                }
-                .avatar-float {
+                 .avatar-float {
                     animation: float 3s ease-in-out infinite;
                 }
             `}</style>
-
-            {/* ... Rest of Lobby (unchanged logic) ... */}
             <div className="w-full max-w-[95vw] flex flex-col items-center text-center z-10 relative">
-                {/* QR Code Absolute Positioned */}
                 <div className="absolute top-0 right-0 hidden md:flex flex-col items-center bg-white p-4 rounded-xl shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                    <QRCode
-                        value={`https://hollyhop.cz/otamat/play?pin=${pin}`}
-                        size={128}
-                        fgColor="#000000"
-                        bgColor="#ffffff"
-                    />
+                    <QRCode value={`https://hollyhop.cz/otamat/play?pin=${pin}`} size={128} fgColor="#000000" bgColor="#ffffff" />
                     <span className="text-black font-bold mt-2 text-sm">Naskenuj a hraj!</span>
                 </div>
 
-                <h1 className="text-6xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-                    Lobby
-                </h1>
+                <h1 className="text-6xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Lobby</h1>
                 <p className="text-2xl text-gray-400 mb-8">Připojte se na <span className="text-white font-bold">hollyhop.cz</span> pomocí PINu:</p>
-
-                <div className="text-8xl md:text-9xl font-black text-white bg-white/10 px-12 py-8 rounded-3xl border-4 border-white/20 mb-12 backdrop-blur-lg shadow-[0_0_50px_rgba(255,255,255,0.1)] animate-pulse">
-                    {pin}
-                </div>
+                <div className="text-8xl md:text-9xl font-black text-white bg-white/10 px-12 py-8 rounded-3xl border-4 border-white/20 mb-12 backdrop-blur-lg shadow-[0_0_50px_rgba(255,255,255,0.1)] animate-pulse">{pin}</div>
 
                 <div className="glass-card w-full !max-w-[95vw] p-8 min-h-[500px] flex flex-col">
                     <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
-                        <h2 className="text-4xl font-bold flex items-center gap-3">
-                            <Users size={40} /> Hráči ({players.length})
-                        </h2>
-                        {players.length > 0 && (
-                            <div className="text-emerald-400 font-bold text-2xl animate-pulse">Připraveni ke hře</div>
-                        )}
+                        <h2 className="text-4xl font-bold flex items-center gap-3"><Users size={40} /> Hráči ({players.length})</h2>
+                        {players.length > 0 && <div className="text-emerald-400 font-bold text-2xl animate-pulse">Připraveni ke hře</div>}
                     </div>
-
                     {players.length === 0 ? (
-                        <div className="flex-1 flex items-center justify-center text-gray-500 text-3xl">
-                            Čekání na hráče...
-                        </div>
+                        <div className="flex-1 flex items-center justify-center text-gray-500 text-3xl">Čekání na hráče...</div>
                     ) : (
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12">
                             {players.map((player, i) => (
@@ -583,31 +399,19 @@ function HostGameContent() {
                         </div>
                     )}
                 </div>
-
-                <div className="flex gap-6 mt-12">
-                    <Link href="/dashboard" className="btn btn-secondary text-2xl px-10 py-5">
-                        Ukončit hru
-                    </Link>
-                    <button
-                        onClick={handleStartGame}
-                        className="btn btn-primary text-2xl px-16 py-5 flex items-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all shadow-xl"
-                        disabled={players.length === 0}
-                    >
-                        <Play size={32} /> Spustit hru
-                    </button>
-                    <button onClick={handleOpenQuizSelector} className="btn btn-secondary text-2xl px-8 ml-4" title="Změnit kvíz">
-                        <RotateCcw />
-                    </button>
+                {/* NO CONTROLS HERE */}
+                <div className="mt-8 text-2xl text-gray-400 font-bold animate-pulse">
+                    Sledujte velkou obrazovku
                 </div>
             </div>
         </main>
     );
 }
 
-export default function HostGamePage() {
+export default function ScreenPage() {
     return (
         <Suspense fallback={<div className="text-white text-center mt-20">Načítání...</div>}>
-            <HostGameContent />
+            <ScreenContent />
         </Suspense>
     );
 }

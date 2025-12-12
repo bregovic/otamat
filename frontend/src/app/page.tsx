@@ -18,7 +18,7 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 relative">
+    <main className="flex min-h-[100dvh] flex-col items-center justify-center p-4 relative">
 
       {/* Auth Buttons (Top Right) */}
       <div className="absolute top-4 right-4 flex gap-4 z-10 items-center">

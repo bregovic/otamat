@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { Loader2 } from "lucide-react";
 
-// Production Backend URL
-const BACKEND_URL = "https://otamat-production.up.railway.app";
+import { BACKEND_URL } from "../../utils/config";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");

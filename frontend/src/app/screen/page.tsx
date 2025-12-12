@@ -232,7 +232,7 @@ function ScreenContent() {
         const visiblePlayers = topPlayers.slice(0, revealCount);
 
         return (
-            <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#09090b] to-black">
+            <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#09090b] to-black !max-w-none w-full">
                 <style jsx global>{`
                     @keyframes popIn {
                         0% { transform: scale(0); opacity: 0; }
@@ -314,7 +314,7 @@ function ScreenContent() {
     if (gameStarted && currentQuestion) {
         // Active Game View (NO CONTROLS)
         return (
-            <main className="h-screen max-h-screen w-full overflow-hidden flex flex-col p-2 md:p-4 relative">
+            <main className="h-screen max-h-screen w-full overflow-hidden flex flex-col p-2 md:p-4 relative !max-w-none">
                 {/* Sound Toggle */}
                 <button
                     onClick={() => setSoundEnabled(!soundEnabled)}
@@ -430,7 +430,7 @@ function ScreenContent() {
 
     // Lobby View
     return (
-        <main className="min-h-screen flex flex-col items-center justify-center p-8 relative overflow-hidden">
+        <main className="min-h-screen flex flex-col items-center justify-center p-8 relative overflow-hidden !max-w-none w-full">
             <style jsx global>{`
                 @keyframes float {
                     0% { transform: translateY(0px); }

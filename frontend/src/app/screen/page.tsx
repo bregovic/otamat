@@ -84,7 +84,7 @@ function ScreenContent() {
     const playSound = (file: string, loop = false, volume = 0.5) => {
         if (!soundEnabledRef.current) return null;
         try {
-            const audio = new Audio(`/sounds/${file}`);
+            const audio = new Audio(`/otamat/sounds/${file}`);
             audio.loop = loop;
             audio.volume = volume;
             audio.play().catch(e => console.log("Audio play failed (autoplay policy?):", e));

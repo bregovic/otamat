@@ -55,17 +55,32 @@ export default function DixitBoard() {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [stagedFiles, setStagedFiles] = useState<{ file: File, id: string, rotation: number, preview: string }[]>([]);
+    const [pinInput, setPinInput] = useState('');
+    const [isConnecting, setIsConnecting] = useState(false);
 
+    // Check URL for PIN parameter on mount
     useEffect(() => {
-        // Auto-create game on mount
-        connectAndCreate({});
+        const urlParams = new URLSearchParams(window.location.search);
+        const pinFromUrl = urlParams.get('pin');
+        if (pinFromUrl) {
+            setPinInput(pinFromUrl);
+            connectToGame(pinFromUrl);
+        }
 
         return () => {
             if (socket) socket.close();
         };
     }, []);
 
-    const connectAndCreate = (data: { hostId?: string, guestInfo?: { nickname: string, avatar: string } }) => {
+    const connectToGame = (pin: string) => {
+        if (!pin || pin.length < 4) {
+            setError('Zadejte platný PIN kód');
+            return;
+        }
+
+        setIsConnecting(true);
+        setError(null);
+
         const newSocket = io(BACKEND_URL, {
             transports: ['websocket'],
             upgrade: false
@@ -73,18 +88,27 @@ export default function DixitBoard() {
         setSocket(newSocket);
 
         newSocket.on('connect', () => {
-            console.log('Board connected');
-            newSocket.emit('dixit:create', data, (response: any) => {
+            console.log('Board connected, joining game:', pin);
+            // Join as spectator (no player data)
+            newSocket.emit('dixit:spectate', { pin }, (response: any) => {
+                setIsConnecting(false);
                 if (response.success) {
-                    console.log('Game created:', response.gameId);
+                    console.log('Spectating game:', pin);
+                    // Update URL silently
+                    window.history.replaceState({}, '', `/dixit/board?pin=${pin}`);
                 } else {
-                    console.error('Failed to create game:', response.error);
-                    setError(response.error || 'Failed to create game');
+                    console.error('Failed to join game:', response.error);
+                    setError(response.error || 'Hra s tímto PIN kódem neexistuje');
+                    newSocket.close();
                 }
             });
         });
 
-        newSocket.on('dixit:created', (state) => setGameState(state));
+        newSocket.on('connect_error', (err) => {
+            setIsConnecting(false);
+            setError(`Chyba připojení: ${err.message}`);
+        });
+
         newSocket.on('dixit:update', (state) => setGameState(state));
     };
 
@@ -255,23 +279,55 @@ export default function DixitBoard() {
 
     if (!gameState) {
         return (
-            <div className="h-screen w-full bg-black text-white flex flex-col items-center justify-center p-8 text-center">
-                {!user && !isLoading ? (
-                    <div className="text-yellow-400 text-xl font-bold">
-                        ⚠️ Nejste přihlášeni. Přesměrovávám na přihlášení...
+            <div className="h-screen w-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900 via-purple-950 to-black text-white flex flex-col items-center justify-center p-8 relative overflow-hidden">
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute w-[800px] h-[800px] rounded-full bg-indigo-500/10 blur-[150px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse"></div>
+                </div>
+
+                <div className="z-10 bg-white/5 p-12 rounded-3xl backdrop-blur-md border border-white/10 max-w-lg w-full text-center shadow-2xl">
+                    <h1 className="text-6xl font-serif font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-amber-500">DIXIT</h1>
+                    <h2 className="text-xl mb-8 font-light text-indigo-200">Herní Obrazovka</h2>
+
+                    <div className="mb-8">
+                        <label className="text-xs opacity-60 font-bold uppercase tracking-widest mb-2 block text-indigo-200">PIN kód hry</label>
+                        <input
+                            value={pinInput}
+                            onChange={e => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            placeholder="000000"
+                            className="w-full bg-black/50 border border-indigo-500/30 p-4 rounded-xl text-4xl text-center focus:border-yellow-500 focus:outline-none transition-all placeholder-white/10 font-mono tracking-[0.3em]"
+                            maxLength={6}
+                        />
                     </div>
-                ) : error ? (
-                    <div className="text-red-500 text-xl font-bold max-w-md">
-                        ⚠️ {error}
-                        <button onClick={() => window.location.reload()} className="mt-4 px-6 py-2 bg-white text-black rounded-lg block mx-auto hover:bg-gray-200">
-                            Zkusit znovu
-                        </button>
+
+                    {error && (
+                        <div className="text-red-400 font-bold bg-red-500/10 p-3 rounded-lg mb-6 border border-red-500/20">
+                            ⚠️ {error}
+                        </div>
+                    )}
+
+                    <button
+                        onClick={() => connectToGame(pinInput)}
+                        disabled={isConnecting || pinInput.length < 4}
+                        className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:scale-105 text-white text-xl font-black py-4 rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:scale-100 mb-6"
+                    >
+                        {isConnecting ? (
+                            <span className="flex items-center justify-center gap-2">
+                                <span className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                PŘIPOJUJI...
+                            </span>
+                        ) : "ZOBRAZIT HRU"}
+                    </button>
+
+                    <div className="border-t border-white/10 pt-6 mt-6">
+                        <p className="text-white/40 text-sm leading-relaxed">
+                            <strong className="text-white/60">Nemáte PIN?</strong><br />
+                            Vytvořte hru na mobilu na adrese:
+                        </p>
+                        <div className="bg-black/30 px-4 py-3 rounded-lg mt-4 font-mono text-lg text-yellow-400">
+                            hollyhop.cz/dixit/play
+                        </div>
                     </div>
-                ) : (
-                    <div className="animate-pulse text-indigo-300">
-                        {isLoading ? 'Ověřování uživatele...' : 'Načítání magického světa...'}
-                    </div>
-                )}
+                </div>
             </div>
         );
     }

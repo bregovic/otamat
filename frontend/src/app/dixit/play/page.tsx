@@ -295,10 +295,10 @@ function DixitPlayContent() {
 
                         {canStart ? (
                             <button
-                                onClick={() => socket?.emit('dixit:start', { pin: gameState.pinCode, storytellerId: me.id })}
-                                className="w-full btn btn-primary py-6 text-xl font-black rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-600 hover:scale-105 transition-all shadow-[0_0_40px_rgba(245,158,11,0.4)] animate-pulse"
+                                onClick={() => socket?.emit('dixit:start', { pin: gameState.pinCode })}
+                                className="w-full btn btn-primary py-6 text-xl font-black rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:scale-105 transition-all shadow-[0_0_40px_rgba(99,102,241,0.4)] animate-pulse"
                             >
-                                ✋ MÁM NÁPOVĚDU!<br /><span className="text-xs opacity-70 font-normal normal-case">(Spustit hru jako vypravěč)</span>
+                                ROZDAT KARTY
                             </button>
                         ) : (
                             <p className="text-white/30 italic">Čekáme na další hráče...</p>
@@ -327,7 +327,35 @@ function DixitPlayContent() {
 
             <div className="p-4 flex flex-col items-center max-w-lg mx-auto w-full">
                 {gameState.phase === 'STORYTELLER_PICK' && (
-                    gameState.storytellerId === me.id ? (
+                    !gameState.storytellerId ? (
+                        // NO STORYTELLER YET - CLAIM PHASE
+                        <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="bg-gradient-to-br from-indigo-500/10 to-blue-600/10 border border-indigo-500/30 p-6 rounded-2xl text-center backdrop-blur-md shadow-lg">
+                                <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-indigo-200 mb-2">Rozdáváme karty...</h2>
+                                <p className="text-white/60 text-sm font-serif italic">"Prohlédni si karty. Až budeš mít nápad, přihlas se!"</p>
+                            </div>
+
+                            <button
+                                onClick={() => socket?.emit('dixit:claimStoryteller', { pin: gameState.pinCode, playerId: me.id })}
+                                className="w-full btn btn-primary py-4 text-lg font-black rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-600 hover:scale-105 transition-all shadow-lg animate-pulse uppercase tracking-wider block"
+                            >
+                                ✋ Mám nápovědu!
+                            </button>
+
+                            <div className="relative w-full h-[50vh] flex items-center justify-center">
+                                <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 px-8 w-full h-full items-center no-scrollbar pb-8">
+                                    {myHand.map((card: string) => (
+                                        <div key={card} className="snap-center shrink-0 w-[70vw] max-w-[300px] h-full relative">
+                                            <img
+                                                src={`${BACKEND_URL}/dixit/image/${card}`}
+                                                className="w-full h-full object-contain rounded-xl shadow-lg"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    ) : gameState.storytellerId === me.id ? (
                         // AM STORYTELLER
                         <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <div className="bg-gradient-to-br from-yellow-500/10 to-amber-600/10 border border-yellow-500/30 p-6 rounded-2xl text-center backdrop-blur-md">

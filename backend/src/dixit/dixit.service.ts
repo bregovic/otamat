@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DixitGame, DixitPlayer, DixitPhase, GameStatus } from '@prisma/client';
 import { Server } from 'socket.io';
@@ -11,8 +11,18 @@ const ALL_CARDS = [
 ];
 
 @Injectable()
-export class DixitService {
+export class DixitService implements OnModuleInit {
     constructor(private prisma: PrismaService) { }
+
+    async onModuleInit() {
+        try {
+            console.log('[DixitService] Force-updating schema: Making hostId optional...');
+            await this.prisma.$executeRawUnsafe('ALTER TABLE "DixitGame" ALTER COLUMN "hostId" DROP NOT NULL;');
+            console.log('[DixitService] Schema update success.');
+        } catch (e) {
+            console.warn('[DixitService] Schema update warning:', e.message);
+        }
+    }
 
     private server: Server;
     setServer(server: Server) {

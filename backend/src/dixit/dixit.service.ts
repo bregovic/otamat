@@ -224,6 +224,7 @@ export class DixitService {
         });
 
         const player = await this.prisma.dixitPlayer.findUnique({ where: { id: playerId } });
+        if (!player) throw new Error('Player not found');
         const newHand = player.hand.filter(c => c !== cardId);
 
         await this.prisma.dixitPlayer.update({
@@ -269,6 +270,7 @@ export class DixitService {
         });
 
         const player = await this.prisma.dixitPlayer.findUnique({ where: { id: playerId } });
+        if (!player) throw new Error('Player not found');
         const newHand = player.hand.filter(c => c !== cardId);
 
         // We update submittedCardId just to indicate "activity", but for 3-player it might be the 2nd card.
@@ -337,6 +339,8 @@ export class DixitService {
     async calculateScores(gameId: string, roundId: string) {
         const round = await this.prisma.dixitRound.findUnique({ where: { id: roundId } });
         const game = await this.prisma.dixitGame.findUnique({ where: { id: gameId }, include: { players: true } });
+
+        if (!game || !round) return;
 
         const votes = (round.votes as any) || {};
         const cardsPlayed = (round.cardsPlayed as any) || {};

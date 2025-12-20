@@ -462,9 +462,23 @@ export default function DixitBoard() {
             <div className="flex-1 relative z-20 flex flex-col items-center p-4 pb-[30vh]"> {/* Padding bottom for Map */}
 
                 {gameState.phase === 'STORYTELLER_PICK' && (
-                    <div className="flex flex-col items-center justify-center h-full animate-pulse">
-                        <div className="text-9xl mb-8">🤔</div>
-                        <h2 className="text-6xl font-bold mb-4 text-center">Vypravěč vybírá kartu...</h2>
+                    <div className="flex flex-col items-center w-full justify-center h-full">
+                        <div className="flex gap-12 flex-wrap justify-center items-center">
+                            {gameState.players.map((p: any) => {
+                                const isStoryteller = p.id === gameState.storytellerId;
+                                return (
+                                    <div key={p.id} className={`flex flex-col items-center transition-all duration-500 ${isStoryteller ? 'scale-125 opacity-100' : 'scale-90 opacity-40 grayscale'}`}>
+                                        <div className={`text-6xl mb-4 drop-shadow-xl ${isStoryteller ? 'animate-bounce-subtle' : ''}`}>{{ cow: '🐮', fox: '🦊', pig: '🐷', chicken: '🐔' }[p.avatar as string] || '👤'}</div>
+                                        <div className={`font-bold text-2xl ${isStoryteller ? 'text-yellow-400' : 'text-white'}`}>{p.nickname}</div>
+                                        {isStoryteller && (
+                                            <div className="mt-4 px-6 py-2 bg-yellow-500/10 border border-yellow-500/50 rounded-full text-yellow-300 text-sm font-bold uppercase tracking-widest animate-pulse">
+                                                Vypravěč vybírá...
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
 

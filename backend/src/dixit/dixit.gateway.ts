@@ -31,7 +31,14 @@ export class DixitGateway {
     ) {
         try {
             console.log('Received dixit:create request', { hasHostId: !!data.hostId, hasGuest: !!data.guestInfo });
-            const { game, playerId } = await this.dixitService.createGame(data.hostId, data.guestInfo);
+
+            // Pass the progress callback
+            const { game, playerId } = await this.dixitService.createGame(
+                data.hostId,
+                data.guestInfo,
+                (msg) => client.emit('dixit:debug_log', msg) // Send debug logs to client
+            );
+
             console.log('Game created successfully:', game?.id, 'Player:', playerId);
             if (game) {
                 client.join(game.pinCode);
@@ -41,6 +48,7 @@ export class DixitGateway {
             return { success: true, event: 'dixit:created', game, playerId, pinCode: game?.pinCode };
         } catch (e) {
             console.error('Error in dixit:create:', e);
+            client.emit('dixit:debug_log', 'CRITICAL ERROR: ' + e.message);
             return { success: false, error: e.message || 'Unknown backend error' };
         }
     }

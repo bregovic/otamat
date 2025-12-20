@@ -19,13 +19,15 @@ export class DixitService {
         this.server = server;
     }
 
-    async createGame(hostId?: string, guestInfo?: { nickname: string, avatar: string }) {
-        console.log(`[DixitService] Creating game. HostId: ${hostId}, Guest: ${guestInfo ? guestInfo.nickname : 'None'}`);
+    async createGame(hostId?: string, guestInfo?: { nickname: string, avatar: string }, onProgress?: (msg: string) => void) {
+        onProgress?.('Step 1: Starting');
+        console.log(`[DixitService] Creating game...`);
         try {
             let finalHostId = hostId;
 
             // If no hostId but guest info provided -> Create Guest User
             if (!finalHostId) {
+                onProgress?.('Step 2: Creating Guest');
                 console.log('[DixitService] Creating guest user...');
                 try {
                     const guestUser = await this.prisma.user.create({
@@ -37,8 +39,10 @@ export class DixitService {
                         }
                     });
                     finalHostId = guestUser.id;
+                    onProgress?.('Step 3: Guest Created');
                     console.log('[DixitService] Guest user created:', finalHostId);
                 } catch (err) {
+                    onProgress?.('Step 2 Error: ' + err.message);
                     console.error('[DixitService] Failed to create guest user:', err);
                     throw new Error('Failed to create guest user');
                 }
@@ -47,6 +51,7 @@ export class DixitService {
             if (!finalHostId) throw new Error("Host ID or Guest Info required");
 
             // Generate unique PIN
+            onProgress?.('Step 4: Gen PIN');
             let pin = '';
             let exists = true;
             let attempts = 0;
@@ -57,21 +62,26 @@ export class DixitService {
                 attempts++;
             }
             if (exists) throw new Error("Failed to generate unique PIN");
+            onProgress?.(`Step 5: PIN ${pin}`);
 
             // Fetch cards for the deck
-            console.log('[DixitService] Fetching cards... (SKIPPED FOR DEBUG)');
+            onProgress?.('Step 6: Fetching Cards');
+            console.log('[DixitService] Fetching cards...');
             let allCards: { id: string }[] = [];
-            // try {
-            //     allCards = await this.prisma.dixitCard.findMany({ select: { id: true } });
-            //     console.log(`[DixitService] Found ${allCards.length} cards.`);
-            // } catch (err) {
-            //     console.error('[DixitService] Failed to fetch cards:', err);
-            //     // Proceed with empty deck if fetch fails, to avoid blocking creation
-            // }
+            try {
+                // Enabled again
+                allCards = await this.prisma.dixitCard.findMany({ select: { id: true } });
+                console.log(`[DixitService] Found ${allCards.length} cards.`);
+                onProgress?.(`Step 7: Got ${allCards.length} cards`);
+            } catch (err) {
+                console.error('[DixitService] Failed to fetch cards:', err);
+                onProgress?.('Step 6 Warning: Failed to fetch cards');
+            }
 
             const deck = allCards.map(c => c.id).sort(() => Math.random() - 0.5);
 
             // Create the game
+            onProgress?.('Step 8: Creating Game');
             console.log('[DixitService] Creating game record...');
             const game = await this.prisma.dixitGame.create({
                 data: {

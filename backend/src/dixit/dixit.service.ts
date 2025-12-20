@@ -81,18 +81,27 @@ export class DixitService {
             const deck = allCards.map(c => c.id).sort(() => Math.random() - 0.5);
 
             // Create the game
-            onProgress?.('Step 8: Creating Game');
+            // Create the game
+            onProgress?.('Step 8: Creating Game (No Host Link)');
             console.log('[DixitService] Creating game record...');
-            const game = await this.prisma.dixitGame.create({
+            // FIRST: Create basic game record
+            let game = await this.prisma.dixitGame.create({
                 data: {
                     pinCode: pin,
-                    hostId: finalHostId,
+                    // hostId: finalHostId, // Skip relation initially to prevent lock/hang
                     status: GameStatus.WAITING,
                     phase: DixitPhase.LOBBY,
                     deck: deck,
-                    rounds: {
-                        create: []
-                    }
+                }
+            });
+            onProgress?.('Step 9: Game DB Record Created');
+
+            // SECOND: Link the host
+            onProgress?.('Step 10: Linking Host');
+            game = await this.prisma.dixitGame.update({
+                where: { id: game.id },
+                data: {
+                    hostId: finalHostId
                 },
                 include: { players: true }
             });

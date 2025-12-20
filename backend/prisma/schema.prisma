@@ -203,8 +203,8 @@ model DixitGame {
   status      GameStatus @default(WAITING)
   phase       DixitPhase @default(LOBBY)
   
-  hostId      String
-  host        User       @relation("DixitHost", fields: [hostId], references: [id])
+  hostId      String?
+  host        User?       @relation("DixitHost", fields: [hostId], references: [id])
   
   players     DixitPlayer[]
   rounds      DixitRound[]

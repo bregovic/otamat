@@ -109,6 +109,7 @@ export class DixitService {
             if (sharp) {
                 try {
                     processedBuffer = await sharp(file.buffer)
+                        .rotate() // Auto-orient based on EXIF
                         .resize({ width: 800, height: 1200, fit: 'inside' })
                         .jpeg({ quality: 80 })
                         .toBuffer();

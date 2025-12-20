@@ -251,38 +251,49 @@ function DixitPlayContent() {
     // --- LOBBY WAITING ---
     if (gameState.phase === 'LOBBY') {
         const canStart = gameState.players.length >= 3;
+        const joinUrl = `hollyhop.cz/dixit/play?pin=${gameState.pinCode}`;
 
         return (
-            <main className="min-h-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-950 via-black to-black text-white flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[100px] animate-pulse pointer-events-none"></div>
+            <main className="min-h-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-950 via-black to-black text-white flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] animate-pulse pointer-events-none"></div>
 
-                <div className="relative z-10 space-y-8">
-                    <div>
-                        <div className="text-8xl mb-6 animate-bounce-subtle filter drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">{me.avatar}</div>
-                        <h2 className="text-4xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-white to-indigo-200">{me.nickname}</h2>
-                        <div className="text-emerald-400 font-bold uppercase tracking-widest text-sm bg-emerald-500/10 px-4 py-2 rounded-full inline-block border border-emerald-500/30 mt-4 animate-pulse">Jsi ve hře!</div>
+                <div className="relative z-10 w-full max-w-md space-y-6">
+                    {/* PIN Display */}
+                    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl p-6">
+                        <div className="text-xs uppercase tracking-widest text-indigo-300 mb-2 font-bold">PIN KÓD</div>
+                        <div className="text-5xl font-mono font-black tracking-[0.3em] text-yellow-400">{gameState.pinCode}</div>
+                        <div className="text-white/40 text-sm mt-3">{joinUrl}</div>
                     </div>
 
-                    <div className="space-y-4 max-w-sm mx-auto">
-                        <div className="text-white/40 text-sm font-bold uppercase tracking-widest">
-                            Hráči: {gameState.players.length} / 3+
+                    {/* Player List */}
+                    <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4">
+                        <div className="text-xs uppercase tracking-widest text-white/40 mb-3 font-bold">
+                            Hráči ({gameState.players.length}/3+)
                         </div>
-
-                        {canStart ? (
-                            <button
-                                onClick={() => socket?.emit('dixit:start', { pin: gameState.pinCode })}
-                                className="w-full btn btn-primary py-6 text-xl font-black rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:scale-105 transition-all shadow-[0_0_40px_rgba(99,102,241,0.4)] animate-pulse"
-                            >
-                                ROZDAT KARTY
-                            </button>
-                        ) : (
-                            <p className="text-white/30 italic">Čekáme na další hráče...</p>
-                        )}
+                        <div className="flex flex-wrap gap-3 justify-center">
+                            {gameState.players.map((p: any) => (
+                                <div key={p.id} className={`flex flex-col items-center px-4 py-2 rounded-xl ${p.id === playerId ? 'bg-yellow-500/20 border border-yellow-500/30' : 'bg-white/5'}`}>
+                                    <div className="text-3xl">{p.avatar}</div>
+                                    <div className="text-sm font-bold">{p.nickname}</div>
+                                    {p.id === playerId && <div className="text-[10px] text-yellow-400 uppercase">Ty</div>}
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
-                    <p className="mt-12 text-white/20 font-serif italic max-w-xs mx-auto leading-relaxed">
-                        "Až se nás sejde dost, ten s nejlepší nápovědou hru odstartuje..."
-                    </p>
+                    {/* Start Button */}
+                    {canStart ? (
+                        <button
+                            onClick={() => socket?.emit('dixit:start', { pin: gameState.pinCode })}
+                            className="w-full btn btn-primary py-5 text-xl font-black rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:scale-105 transition-all shadow-[0_0_40px_rgba(99,102,241,0.4)]"
+                        >
+                            🚀 ROZDAT KARTY A ZAČÍT
+                        </button>
+                    ) : (
+                        <div className="text-white/30 italic py-4">
+                            Čekáme na další hráče... (min. 3)
+                        </div>
+                    )}
                 </div>
             </main>
         );

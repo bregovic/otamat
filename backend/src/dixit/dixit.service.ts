@@ -23,13 +23,13 @@ export class DixitService {
         let finalHostId = hostId;
 
         // If no hostId but guest info provided -> Create Guest User
-        if (!finalHostId && guestInfo) {
+        if (!finalHostId) {
             const guestUser = await this.prisma.user.create({
                 data: {
                     email: `guest_${Date.now()}_${Math.random().toString(36).substring(7)}@dixit.temp`,
-                    nickname: guestInfo.nickname,
-                    avatar: guestInfo.avatar,
-                    role: 'HOST' // or USER
+                    nickname: guestInfo?.nickname || 'Dixit Board',
+                    avatar: guestInfo?.avatar || 'fox',
+                    role: 'HOST'
                 }
             });
             finalHostId = guestUser.id;

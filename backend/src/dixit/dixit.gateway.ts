@@ -13,6 +13,11 @@ export class DixitGateway {
     @WebSocketServer()
     server: Server;
 
+    @SubscribeMessage('dixit:ping')
+    handlePing() {
+        return { message: 'pong' };
+    }
+
     constructor(private readonly dixitService: DixitService) { }
 
     afterInit(server: Server) {

@@ -44,9 +44,10 @@ export class DixitService {
         });
 
         if (!game) throw new Error('Game not found');
-        if (game.status !== GameStatus.WAITING && game.status !== GameStatus.ACTIVE) { // Allow rejoin?
+        if (game.status !== 'WAITING' && game.status !== 'ACTIVE') {
+            // Allow rejoin?
             // Simple logic for now: only join in Waiting
-            if (game.status !== GameStatus.WAITING) throw new Error('Game already started');
+            if (game.status !== 'WAITING') throw new Error('Game already started');
         }
 
         const player = await this.prisma.dixitPlayer.create({
@@ -171,10 +172,9 @@ export class DixitService {
 
         // Verify it is storyteller phase and player is storyteller
         if (game.phase !== DixitPhase.STORYTELLER_PICK) throw new Error('Wrong phase');
-        if (game.storytellerId !== playerId) throw new Error('Not storyteller'); // Check logic carefully
+        if (!game.storytellerId || game.storytellerId !== playerId) throw new Error('Not storyteller');
 
         // Update Round
-        // We need to find current round
         const lastRound = await this.prisma.dixitRound.findFirst({
             where: { gameId: game.id },
             orderBy: { roundNumber: 'desc' }
@@ -195,6 +195,8 @@ export class DixitService {
 
         // Remove card from Hand
         const player = await this.prisma.dixitPlayer.findUnique({ where: { id: playerId } });
+        if (!player) throw new Error('Player not found');
+
         const newHand = player.hand.filter(c => c !== cardId);
         await this.prisma.dixitPlayer.update({
             where: { id: playerId },
@@ -212,6 +214,8 @@ export class DixitService {
 
     async submitPlayerCard(pin: string, playerId: string, cardId: string) {
         const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin }, include: { players: true } });
+        if (!game) throw new Error('Game not found');
+
         // ... Check phase PLAYERS_PICK
         // ... Check if player already submitted
 
@@ -219,6 +223,8 @@ export class DixitService {
             where: { gameId: game.id },
             orderBy: { roundNumber: 'desc' }
         });
+
+        if (!lastRound) throw new Error('Round not found');
 
         const cardsPlayed = (lastRound.cardsPlayed as any) || {};
         cardsPlayed[playerId] = cardId;
@@ -230,6 +236,8 @@ export class DixitService {
 
         // Update Hand
         const player = await this.prisma.dixitPlayer.findUnique({ where: { id: playerId } });
+        if (!player) throw new Error('Player not found');
+
         const newHand = player.hand.filter(c => c !== cardId);
         await this.prisma.dixitPlayer.update({
             where: { id: playerId },
@@ -252,12 +260,13 @@ export class DixitService {
 
     async submitVote(pin: string, voterId: string, targetCardOwnerId: string) {
         const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin }, include: { players: true } });
-        // ... Phase VOTING
+        if (!game) throw new Error('Game not found');
 
         const lastRound = await this.prisma.dixitRound.findFirst({
             where: { gameId: game.id },
             orderBy: { roundNumber: 'desc' }
         });
+        if (!lastRound) throw new Error('Round not found');
 
         const votes = (lastRound.votes as any) || {};
         votes[voterId] = targetCardOwnerId;
@@ -290,7 +299,10 @@ export class DixitService {
 
     async calculateScores(gameId: string, roundId: string) {
         const round = await this.prisma.dixitRound.findUnique({ where: { id: roundId } });
+        if (!round) throw new Error('Round not found');
+
         const game = await this.prisma.dixitGame.findUnique({ where: { id: gameId }, include: { players: true } });
+        if (!game) throw new Error('Game not found');
 
         const votes = (round.votes as any) || {};
         const storytellerId = round.storytellerId;
@@ -347,7 +359,6 @@ export class DixitService {
                 }));
             }
         }
-
         await this.prisma.$transaction(updates);
     }
 

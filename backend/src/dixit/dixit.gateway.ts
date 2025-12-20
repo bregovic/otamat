@@ -117,6 +117,14 @@ export class DixitGateway {
         this.server.to(data.pin).emit('dixit:update', gameState);
     }
 
+    @SubscribeMessage('dixit:claimStoryteller')
+    async handleClaimStoryteller(
+        @MessageBody() data: { pin: string; playerId: string }
+    ) {
+        const gameState = await this.dixitService.claimStoryteller(data.pin, data.playerId);
+        this.server.to(data.pin).emit('dixit:update', gameState);
+    }
+
     @SubscribeMessage('dixit:nextRound')
     async handleNextRound(
         @MessageBody() data: { pin: string }

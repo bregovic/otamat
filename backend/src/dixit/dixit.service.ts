@@ -161,34 +161,18 @@ export class DixitService {
             data: { deck }
         });
 
-        // Set storyteller (User specified or Random)
-        const storyteller = firstStorytellerId
-            ? game.players.find(p => p.id === firstStorytellerId)
-            : game.players[Math.floor(Math.random() * game.players.length)];
-
-        if (!storyteller) throw new Error("Storyteller not found");
 
         await this.prisma.dixitGame.update({
             where: { id: game.id },
             data: {
                 status: GameStatus.ACTIVE,
                 phase: DixitPhase.STORYTELLER_PICK,
-                storytellerId: storyteller.id,
+                storytellerId: null, // No storyteller yet
                 currentRound: 1
             }
         });
 
-        await this.prisma.dixitRound.create({
-            data: {
-                gameId: game.id,
-                roundNumber: 1,
-                storytellerId: storyteller.id,
-                clue: "",
-                cardsPlayed: {}, // Will store Record<playerId, string[]>
-                votes: {},       // Will store Record<voterId, cardId> (voting for CARD now)
-                scores: {}
-            }
-        });
+        // Round 1 will be created when a player claims storyteller
 
         return this.getGameState(game.id);
     }
@@ -199,6 +183,38 @@ export class DixitService {
             include: { players: true, rounds: { orderBy: { roundNumber: 'desc' }, take: 1 } }
         });
         return game;
+    }
+
+    async claimStoryteller(pin: string, playerId: string) {
+        const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin }, include: { players: true } });
+        if (!game) throw new Error('Game not found');
+
+        if (game.phase !== DixitPhase.STORYTELLER_PICK) throw new Error('Wrong phase');
+        if (game.storytellerId) throw new Error('Storyteller already set');
+
+        // Set storyteller
+        await this.prisma.dixitGame.update({
+            where: { id: game.id },
+            data: { storytellerId: playerId }
+        });
+
+        // Use currentRound from game, should be 1
+        const roundNum = game.currentRound || 1;
+
+        // Create the round now
+        await this.prisma.dixitRound.create({
+            data: {
+                gameId: game.id,
+                roundNumber: roundNum,
+                storytellerId: playerId,
+                clue: "",
+                cardsPlayed: {},
+                votes: {},
+                scores: {}
+            }
+        });
+
+        return this.getGameState(game.id);
     }
 
     async setClueAndCard(pin: string, playerId: string, clue: string, cardId: string) {

@@ -59,8 +59,8 @@ export default function DixitHome() {
 
                     <div className="border-t border-white/10 pt-8 mt-8">
                         <p className="text-sm text-indigo-200/60 mb-4 font-medium">Chceš založit novou hru?</p>
-                        <Link href="/dixit/board" className="block w-full bg-white/5 hover:bg-white/10 text-indigo-100 font-bold py-4 rounded-xl border border-white/10 hover:border-white/30 transition-all flex items-center justify-center gap-2 group">
-                            <span>📺</span> Vytvořit hru (Host)
+                        <Link href="/dixit/play" className="block w-full bg-white/5 hover:bg-white/10 text-indigo-100 font-bold py-4 rounded-xl border border-white/10 hover:border-white/30 transition-all flex items-center justify-center gap-2 group">
+                            <span>✨</span> Vytvořit novou hru
                         </Link>
                     </div>
                 </div>

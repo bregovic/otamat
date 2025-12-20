@@ -50,6 +50,8 @@ model User {
   quizzes   Quiz[]
   games     Game[]   @relation("GameHost")
   history   Player[] // History of games played as a player
+  dixitGames DixitGame[] @relation("DixitHost")
+  dixitHistory DixitPlayer[]
 }
 
 model Quiz {
@@ -184,4 +186,77 @@ model Category {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+enum DixitPhase {
+  LOBBY
+  STORYTELLER_PICK
+  PLAYERS_PICK
+  VOTING
+  SCORING
+  FINISHED
+}
+
+model DixitGame {
+  id          String     @id @default(uuid())
+  pinCode     String     @unique
+  status      GameStatus @default(WAITING)
+  phase       DixitPhase @default(LOBBY)
+  
+  hostId      String
+  host        User       @relation("DixitHost", fields: [hostId], references: [id])
+  
+  players     DixitPlayer[]
+  rounds      DixitRound[]
+  
+  currentRound Int     @default(0)
+  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  deck        String[]
+}
+
+model DixitPlayer {
+  id          String     @id @default(uuid())
+  gameId      String
+  game        DixitGame  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id])
+  
+  nickname    String
+  avatar      String?
+  score       Int        @default(0)
+  hand        String[]   // Array of image filenames
+  
+  isStoryteller Boolean  @default(false)
+  
+  submittedCardId String?
+  votedCardId     String?
+  
+  joinedAt    DateTime   @default(now())
+}
+
+model DixitRound {
+  id             String      @id @default(uuid())
+  gameId         String
+  game           DixitGame   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  
+  roundNumber    Int
+  storytellerId  String
+  clue           String
+  
+  cardsPlayed    Json
+  votes          Json
+  scores         Json
+  
+  createdAt      DateTime    @default(now())
+}
+
+model DixitCard {
+  id        String   @id @default(uuid())
+  data      String   // Base64 encoded image data or URL
+  fileName  String?
+  createdAt DateTime @default(now())
 }

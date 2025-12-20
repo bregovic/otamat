@@ -185,6 +185,14 @@ export class DixitService {
         return game;
     }
 
+    async getGameStateByPin(pin: string) {
+        const game = await this.prisma.dixitGame.findUnique({
+            where: { pinCode: pin },
+            include: { players: true, rounds: { orderBy: { roundNumber: 'desc' }, take: 1 } }
+        });
+        return game;
+    }
+
     async claimStoryteller(pin: string, playerId: string) {
         const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin }, include: { players: true } });
         if (!game) throw new Error('Game not found');

@@ -57,21 +57,31 @@ export class DixitGateway {
         }
     }
 
-    // Watch game (for host/screen)
+    // Watch/Spectate game (for Board/TV screen)
     @SubscribeMessage('dixit:watch')
     async handleWatchGame(
         @MessageBody() data: { pin: string },
         @ConnectedSocket() client: Socket,
     ) {
-        client.join(data.pin);
-        // Send current state
-        // We need gameId from pin
-        // We don't have getGameByPin exposed efficiently without joining, but let's assume ...
-        // Actually we can just wait for next update or fetch it.
-        // Better: find game by pin
-        // const game = ... 
-        // For now, client will just receive updates.
-        return { success: true };
+        try {
+            const gameState = await this.dixitService.getGameStateByPin(data.pin);
+            if (!gameState) {
+                return { success: false, error: 'Hra nenalezena' };
+            }
+            client.join(data.pin);
+            client.emit('dixit:update', gameState);
+            return { success: true };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }
+
+    @SubscribeMessage('dixit:spectate')
+    async handleSpectateGame(
+        @MessageBody() data: { pin: string },
+        @ConnectedSocket() client: Socket,
+    ) {
+        return this.handleWatchGame(data, client);
     }
 
     @SubscribeMessage('dixit:start')

@@ -131,38 +131,42 @@ export class DixitService {
         return createdCards;
     }
 
-    async startGame(pin: string) {
+    async startGame(pin: string, firstStorytellerId?: string) {
         const game = await this.prisma.dixitGame.findUnique({
             where: { pinCode: pin },
             include: { players: true }
         });
         if (!game) throw new Error('Game not found');
 
-        // Restore deck from DB (it was shuffled at creation or we shuffle now)
-        // If deck is empty/not present, we should probably fetch ALL cards again
+        const playerCount = game.players.length;
+        const HAND_SIZE = playerCount === 3 ? 7 : 6;
+
         let deck = [...game.deck];
         if (deck.length === 0) {
             const allCards = await this.prisma.dixitCard.findMany({ select: { id: true } });
             deck = allCards.map(c => c.id).sort(() => Math.random() - 0.5);
         }
 
-        // Deal 5 cards to each player
+        // Deal HAND_SIZE cards to each player
         for (const player of game.players) {
-            const hand = deck.splice(0, 5); // 5 Cards
+            const hand = deck.splice(0, HAND_SIZE);
             await this.prisma.dixitPlayer.update({
                 where: { id: player.id },
                 data: { hand }
             });
         }
 
-        // Save remaining deck
         await this.prisma.dixitGame.update({
             where: { id: game.id },
             data: { deck }
         });
 
-        // Set first storyteller (random)
-        const storyteller = game.players[0]; // Simplification
+        // Set storyteller (User specified or Random)
+        const storyteller = firstStorytellerId
+            ? game.players.find(p => p.id === firstStorytellerId)
+            : game.players[Math.floor(Math.random() * game.players.length)];
+
+        if (!storyteller) throw new Error("Storyteller not found");
 
         await this.prisma.dixitGame.update({
             where: { id: game.id },
@@ -174,15 +178,14 @@ export class DixitService {
             }
         });
 
-        // Create Round Record
         await this.prisma.dixitRound.create({
             data: {
                 gameId: game.id,
                 roundNumber: 1,
                 storytellerId: storyteller.id,
                 clue: "",
-                cardsPlayed: {},
-                votes: {},
+                cardsPlayed: {}, // Will store Record<playerId, string[]>
+                votes: {},       // Will store Record<voterId, cardId> (voting for CARD now)
                 scores: {}
             }
         });
@@ -202,40 +205,32 @@ export class DixitService {
         const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin } });
         if (!game) throw new Error('Game not found');
 
-        // Verify it is storyteller phase and player is storyteller
         if (game.phase !== DixitPhase.STORYTELLER_PICK) throw new Error('Wrong phase');
-        if (!game.storytellerId || game.storytellerId !== playerId) throw new Error('Not storyteller');
+        if (game.storytellerId !== playerId) throw new Error('Not storyteller');
 
-        // Update Round
         const lastRound = await this.prisma.dixitRound.findFirst({
             where: { gameId: game.id },
             orderBy: { roundNumber: 'desc' }
         });
-
         if (!lastRound) throw new Error('No round found');
 
+        // Store as array for consistency
         const cardsPlayed = (lastRound.cardsPlayed as any) || {};
-        cardsPlayed[playerId] = cardId;
+        cardsPlayed[playerId] = [cardId];
 
         await this.prisma.dixitRound.update({
             where: { id: lastRound.id },
-            data: {
-                clue,
-                cardsPlayed
-            }
+            data: { clue, cardsPlayed }
         });
 
-        // Remove card from Hand
         const player = await this.prisma.dixitPlayer.findUnique({ where: { id: playerId } });
-        if (!player) throw new Error('Player not found');
-
         const newHand = player.hand.filter(c => c !== cardId);
+
         await this.prisma.dixitPlayer.update({
             where: { id: playerId },
-            data: { hand: newHand, submittedCardId: cardId }
+            data: { hand: newHand, submittedCardId: cardId } // submittedCardId legacy, assumes last one
         });
 
-        // Advance Phase
         await this.prisma.dixitGame.update({
             where: { id: game.id },
             data: { phase: DixitPhase.PLAYERS_PICK }
@@ -248,39 +243,53 @@ export class DixitService {
         const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin }, include: { players: true } });
         if (!game) throw new Error('Game not found');
 
-        // ... Check phase PLAYERS_PICK
-        // ... Check if player already submitted
-
         const lastRound = await this.prisma.dixitRound.findFirst({
             where: { gameId: game.id },
             orderBy: { roundNumber: 'desc' }
         });
-
         if (!lastRound) throw new Error('Round not found');
 
         const cardsPlayed = (lastRound.cardsPlayed as any) || {};
-        cardsPlayed[playerId] = cardId;
+
+        // Setup array if not exists
+        if (!cardsPlayed[playerId]) cardsPlayed[playerId] = [];
+
+        // Check if already submitted max cards
+        const playerCount = game.players.length;
+        const requiredCards = (playerCount === 3 && game.storytellerId !== playerId) ? 2 : 1;
+
+        if (cardsPlayed[playerId].includes(cardId)) return await this.getGameState(game.id); // Idempotent
+        if (cardsPlayed[playerId].length >= requiredCards) throw new Error('Already submitted required cards');
+
+        cardsPlayed[playerId].push(cardId);
 
         await this.prisma.dixitRound.update({
             where: { id: lastRound.id },
             data: { cardsPlayed }
         });
 
-        // Update Hand
         const player = await this.prisma.dixitPlayer.findUnique({ where: { id: playerId } });
-        if (!player) throw new Error('Player not found');
-
         const newHand = player.hand.filter(c => c !== cardId);
+
+        // We update submittedCardId just to indicate "activity", but for 3-player it might be the 2nd card.
+        // Frontend should check cardsPlayed from game state to know status.
         await this.prisma.dixitPlayer.update({
             where: { id: playerId },
             data: { hand: newHand, submittedCardId: cardId }
         });
 
-        // Check if all players (except storyteller) submitted
-        // Actually storyteller already submitted in previous step.
-        // So check if Object.keys(cardsPlayed).length === game.players.length
+        // Check if ALL players (except storyteller) have submitted ALL required cards
+        let allSubmitted = true;
+        for (const p of game.players) {
+            if (p.id === game.storytellerId) continue;
+            const pCards = cardsPlayed[p.id] || [];
+            if (pCards.length < ((playerCount === 3) ? 2 : 1)) {
+                allSubmitted = false;
+                break;
+            }
+        }
 
-        if (Object.keys(cardsPlayed).length === game.players.length) {
+        if (allSubmitted) {
             await this.prisma.dixitGame.update({
                 where: { id: game.id },
                 data: { phase: DixitPhase.VOTING }
@@ -290,7 +299,7 @@ export class DixitService {
         return await this.getGameState(game.id);
     }
 
-    async submitVote(pin: string, voterId: string, targetCardOwnerId: string) {
+    async submitVote(pin: string, voterId: string, targetCardId: string) {
         const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin }, include: { players: true } });
         if (!game) throw new Error('Game not found');
 
@@ -301,25 +310,21 @@ export class DixitService {
         if (!lastRound) throw new Error('Round not found');
 
         const votes = (lastRound.votes as any) || {};
-        votes[voterId] = targetCardOwnerId;
+        votes[voterId] = targetCardId; // Store CARD ID
 
         await this.prisma.dixitRound.update({
             where: { id: lastRound.id },
             data: { votes }
         });
 
-        // Update player votedCardId temp
         await this.prisma.dixitPlayer.update({
             where: { id: voterId },
-            data: { votedCardId: targetCardOwnerId }
+            data: { votedCardId: targetCardId }
         });
 
-        // Check if all voters voted (everyone except storyteller)
         const votersCount = game.players.length - 1;
         if (Object.keys(votes).length >= votersCount) {
-            // Calculate scores
             await this.calculateScores(game.id, lastRound.id);
-
             await this.prisma.dixitGame.update({
                 where: { id: game.id },
                 data: { phase: DixitPhase.SCORING }
@@ -331,56 +336,80 @@ export class DixitService {
 
     async calculateScores(gameId: string, roundId: string) {
         const round = await this.prisma.dixitRound.findUnique({ where: { id: roundId } });
-        if (!round) throw new Error('Round not found');
-
         const game = await this.prisma.dixitGame.findUnique({ where: { id: gameId }, include: { players: true } });
-        if (!game) throw new Error('Game not found');
 
         const votes = (round.votes as any) || {};
+        const cardsPlayed = (round.cardsPlayed as any) || {};
         const storytellerId = round.storytellerId;
         const totalVoters = game.players.length - 1;
 
-        let storytellerPoints = 0;
-        let pointsMap: Record<string, number> = {};
-
-        // Initialize points
-        game.players.forEach(p => pointsMap[p.id] = 0);
-
-        // Count votes for storyteller
-        let correctVotes = 0;
-        Object.values(votes).forEach(target => {
-            if (target === storytellerId) correctVotes++;
+        // Map CardId -> OwnerId
+        const cardOwnerMap: Record<string, string> = {};
+        Object.entries(cardsPlayed).forEach(([pid, cards]: [string, any]) => {
+            // cards is string[]
+            if (Array.isArray(cards)) {
+                cards.forEach(cId => cardOwnerMap[cId] = pid);
+            } else {
+                // Fallback for transition or legacy
+                cardOwnerMap[cards] = pid;
+            }
         });
 
-        if (correctVotes === 0 || correctVotes === totalVoters) {
-            // Storyteller fails: 0 points. Others: 2 points.
-            storytellerPoints = 0;
+        // Initialize points
+        const pointsMap: Record<string, number> = {};
+        game.players.forEach(p => pointsMap[p.id] = 0);
+
+        // Count votes for storyteller's CARD
+        let storytellerCardId = "";
+        // Find storyteller's card (should be only 1 even in 3 player mode rules? usually yes)
+        if (Array.isArray(cardsPlayed[storytellerId])) {
+            storytellerCardId = cardsPlayed[storytellerId][0];
+        } else {
+            storytellerCardId = cardsPlayed[storytellerId];
+        }
+
+        let correctVotes = 0;
+        Object.values(votes).forEach(votedCardId => {
+            if (cardOwnerMap[votedCardId as string] === storytellerId) correctVotes++;
+        });
+
+        // Logic: 
+        // If NO ONE guesses storyteller OR EVERYONE guesses storyteller -> Storyteller 0, Others 2.
+        // Else -> Storyteller 3, Guessers 3.
+        const everyoneGuessed = correctVotes === totalVoters;
+        const noOneGuessed = correctVotes === 0;
+
+        if (everyoneGuessed || noOneGuessed) {
+            // Storyteller 0
+            // All other players +2
             game.players.forEach(p => {
                 if (p.id !== storytellerId) pointsMap[p.id] += 2;
             });
-            // Bonus points for votes on others
-            Object.values(votes).forEach((target: string) => {
-                if (target !== storytellerId) {
-                    pointsMap[target] = (pointsMap[target] || 0) + 1;
+
+            // Bonus points for votes on OTHER cards
+            Object.values(votes).forEach((votedCardId: string) => {
+                const ownerId = cardOwnerMap[votedCardId];
+                if (ownerId && ownerId !== storytellerId) {
+                    pointsMap[ownerId] = (pointsMap[ownerId] || 0) + 1;
                 }
             });
         } else {
-            // Normal case: Storyteller 3 points
-            storytellerPoints = 3;
+            // Success for Storyteller
             pointsMap[storytellerId] += 3;
 
-            // Players who guessed right get 3
-            Object.entries(votes).forEach(([voterId, target]: [string, any]) => {
-                if (target === storytellerId) {
+            // Points for correct voters
+            Object.entries(votes).forEach(([voterId, votedCardId]: [string, any]) => {
+                const ownerId = cardOwnerMap[votedCardId];
+                if (ownerId === storytellerId) {
                     pointsMap[voterId] += 3;
                 } else {
-                    // Bonus points for the owner of the target card
-                    pointsMap[target] = (pointsMap[target] || 0) + 1;
+                    // Bonus point for owner of misleading card
+                    if (ownerId) pointsMap[ownerId] = (pointsMap[ownerId] || 0) + 1;
                 }
             });
         }
 
-        // Apply updates
+        // Apply
         const updates = [];
         for (const player of game.players) {
             const pointsToAdd = pointsMap[player.id] || 0;
@@ -393,8 +422,8 @@ export class DixitService {
         }
         await this.prisma.$transaction(updates);
 
-        // Check Win Condition (e.g. 30 points)
-        const WIN_SCORE = 30;
+        // Win check
+        const WIN_SCORE = 30; // user specified 30
         const winner = game.players.find(p => (pointsMap[p.id] ? p.score + pointsMap[p.id] : p.score) >= WIN_SCORE);
 
         if (winner) {
@@ -403,24 +432,23 @@ export class DixitService {
                 data: { status: GameStatus.FINISHED }
             });
         }
-
     }
 
     async nextRound(pin: string) {
         const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin }, include: { players: true } });
         if (!game) throw new Error('Game not found');
 
-        // Rotate storyteller
+        const playerCount = game.players.length;
+        const HAND_SIZE = playerCount === 3 ? 7 : 6;
+
         const currentIdx = game.players.findIndex(p => p.id === game.storytellerId);
         const nextIdx = (currentIdx + 1) % game.players.length;
         const nextStoryteller = game.players[nextIdx];
 
         let deck = [...game.deck];
 
-        // Deal 1 card to everyone to back to 5
         for (const player of game.players) {
-            // Player hand should have 4 cards now
-            const needed = 5 - player.hand.length;
+            const needed = HAND_SIZE - player.hand.length;
             if (needed > 0 && deck.length >= needed) {
                 const newCards = deck.splice(0, needed);
                 const hand = [...player.hand, ...newCards];
@@ -428,9 +456,6 @@ export class DixitService {
             }
         }
 
-        // If deck is empty, maybe reshuffle? For now, if empty, we just continue without new cards.
-
-        // Update Game (Phase, Storyteller, Round, Deck)
         await this.prisma.dixitGame.update({
             where: { id: game.id },
             data: {
@@ -441,7 +466,6 @@ export class DixitService {
             }
         });
 
-        // Create new round
         await this.prisma.dixitRound.create({
             data: {
                 gameId: game.id,
@@ -454,7 +478,6 @@ export class DixitService {
             }
         });
 
-        // Reset player temp fields
         await this.prisma.dixitPlayer.updateMany({
             where: { gameId: game.id },
             data: { submittedCardId: null, votedCardId: null }

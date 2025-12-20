@@ -12,6 +12,9 @@ function DixitPlayContent() {
     const router = useRouter();
     const pinFromUrl = searchParams.get('pin');
 
+    const [pinCode, setPinCode] = useState(pinFromUrl || '');
+    const [mode, setMode] = useState<'SELECT' | 'JOIN' | 'CREATE'>(pinFromUrl ? 'JOIN' : 'SELECT');
+
     // Connection State
     const [socket, setSocket] = useState<Socket | null>(null);
     const [connected, setConnected] = useState(false);
@@ -28,11 +31,11 @@ function DixitPlayContent() {
     // Local Inputs
     const [clueInput, setClueInput] = useState('');
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+    const [selectedCards, setSelectedCards] = useState<string[]>([]); // New array state
     const [votedTargetId, setVotedTargetId] = useState<string | null>(null);
 
+    // Initial Socket Connection (Generic)
     useEffect(() => {
-        if (!pinFromUrl) return;
-
         const newSocket = io(BACKEND_URL, {
             transports: ['websocket'],
             upgrade: false
@@ -44,19 +47,66 @@ function DixitPlayContent() {
             setGameState(state);
         });
 
+        newSocket.on('dixit:created', (state) => {
+            setGameState(state);
+        });
+
         return () => {
             newSocket.disconnect();
         };
-    }, [pinFromUrl]);
+    }, []);
 
     const handleJoin = () => {
-        if (socket && pinFromUrl && nickname) {
-            socket.emit('dixit:join', { pin: pinFromUrl, nickname, avatar }, (response: any) => {
+        if (socket && pinCode && nickname) {
+            socket.emit('dixit:join', { pin: pinCode, nickname, avatar }, (response: any) => {
                 if (response.success) {
                     setPlayerId(response.playerId);
                     setJoined(true);
+                    // Update URL silently
+                    window.history.replaceState({}, '', `/dixit/play?pin=${pinCode}`);
                 } else {
                     alert('Chyba: ' + response.error);
+                }
+            });
+        }
+    };
+
+    const handleCreate = () => {
+        if (socket && nickname) {
+            // Updated to send guestInfo so the creator is automatically joined as a player
+            socket.emit('dixit:create', { guestInfo: { nickname, avatar } }, (response: any) => {
+                if (response.success) {
+                    setPinCode(response.pinCode); // Assuming response includes pinCode
+                    // The server usually returns gameId. We might need to wait for 'dixit:created' event or response data.
+                    // Based on previous code in board/page.tsx, it emits events. But for the player creating it, we want immediate feedback.
+                    // If the backend 'create' callback returns the state or at least the PIN, we are good.
+                    // Looking at backend controller/gateway... usually it returns { success: true, gameId: ... }.
+                    // We need to KNOW the player ID to identify 'me'.
+                    // Wait, if we send guestInfo, the backend *should* return the playerId of the host.
+                    // I might need to verify backend logic. If it doesn't return playerId, we might be in trouble identifying ourselves.
+
+                    // As a fallback, if the backend creates the game and socket joins the room, the next 'dixit:update' will contain the player list.
+                    // We can match by nickname? Risky.
+                    // Let's assume the backend returns playerId if guestInfo is provided.
+                    // If not, I'll need to update backend or rely on socket.id?
+
+                    if (response.playerId) {
+                        setPlayerId(response.playerId);
+                        setJoined(true);
+                        window.history.replaceState({}, '', `/dixit/play?pin=${response.pinCode || response.game?.pinCode}`);
+                    } else {
+                        // Fallback: try to find myself in the returned state (if any) or wait for update
+                        if (response.game) {
+                            const p = response.game.players.find((p: any) => p.nickname === nickname);
+                            if (p) {
+                                setPlayerId(p.id);
+                                setJoined(true);
+                                setPinCode(response.game.pinCode);
+                            }
+                        }
+                    }
+                } else {
+                    alert('Chyba při zakládání: ' + (response.error || 'Neznámá chyba'));
                 }
             });
         }
@@ -74,14 +124,32 @@ function DixitPlayContent() {
         }
     };
 
-    const submitCard = () => {
-        if (socket && gameState && selectedCardId) {
-            socket.emit('dixit:submitCard', {
-                pin: gameState.pinCode,
-                playerId,
-                cardId: selectedCardId
+    const finalSubmitCards = () => {
+        if (socket && gameState && selectedCards.length > 0) {
+            selectedCards.forEach(cid => {
+                socket.emit('dixit:submitCard', {
+                    pin: gameState.pinCode,
+                    playerId,
+                    cardId: cid
+                });
             });
-            setSelectedCardId(null);
+            setSelectedCards([]);
+
+            // Allow legacy single select fallback if array empty? No, UI will use array.
+        }
+    };
+
+    // Helper to handle selection limit
+    const toggleCardSelection = (cardId: string, limit: number) => {
+        if (selectedCards.includes(cardId)) {
+            setSelectedCards(selectedCards.filter(c => c !== cardId));
+        } else {
+            if (selectedCards.length < limit) {
+                setSelectedCards([...selectedCards, cardId]);
+            } else if (limit === 1) {
+                // If limit 1, just swap
+                setSelectedCards([cardId]);
+            }
         }
     };
 
@@ -96,9 +164,7 @@ function DixitPlayContent() {
         }
     }
 
-    if (!pinFromUrl) return <div className="p-8 text-white min-h-screen bg-black flex items-center justify-center">Chybí PIN. Jděte zpět na úvod.</div>;
-
-    // --- JOIN SCREEN ---
+    // --- JOIN / CREATE SCREEN ---
     if (!joined) {
         return (
             <main className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900 via-purple-900 to-black text-white flex flex-col items-center p-6 justify-center">
@@ -108,37 +174,95 @@ function DixitPlayContent() {
 
                 <h1 className="text-5xl font-black mt-8 mb-8 text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-amber-500 drop-shadow-lg font-serif tracking-widest">DIXIT</h1>
 
-                <div className="w-full max-w-sm glass-card p-8 space-y-8 bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative z-10">
-                    <div>
-                        <label className="text-xs opacity-60 font-bold uppercase tracking-widest mb-2 block text-indigo-200">Jak si říkáš?</label>
-                        <input
-                            value={nickname} onChange={e => setNickname(e.target.value)}
-                            className="w-full bg-black/50 border border-indigo-500/30 p-4 rounded-xl text-xl text-center focus:border-yellow-500 focus:outline-none transition-all placeholder-white/20 font-bold"
-                            placeholder="Tvoje jméno..."
-                        />
-                    </div>
+                <div className="w-full max-w-sm glass-card p-8 space-y-6 bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative z-10 transition-all duration-300">
 
-                    <div>
-                        <label className="text-xs opacity-60 font-bold uppercase tracking-widest mb-4 block text-indigo-200">Vyber si avatara</label>
-                        <div className="grid grid-cols-4 gap-3">
-                            {AVATARS.map(a => (
-                                <button
-                                    key={a}
-                                    onClick={() => setAvatar(a)}
-                                    className={`text-3xl p-3 rounded-xl transition-all duration-300 ${avatar === a ? 'bg-gradient-to-br from-yellow-400 to-amber-600 scale-110 shadow-lg shadow-yellow-500/30' : 'bg-white/5 hover:bg-white/10 scale-95 opacity-70'}`}
-                                >
-                                    {a}
-                                </button>
-                            ))}
+                    {mode === 'SELECT' && (
+                        <div className="flex flex-col gap-4">
+                            <button
+                                onClick={() => setMode('CREATE')}
+                                className="btn btn-primary w-full py-8 text-xl font-black rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:scale-[1.02] transition-transform shadow-lg border border-white/10 flex flex-col items-center gap-2"
+                            >
+                                <span className="text-4xl">✨</span>
+                                ZALOŽIT NOVOU HRU
+                            </button>
+
+                            <div className="relative flex py-2 items-center">
+                                <div className="flex-grow border-t border-white/10"></div>
+                                <span className="flex-shrink mx-4 text-white/30 text-xs uppercase tracking-widest">nebo</span>
+                                <div className="flex-grow border-t border-white/10"></div>
+                            </div>
+
+                            <button
+                                onClick={() => setMode('JOIN')}
+                                className="btn btn-primary w-full py-6 text-xl font-black rounded-xl bg-white/10 hover:bg-white/20 hover:scale-[1.02] transition-transform shadow-lg border border-white/10"
+                            >
+                                PŘIPOJIT SE K HŘE
+                            </button>
                         </div>
-                    </div>
+                    )}
 
-                    <button
-                        onClick={handleJoin}
-                        className="btn btn-primary w-full py-5 text-xl font-black rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:scale-[1.02] transition-transform shadow-[0_0_30px_rgba(16,185,129,0.4)]"
-                    >
-                        VSTOUPIT DO HRY
-                    </button>
+                    {(mode === 'JOIN' || mode === 'CREATE') && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-300">
+                            <div className="flex items-center justify-between mb-4">
+                                <button onClick={() => setMode('SELECT')} className="text-white/50 hover:text-white text-sm uppercase tracking-wider font-bold">← Zpět</button>
+                                <div className="text-white/50 text-xs uppercase tracking-widest font-bold">{mode === 'CREATE' ? 'Zakládání hry' : 'Připojení do hry'}</div>
+                            </div>
+
+                            {mode === 'JOIN' && (
+                                <div>
+                                    <label className="text-xs opacity-60 font-bold uppercase tracking-widest mb-2 block text-indigo-200">PIN KÓD</label>
+                                    <input
+                                        value={pinCode} onChange={e => setPinCode(e.target.value)}
+                                        className="w-full bg-black/50 border border-indigo-500/30 p-4 rounded-xl text-3xl text-center focus:border-yellow-500 focus:outline-none transition-all placeholder-white/10 font-mono tracking-widest"
+                                        placeholder="000000"
+                                        maxLength={6}
+                                    />
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="text-xs opacity-60 font-bold uppercase tracking-widest mb-2 block text-indigo-200">Jak si říkáš?</label>
+                                <input
+                                    value={nickname} onChange={e => setNickname(e.target.value)}
+                                    className="w-full bg-black/50 border border-indigo-500/30 p-4 rounded-xl text-xl text-center focus:border-yellow-500 focus:outline-none transition-all placeholder-white/20 font-bold"
+                                    placeholder="Tvoje jméno..."
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs opacity-60 font-bold uppercase tracking-widest mb-4 block text-indigo-200">Vyber si avatara</label>
+                                <div className="grid grid-cols-4 gap-3">
+                                    {AVATARS.map(a => (
+                                        <button
+                                            key={a}
+                                            onClick={() => setAvatar(a)}
+                                            className={`text-3xl p-3 rounded-xl transition-all duration-300 ${avatar === a ? 'bg-gradient-to-br from-yellow-400 to-amber-600 scale-110 shadow-lg shadow-yellow-500/30' : 'bg-white/5 hover:bg-white/10 scale-95 opacity-70'}`}
+                                        >
+                                            {a}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {mode === 'CREATE' ? (
+                                <button
+                                    onClick={handleCreate}
+                                    disabled={!nickname}
+                                    className="btn btn-primary w-full py-5 text-xl font-black rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:scale-[1.02] transition-transform shadow-[0_0_30px_rgba(99,102,241,0.4)] disabled:opacity-50 disabled:grayscale"
+                                >
+                                    ZALOŽIT HRU
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleJoin}
+                                    disabled={!nickname || !pinCode}
+                                    className="btn btn-primary w-full py-5 text-xl font-black rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:scale-[1.02] transition-transform shadow-[0_0_30px_rgba(16,185,129,0.4)] disabled:opacity-50 disabled:grayscale"
+                                >
+                                    VSTOUPIT DO HRY
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
             </main>
         );
@@ -151,15 +275,39 @@ function DixitPlayContent() {
 
     // --- LOBBY WAITING ---
     if (gameState.phase === 'LOBBY') {
+        const canStart = gameState.players.length >= 3;
+
         return (
             <main className="min-h-screen bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-950 via-black to-black text-white flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[100px] animate-pulse pointer-events-none"></div>
 
-                <div className="relative z-10">
-                    <div className="text-8xl mb-6 animate-bounce-subtle filter drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">{me.avatar}</div>
-                    <h2 className="text-4xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-white to-indigo-200">{me.nickname}</h2>
-                    <div className="text-emerald-400 font-bold uppercase tracking-widest text-sm bg-emerald-500/10 px-4 py-2 rounded-full inline-block border border-emerald-500/30 mt-4 animate-pulse">Jsi ve hře!</div>
-                    <p className="mt-12 text-white/40 font-serif italic max-w-xs mx-auto leading-relaxed">"Sledujte velkou obrazovku, kouzlo brzy začne..."</p>
+                <div className="relative z-10 space-y-8">
+                    <div>
+                        <div className="text-8xl mb-6 animate-bounce-subtle filter drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">{me.avatar}</div>
+                        <h2 className="text-4xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-white to-indigo-200">{me.nickname}</h2>
+                        <div className="text-emerald-400 font-bold uppercase tracking-widest text-sm bg-emerald-500/10 px-4 py-2 rounded-full inline-block border border-emerald-500/30 mt-4 animate-pulse">Jsi ve hře!</div>
+                    </div>
+
+                    <div className="space-y-4 max-w-sm mx-auto">
+                        <div className="text-white/40 text-sm font-bold uppercase tracking-widest">
+                            Hráči: {gameState.players.length} / 3+
+                        </div>
+
+                        {canStart ? (
+                            <button
+                                onClick={() => socket?.emit('dixit:start', { pin: gameState.pinCode, storytellerId: me.id })}
+                                className="w-full btn btn-primary py-6 text-xl font-black rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-600 hover:scale-105 transition-all shadow-[0_0_40px_rgba(245,158,11,0.4)] animate-pulse"
+                            >
+                                ✋ MÁM NÁPOVĚDU!<br /><span className="text-xs opacity-70 font-normal normal-case">(Spustit hru jako vypravěč)</span>
+                            </button>
+                        ) : (
+                            <p className="text-white/30 italic">Čekáme na další hráče...</p>
+                        )}
+                    </div>
+
+                    <p className="mt-12 text-white/20 font-serif italic max-w-xs mx-auto leading-relaxed">
+                        "Až se nás sejde dost, ten s nejlepší nápovědou hru odstartuje..."
+                    </p>
                 </div>
             </main>
         );
@@ -265,69 +413,51 @@ function DixitPlayContent() {
                             </div>
                         </div>
                     ) : (
-                        !me.submittedCardId ? (
-                            // PICK CARD
-                            <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className="bg-gradient-to-br from-indigo-500/10 to-blue-600/10 border border-indigo-500/30 p-6 rounded-2xl text-center backdrop-blur-md shadow-lg">
-                                    <p className="opacity-50 text-xs uppercase font-bold tracking-[0.2em] mb-3 text-indigo-300">Nápověda</p>
-                                    <h2 className="font-black text-3xl text-white font-serif italic mb-2">"{gameState.rounds?.[0]?.clue}"</h2>
-                                    <p className="text-indigo-200/60 text-sm mt-3 border-t border-white/5 pt-3">Vyber kartu, která se k tomu nejlépe hodí.</p>
-                                </div>
-
-                                <div className="relative w-full h-[50vh] flex items-center justify-center">
-                                    <button
-                                        onClick={() => setSelectedCardId(myHand[(myHand.indexOf(selectedCardId || myHand[0]) - 1 + myHand.length) % myHand.length])}
-                                        className="absolute left-0 z-20 p-4 text-4xl text-white/50 hover:text-white bg-black/20 hover:bg-black/40 rounded-r-2xl backdrop-blur-sm transition-all"
-                                    >
-                                        ‹
-                                    </button>
-
-                                    <div className="w-full h-full flex items-center justify-center overflow-hidden relative">
-                                        {myHand.map((card: string, idx: number) => {
-                                            if (!selectedCardId && idx === 0) setTimeout(() => setSelectedCardId(card), 0);
-                                            if (card !== selectedCardId) return null;
-
-                                            return (
-                                                <div key={card} className="relative w-full h-full flex items-center justify-center animate-in fade-in zoom-in duration-300">
-                                                    <img
-                                                        src={`${BACKEND_URL}/dixit/image/${card}`}
-                                                        className="max-h-full max-w-full object-contain rounded-xl shadow-2xl"
-                                                        alt="Card"
-                                                    />
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    <button
-                                        onClick={() => setSelectedCardId(myHand[(myHand.indexOf(selectedCardId || myHand[0]) + 1) % myHand.length])}
-                                        className="absolute right-0 z-20 p-4 text-4xl text-white/50 hover:text-white bg-black/20 hover:bg-black/40 rounded-l-2xl backdrop-blur-sm transition-all"
-                                    >
-                                        ›
-                                    </button>
-                                </div>
-
-                                <div className="flex justify-center gap-2 mb-4">
-                                    {myHand.map((card: string) => (
-                                        <div
-                                            key={card}
-                                            className={`w-2 h-2 rounded-full transition-all ${selectedCardId === card ? 'bg-indigo-500 w-4' : 'bg-white/20'}`}
-                                        />
-                                    ))}
-                                </div>
-
-                                <div className="fixed bottom-6 left-0 w-full px-4 z-50">
-                                    <button onClick={submitCard} disabled={!selectedCardId} className="bg-indigo-600 text-white font-black w-full py-4 text-xl rounded-2xl shadow-xl hover:bg-indigo-500 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale uppercase tracking-wider">
-                                        Odeslat kartu
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
+                        ((gameState.rounds?.[0]?.cardsPlayed?.[me.id] || []).length >= (gameState.players.length === 3 ? 2 : 1)) ? (
                             // WAITING FOR OTHERS
                             <div className="flex flex-col items-center justify-center h-[60vh] text-center px-6">
                                 <div className="text-7xl mb-8 text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.5)] animate-bounce-subtle">✅</div>
                                 <h2 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-emerald-300 to-white">Odesláno!</h2>
                                 <p className="text-white/40 mt-4 leading-relaxed">Teď musíme počkat na ostatní snílky.</p>
+                            </div>
+                        ) : (
+                            // PICK CARD
+                            <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="bg-gradient-to-br from-indigo-500/10 to-blue-600/10 border border-indigo-500/30 p-6 rounded-2xl text-center backdrop-blur-md shadow-lg">
+                                    <p className="opacity-50 text-xs uppercase font-bold tracking-[0.2em] mb-3 text-indigo-300">Nápověda</p>
+                                    <h2 className="font-black text-3xl text-white font-serif italic mb-2">"{gameState.rounds?.[0]?.clue}"</h2>
+                                    <p className="text-indigo-200/60 text-sm mt-3 border-t border-white/5 pt-3">
+                                        {gameState.players.length === 3 ? "Vyber 2 karty:" : "Vyber kartu:"}
+                                    </p>
+                                </div>
+
+                                <div className="relative w-full h-[50vh] flex items-center justify-center">
+                                    <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 px-8 w-full h-full items-center no-scrollbar pb-8">
+                                        {myHand.map((card: string) => (
+                                            <div key={card} className="snap-center shrink-0 w-[70vw] max-w-[300px] h-full relative" onClick={() => toggleCardSelection(card, gameState.players.length === 3 ? 2 : 1)}>
+                                                <img
+                                                    src={`${BACKEND_URL}/dixit/image/${card}`}
+                                                    className={`w-full h-full object-contain rounded-xl transition-all duration-300 ${selectedCards.includes(card) ? 'ring-4 ring-indigo-500 scale-105 shadow-[0_0_30px_indigo]' : 'opacity-80 scale-95'}`}
+                                                />
+                                                {selectedCards.includes(card) && (
+                                                    <div className="absolute top-4 right-4 bg-indigo-500 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-lg">
+                                                        {selectedCards.indexOf(card) + 1}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="fixed bottom-6 left-0 w-full px-4 z-50">
+                                    <button
+                                        onClick={finalSubmitCards}
+                                        disabled={selectedCards.length < (gameState.players.length === 3 ? 2 : 1)}
+                                        className="bg-indigo-600 text-white font-black w-full py-4 text-xl rounded-2xl shadow-xl hover:bg-indigo-500 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale uppercase tracking-wider"
+                                    >
+                                        Odeslat ({selectedCards.length}/{(gameState.players.length === 3 ? 2 : 1)})
+                                    </button>
+                                </div>
                             </div>
                         )
                     )
@@ -336,7 +466,7 @@ function DixitPlayContent() {
                 {gameState.phase === 'VOTING' && (
                     gameState.storytellerId === me.id ? (
                         <div className="flex flex-col items-center justify-center h-[60vh] text-center px-6">
-                            <div className="text-7xl mb-6">🗳️</div>
+                            <div className="text-7xl mb-6 animate-spin-slow">🗳️</div>
                             <h2 className="text-2xl font-bold">Hráči hlasují...</h2>
                             <p className="opacity-50 mt-4 text-sm max-w-xs mx-auto">Ty jako vypravěč nehlasuješ, jen sleduj chaos, který jsi způsobil.</p>
                         </div>
@@ -351,28 +481,68 @@ function DixitPlayContent() {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4 pb-24">
-                                    {gameState.rounds?.[0]?.cardsPlayed && Object.entries(gameState.rounds[0].cardsPlayed).map(([pid, cardId]: [string, any]) => {
-                                        if (pid === me.id) return null;
+                                    {(() => {
+                                        const cardsPlayed = gameState.rounds?.[0]?.cardsPlayed || {};
+                                        // Flatten cards: [ { pid, cardId } ]
+                                        const allCards = Object.entries(cardsPlayed).flatMap(([pid, cards]) => {
+                                            // Handle both array (new) and string (legacy/fallback)
+                                            if (Array.isArray(cards)) {
+                                                return cards.map(c => ({ pid, cardId: c }));
+                                            }
+                                            return [{ pid, cardId: cards as string }];
+                                        });
 
-                                        return (
-                                            <div key={pid} onClick={() => setVotedTargetId(pid)} className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-300 ${votedTargetId === pid ? 'ring-4 ring-yellow-500 scale-105 z-10 shadow-[0_0_30px_rgba(234,179,8,0.5)]' : 'opacity-80 hover:opacity-100 hover:scale-[1.02]'}`}>
-                                                <img src={`${BACKEND_URL}/dixit/image/${cardId}`} className="w-full h-auto object-cover" />
-                                            </div>
-                                        );
-                                    })}
+                                        // Shuffle them for display so we don't know who is who (though standard Dixit shuffle is needed? Backend should shuffle? No, order in Object is distinct. We should shuffle locally or backend should provide shuffled list.)
+                                        // Since we don't want to shuffle on every render, we need memoization or backend support.
+                                        // A simple consistent shuffle based on IDs or seed would be good.
+                                        // For now, I'll just map. The order of keys is indeterminate anyway.
+
+                                        return allCards.map(({ pid, cardId }) => {
+                                            if (pid === me.id) return null; // Can't vote for own cards
+
+                                            return (
+                                                <div
+                                                    key={cardId}
+                                                    onClick={() => setVotedTargetId(cardId)}
+                                                    className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-300 ${votedTargetId === cardId ? 'ring-4 ring-yellow-500 scale-105 z-10 shadow-[0_0_30px_rgba(234,179,8,0.5)]' : 'opacity-80 hover:opacity-100 hover:scale-[1.02]'}`}
+                                                >
+                                                    <img src={`${BACKEND_URL}/dixit/image/${cardId}`} className="w-full h-auto object-cover" />
+                                                    {votedTargetId === cardId && (
+                                                        <div className="absolute inset-0 bg-yellow-500/20 flex items-center justify-center">
+                                                            <div className="bg-yellow-500 text-black font-bold p-2 px-4 rounded-full shadow-lg transform scale-110">Vybráno</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        });
+                                    })()}
                                 </div>
 
                                 <div className="fixed bottom-6 left-0 w-full px-4 z-50">
-                                    <button onClick={() => castVote(votedTargetId!)} disabled={!votedTargetId} className="bg-yellow-500 text-black font-black w-full py-4 text-xl rounded-2xl shadow-xl hover:bg-yellow-400 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale uppercase tracking-wider">
+                                    <button
+                                        onClick={() => {
+                                            if (socket && gameState && votedTargetId) {
+                                                socket.emit('dixit:vote', {
+                                                    pin: gameState.pinCode,
+                                                    playerId: me.id,
+                                                    targetCardId: votedTargetId
+                                                });
+                                                setVotedTargetId(null);
+                                            }
+                                        }}
+                                        disabled={!votedTargetId}
+                                        className="bg-yellow-500 text-black font-black w-full py-4 text-xl rounded-2xl shadow-xl hover:bg-yellow-400 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale uppercase tracking-wider"
+                                    >
                                         Hlasovat
                                     </button>
                                 </div>
                             </div>
                         ) : (
+                            // WAITING
                             <div className="flex flex-col items-center justify-center h-[60vh] text-center px-6">
-                                <div className="text-7xl mb-8 text-yellow-500 drop-shadow-[0_0_20px_rgba(234,179,8,0.4)] animate-pulse">🗳️</div>
-                                <h2 className="text-3xl font-black text-white">Odhalsováno!</h2>
-                                <p className="text-white/40 mt-4">Drž si palce...</p>
+                                <div className="text-7xl mb-8 text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)] animate-bounce-subtle">🤞</div>
+                                <h2 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-yellow-200 to-white">Hlasováno!</h2>
+                                <p className="text-white/40 mt-4 leading-relaxed">Drž si palce, ať jsi uhodl správně (a ať ostatní naletí na tvou kartu).</p>
                             </div>
                         )
                     )

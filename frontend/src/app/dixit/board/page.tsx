@@ -54,6 +54,7 @@ export default function DixitBoard() {
     const [error, setError] = useState<string | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [stagedFiles, setStagedFiles] = useState<{ file: File, id: string, rotation: number, preview: string }[]>([]);
 
     useEffect(() => {
         if (isLoading) return;
@@ -99,10 +100,9 @@ export default function DixitBoard() {
 
     const [isCreating, setIsCreating] = useState(false);
 
-    const handleGuestCreate = () => {
-        if (!guestNickname) return;
+    const handleCreateBoard = () => {
         setIsCreating(true);
-        console.log("Starting guest creation process...");
+        console.log("Starting board creation...");
 
         setError(null);
 
@@ -128,17 +128,12 @@ export default function DixitBoard() {
 
         newSocket.on('connect', () => {
             console.log('socket connected, emitting create...');
-            newSocket.emit('dixit:create', {
-                guestInfo: { nickname: guestNickname, avatar: guestAvatar }
-            }, (response: any) => {
+            // We do NOT send guestInfo anymore. The Host must join via phone to play.
+            newSocket.emit('dixit:create', {}, (response: any) => {
                 clearTimeout(timeout);
                 setIsCreating(false);
-                console.log('Create response:', response);
 
-                if (response?.success || response?.event === 'dixit:created') {
-                    // Success handled by listener, but we can set state here too if needed
-                    // Although the listener should pick it up faster
-                } else {
+                if (!response?.success && response?.event !== 'dixit:created') {
                     setError(response?.error || 'Nepodařilo se vytvořit hru (Backend Error)');
                 }
             });
@@ -175,44 +170,27 @@ export default function DixitBoard() {
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 to-black"></div>
                 <div className="z-10 bg-white/10 p-12 rounded-3xl backdrop-blur-md border border-white/10 max-w-lg w-full text-center shadow-2xl">
                     <h1 className="text-6xl font-serif font-black mb-8 text-yellow-400">DIXIT</h1>
-                    <h2 className="text-2xl mb-8 font-light">Vytvořit hru (Host)</h2>
+                    <h2 className="text-2xl mb-8 font-light text-indigo-200">Herní Plátno</h2>
+
+                    <p className="mb-8 text-white/60">
+                        Toto zařízení bude sloužit jako hlavní obrazovka.<br />
+                        Hráči (včetně organizátora) se připojí svými telefony.
+                    </p>
 
                     <div className="space-y-6">
-                        <input
-                            type="text"
-                            placeholder="Tvoje přezdívka"
-                            className="w-full bg-black/50 text-white text-2xl p-4 rounded-xl border border-white/20 focus:border-yellow-400 outline-none text-center font-bold"
-                            value={guestNickname}
-                            onChange={e => setGuestNickname(e.target.value)}
-                            disabled={isCreating}
-                        />
-
-                        <div className="flex justify-center gap-4">
-                            {['cow', 'fox', 'pig', 'chicken'].map(av => (
-                                <button
-                                    key={av}
-                                    onClick={() => setGuestAvatar(av)}
-                                    className={`text-4xl p-4 rounded-xl transition-all ${guestAvatar === av ? 'bg-yellow-500 scale-110 shadow-lg' : 'bg-white/5 hover:bg-white/20'}`}
-                                    disabled={isCreating}
-                                >
-                                    {{ cow: '🐮', fox: '🦊', pig: '🐷', chicken: '🐔' }[av]}
-                                </button>
-                            ))}
-                        </div>
-
                         {error && <div className="text-red-500 font-bold bg-black/50 p-2 rounded animate-pulse">{error}</div>}
 
                         <button
-                            onClick={handleGuestCreate}
-                            disabled={!guestNickname || isCreating}
-                            className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:scale-105 text-white text-2xl font-black py-4 rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:scale-100 mt-4 relative"
+                            onClick={handleCreateBoard}
+                            disabled={isCreating}
+                            className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:scale-105 text-white text-2xl font-black py-4 rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:scale-100 relative"
                         >
                             {isCreating ? (
                                 <span className="flex items-center justify-center gap-2">
                                     <span className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></span>
-                                    VYTVÁŘÍM...
+                                    NAČÍTÁM...
                                 </span>
-                            ) : "VYTVOŘIT HRU"}
+                            ) : "ZALOŽIT NOVOU HRU"}
                         </button>
                     </div>
                 </div>
@@ -228,17 +206,89 @@ export default function DixitBoard() {
         if (socket && gameState) socket.emit('dixit:nextRound', { pin: gameState.pinCode });
     };
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // ... File Staging State & Logic (Keep as is, just reinserting strictly for context match if needed, but I'm skipping to avoid messing it up. Actually, I only need to replace up to the Staging Logic start)
+    // Wait, the ReplacementContent must fully replace the target.
+    // I will encompass the Staging Logic in the target to be safe, or just stop before it.
+    // The previous code had `handleGuestCreate` then `useEffect` then `if(!user...)` then `handleStart`.
+    // My replacement redefines `handleCreateBoard` (renamed), `useEffect`, `if(!user...)` and `handleStart` and `handleNextRound`.
+
+    // VISUAL FIXES IN LOBBY:
+    // I need to update the LOBBY JSX as well, which is further down.
+    // I will return the updated functions here, and then do a second edit for the Lobby JSX.
+
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files?.length) return;
+        const newFiles = Array.from(e.target.files).map(file => ({
+            file,
+            id: Math.random().toString(36).substr(2, 9),
+            rotation: 0,
+            preview: URL.createObjectURL(file)
+        }));
+        setStagedFiles(prev => [...prev, ...newFiles]);
+        e.target.value = ''; // Reset input to allow re-selecting same files
+    };
+
+    const rotateStaged = (id: string) => {
+        setStagedFiles(prev => prev.map(f => f.id === id ? { ...f, rotation: (f.rotation + 90) % 360 } : f));
+    };
+
+    const removeStaged = (id: string) => {
+        setStagedFiles(prev => prev.filter(f => f.id !== id));
+    };
+
+    const getRotatedBlob = (file: File, rotation: number): Promise<Blob> => {
+        if (rotation === 0) return Promise.resolve(file);
+
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d')!;
+
+                if (rotation % 180 !== 0) {
+                    canvas.width = img.height;
+                    canvas.height = img.width;
+                } else {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                }
+
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate(rotation * Math.PI / 180);
+                ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+                canvas.toBlob(blob => resolve(blob!), 'image/jpeg', 0.95);
+            };
+            img.src = URL.createObjectURL(file);
+        });
+    };
+
+    const uploadStaged = async () => {
+        if (stagedFiles.length === 0) return;
         setUploading(true);
         const formData = new FormData();
-        Array.from(e.target.files).forEach(file => formData.append('files', file));
+
         try {
+            for (const item of stagedFiles) {
+                const processedBlob = await getRotatedBlob(item.file, item.rotation);
+                formData.append('files', processedBlob as any, item.file.name);
+            }
+
             const res = await fetch(`${BACKEND_URL}/dixit/upload`, { method: 'POST', body: formData });
-            if (res.ok) { alert('Obrázky úspěšně nahrány!'); setIsSettingsOpen(false); }
-            else alert('Chyba při nahrávání.');
-        } catch (err) { console.error(err); alert('Chyba pří připojení k backendu.'); }
-        finally { setUploading(false); }
+            if (res.ok) {
+                alert('Obrázky úspěšně nahrány!');
+                setStagedFiles([]);
+                setIsSettingsOpen(false);
+            } else {
+                alert('Chyba při nahrávání.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Chyba při připojení k backendu.');
+        } finally {
+            setUploading(false);
+        }
     };
 
     if (!gameState) {
@@ -304,39 +354,73 @@ export default function DixitBoard() {
                             <button onClick={() => setIsSettingsOpen(false)} className="absolute top-4 right-4 text-white/50 hover:text-white text-xl">✕</button>
                             <h2 className="text-2xl font-bold mb-6 text-center text-yellow-400 font-serif">Správa karet</h2>
 
-                            <label className="block w-full border-2 border-dashed border-white/20 rounded-xl p-12 text-center cursor-pointer hover:bg-white/5 transition-colors group">
-                                <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" disabled={uploading} />
-                                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">📤</div>
-                                <div className="text-lg font-bold">Nahrát nové karty</div>
-                                <div className="text-sm text-white/50 mt-2">Vyberte více obrázků najednou</div>
+                            <label className="block w-full border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:bg-white/5 transition-colors group mb-4">
+                                <input type="file" multiple accept="image/*" onChange={handleFileSelect} className="hidden" disabled={uploading} />
+                                <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">➕</div>
+                                <div className="text-lg font-bold">Vybrat obrázky</div>
                             </label>
 
+                            {stagedFiles.length > 0 && (
+                                <div className="grid grid-cols-2 gap-4 max-h-[40vh] overflow-y-auto mb-4 custom-scrollbar pr-2">
+                                    {stagedFiles.map((item) => (
+                                        <div key={item.id} className="relative group bg-black/40 rounded-lg p-2 border border-white/10">
+                                            <div className="relative aspect-[2/3] overflow-hidden rounded mb-2">
+                                                <img
+                                                    src={item.preview}
+                                                    className="w-full h-full object-contain transition-transform duration-300"
+                                                    style={{ transform: `rotate(${item.rotation}deg)` }}
+                                                />
+                                            </div>
+                                            <div className="flex justify-between gap-2">
+                                                <button onClick={() => rotateStaged(item.id)} className="flex-1 bg-white/10 hover:bg-white/20 py-1 rounded text-sm" title="Otočit">↻</button>
+                                                <button onClick={() => removeStaged(item.id)} className="flex-1 bg-red-500/20 hover:bg-red-500/40 text-red-300 py-1 rounded text-sm" title="Odstranit">✕</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {stagedFiles.length > 0 && (
+                                <button
+                                    onClick={uploadStaged}
+                                    disabled={uploading}
+                                    className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl shadow-lg transition-all disabled:opacity-50"
+                                >
+                                    {uploading ? 'Nahrávám...' : `Nahrát ${stagedFiles.length} karet`}
+                                </button>
+                            )}
+
+                            {/* Progrss / Spinner */}
                             {uploading && (
-                                <div className="mt-6 text-center">
+                                <div className="mt-4 text-center">
                                     <div className="flex justify-center mb-2">
                                         <div className="w-8 h-8 boundary border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
                                     </div>
-                                    <div className="animate-pulse text-yellow-500 font-bold">Zpracovávám a nahrávám karty...</div>
                                 </div>
                             )}
 
                             <p className="mt-6 text-xs text-center text-white/30">
-                                Karty se automaticky zmenší a přidají do balíčku.
+                                Karty se automaticky zmenší a přidají do balíčku. <br />
+                                <span className="text-yellow-500/50">Tip: Zkontrolujte otočení před nahráním!</span>
                             </p>
                         </div>
                     </div>
                 )}
                 <div className="z-10 flex flex-col items-center w-full max-w-7xl">
                     <h1 className="text-9xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 mb-8 drop-shadow-2xl">DIXIT</h1>
-                    <div className="flex items-center gap-16 mb-16 bg-black/30 p-12 rounded-[3rem] border border-white/10 backdrop-blur-md">
+
+                    {/* Updated PIN Container with better responsiveness and sizing */}
+                    <div className="flex flex-col md:flex-row items-center gap-8 md:gap-16 mb-12 bg-black/30 p-8 md:p-12 rounded-[3rem] border border-white/10 backdrop-blur-md">
                         <div className="flex flex-col items-center">
                             <div className="text-2xl uppercase text-white/40 tracking-widest font-bold mb-2">PIN KÓD</div>
-                            <div className="text-9xl font-mono font-black tracking-wider text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">{gameState.pinCode}</div>
+                            <div className="text-7xl md:text-9xl font-mono font-black tracking-wider text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">{gameState.pinCode}</div>
                         </div>
-                        <div className="w-px h-32 bg-white/10"></div>
-                        <div className="bg-white p-4 rounded-xl"><QRCode value={joinUrl} size={150} /></div>
+                        <div className="w-full h-px md:w-px md:h-32 bg-white/10"></div>
+                        <div className="bg-white p-4 rounded-xl shadow-2xl"><QRCode value={joinUrl} size={150} /></div>
                     </div>
-                    <div className="flex flex-wrap justify-center gap-8 mb-16 w-full">
+
+                    {/* Players List with margin */}
+                    <div className="flex flex-wrap justify-center gap-12 mb-12 w-full min-h-[100px]">
                         {gameState.players.map((p: any) => (
                             <div key={p.id} className="flex flex-col items-center animate-bounce-subtle">
                                 <div className="text-6xl mb-2 drop-shadow-xl">{{ cow: '🐮', fox: '🦊', pig: '🐷', chicken: '🐔' }[p.avatar as string] || '👤'}</div>
@@ -345,10 +429,12 @@ export default function DixitBoard() {
                         ))}
                         {gameState.players.length === 0 && <span className="text-white/30 text-2xl italic">Čekám na hráče...</span>}
                     </div>
+
+                    {/* Start Button with margin */}
                     <button
                         onClick={handleStart}
                         disabled={gameState.players.length < 2}
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:scale-105 text-white text-3xl px-16 py-6 font-black rounded-full shadow-[0_0_50px_rgba(16,185,129,0.4)] transition-all disabled:opacity-50 disabled:grayscale disabled:scale-100 disabled:shadow-none"
+                        className="mt-8 bg-gradient-to-r from-green-500 to-emerald-600 hover:scale-105 text-white text-3xl px-16 py-6 font-black rounded-full shadow-[0_0_50px_rgba(16,185,129,0.4)] transition-all disabled:opacity-50 disabled:grayscale disabled:scale-100 disabled:shadow-none"
                     >
                         {gameState.players.length < 2 ? `ČEKÁM NA DALŠÍ HRÁČE (${gameState.players.length}/2)` : "START HRY"}
                     </button>

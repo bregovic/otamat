@@ -75,8 +75,8 @@ export class DixitGateway {
     }
 
     @SubscribeMessage('dixit:start')
-    async handleStartGame(@MessageBody() data: { pin: string }) {
-        const gameState = await this.dixitService.startGame(data.pin);
+    async handleStartGame(@MessageBody() data: { pin: string; storytellerId?: string }) {
+        const gameState = await this.dixitService.startGame(data.pin, data.storytellerId);
         this.server.to(data.pin).emit('dixit:update', gameState);
     }
 
@@ -107,12 +107,12 @@ export class DixitGateway {
 
     @SubscribeMessage('dixit:vote')
     async handleVote(
-        @MessageBody() data: { pin: string; playerId: string; targetCardOwnerId: string },
+        @MessageBody() data: { pin: string; playerId: string; targetCardId: string },
     ) {
         const gameState = await this.dixitService.submitVote(
             data.pin,
             data.playerId,
-            data.targetCardOwnerId
+            data.targetCardId
         );
         this.server.to(data.pin).emit('dixit:update', gameState);
     }

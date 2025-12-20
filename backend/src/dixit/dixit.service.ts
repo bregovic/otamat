@@ -27,7 +27,7 @@ export class DixitService {
             const guestUser = await this.prisma.user.create({
                 data: {
                     email: `guest_${Date.now()}_${Math.random().toString(36).substring(7)}@dixit.temp`,
-                    nickname: guestInfo?.nickname || 'Dixit Board',
+                    nickname: guestInfo?.nickname || 'Anonym',
                     avatar: guestInfo?.avatar || 'fox',
                     role: 'HOST'
                 }
@@ -46,16 +46,12 @@ export class DixitService {
             if (!existing) exists = false;
         }
 
-        // Fetch at least 30 cards for the deck
-        // For production, we need a lot of cards. For now, check if we have them.
+        // Fetch cards for the deck
         let allCards = await this.prisma.dixitCard.findMany({ select: { id: true } });
-
-        // If no cards, maybe seed some placeholders? Or just fail?
-        // Let's assume we have cards or the user will upload them.
-
         const deck = allCards.map(c => c.id).sort(() => Math.random() - 0.5);
 
-        return this.prisma.dixitGame.create({
+        // Create the game
+        const game = await this.prisma.dixitGame.create({
             data: {
                 pinCode: pin,
                 hostId: finalHostId,
@@ -68,6 +64,28 @@ export class DixitService {
             },
             include: { players: true }
         });
+
+        // If guestInfo provided, auto-join the creator as a player
+        let playerId: string | null = null;
+        if (guestInfo && guestInfo.nickname) {
+            const player = await this.prisma.dixitPlayer.create({
+                data: {
+                    gameId: game.id,
+                    nickname: guestInfo.nickname,
+                    avatar: guestInfo.avatar || 'fox',
+                    hand: [],
+                }
+            });
+            playerId = player.id;
+        }
+
+        // Return game with players included
+        const updatedGame = await this.prisma.dixitGame.findUnique({
+            where: { id: game.id },
+            include: { players: true, rounds: true }
+        });
+
+        return { game: updatedGame, playerId };
     }
 
     async joinGame(pin: string, nickname: string, avatar: string) {

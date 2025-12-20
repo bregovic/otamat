@@ -26,10 +26,14 @@ export class DixitGateway {
     ) {
         try {
             console.log('Received dixit:create request', { hasHostId: !!data.hostId, hasGuest: !!data.guestInfo });
-            const game = await this.dixitService.createGame(data.hostId, data.guestInfo);
-            console.log('Game created successfully:', game.id);
-            client.join(game.pinCode);
-            return { success: true, event: 'dixit:created', data: game };
+            const { game, playerId } = await this.dixitService.createGame(data.hostId, data.guestInfo);
+            console.log('Game created successfully:', game?.id, 'Player:', playerId);
+            if (game) {
+                client.join(game.pinCode);
+                // Emit to room so all spectators get the update
+                this.server.to(game.pinCode).emit('dixit:update', game);
+            }
+            return { success: true, event: 'dixit:created', game, playerId, pinCode: game?.pinCode };
         } catch (e) {
             console.error('Error in dixit:create:', e);
             return { success: false, error: e.message || 'Unknown backend error' };

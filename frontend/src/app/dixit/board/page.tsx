@@ -3,9 +3,47 @@ import React, { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { BACKEND_URL } from '../../../utils/config';
 import QRCode from 'react-qr-code';
-
 import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'next/navigation';
+
+const QUESTIONS = [
+    "Jakou kartu vybere vypravěč?",
+    "Kdo bude mít nejlepší intuici?",
+    "Který obrázek je ten pravý?"
+];
+
+const POINTS = 30;
+
+// Generate positions for a winding path (Snake style)
+// 0 (Start) -> 30 (End)
+const getMapPosition = (index: number) => {
+    // 3 Rows of 10? Or winding curve.
+    // Let's do a large S-curve across the bottom screen area or full screen overlay.
+    // Normalized 0-30.
+    // We want a clear path.
+
+    // Let's try 4 rows.
+    // Row 0 (Bottom): 0-7
+    // Row 1: 8-15
+    // Row 2: 16-23
+    // Row 3 (Top): 24-30
+
+    if (index > POINTS) index = POINTS;
+
+    const row = Math.floor(index / 8);
+    const col = index % 8;
+
+    // ZigZag: Even rows (0, 2) go Right. Odd rows (1, 3) go Left.
+    const isEvenRow = row % 2 === 0;
+
+    const xStep = 100 / 9; // spacing
+    const yStep = 18; // vertical spacing %
+
+    const x = isEvenRow ? (col + 1) * xStep : 100 - ((col + 1) * xStep);
+    const y = 90 - (row * yStep); // Start from bottom (90%)
+
+    return { left: `${x}%`, top: `${y}%` };
+};
 
 export default function DixitBoard() {
     const { user } = useAuth();
@@ -13,9 +51,12 @@ export default function DixitBoard() {
 
     const [socket, setSocket] = useState<Socket | null>(null);
     const [gameState, setGameState] = useState<any>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
-        if (!user) return; // Wait for user
+        if (!user) return;
 
         const newSocket = io(BACKEND_URL, {
             transports: ['websocket'],
@@ -25,7 +66,6 @@ export default function DixitBoard() {
 
         newSocket.on('connect', () => {
             console.log('Board connected');
-            // Create game immediately
             newSocket.emit('dixit:create', { hostId: user.id }, (response: any) => {
                 if (response.success) {
                     console.log('Game created:', response.gameId);
@@ -35,191 +75,122 @@ export default function DixitBoard() {
             });
         });
 
-        newSocket.on('dixit:created', (state) => {
-            setGameState(state);
-        });
+        newSocket.on('dixit:created', (state) => setGameState(state));
+        newSocket.on('dixit:update', (state) => setGameState(state));
 
-        newSocket.on('dixit:update', (state) => {
-            setGameState(state);
-        });
-
-        return () => {
-            newSocket.disconnect();
-        };
+        return () => { newSocket.close(); };
     }, [user]);
-
-    // Redirect if not logged in (optional check, better handled by middleware or wrapping)
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (!user) {
-                // router.push('/login'); 
-                // We won't force redirect yet, maybe they are just loading auth
-            }
-        }, 2000);
-        return () => clearTimeout(timer);
-    }, [user, router]);
-
-
-    const handleStart = () => {
-        if (socket && gameState) {
-            socket.emit('dixit:start', { pin: gameState.pinCode });
-        }
-    };
-
-    const handleNextRound = () => {
-        if (socket && gameState) {
-            socket.emit('dixit:nextRound', { pin: gameState.pinCode });
-        }
-    };
-
-    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             if (!gameState && !error) {
-                setError('Hra se nenačetla. Ověřte, že běží backend na Railway a zkuste obnovit stránku.');
+                setError('Hra se nenačetla. Zkontrolujte připojení.');
             }
-        }, 5000);
+        }, 8000);
         return () => clearTimeout(timer);
     }, [gameState]);
+
+    const handleStart = () => {
+        if (socket && gameState) socket.emit('dixit:start', { pin: gameState.pinCode });
+    };
+
+    const handleNextRound = () => {
+        if (socket && gameState) socket.emit('dixit:nextRound', { pin: gameState.pinCode });
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.length) return;
+        setUploading(true);
+        const formData = new FormData();
+        Array.from(e.target.files).forEach(file => formData.append('files', file));
+        try {
+            const res = await fetch(`${BACKEND_URL}/dixit/upload`, { method: 'POST', body: formData });
+            if (res.ok) { alert('Obrázky úspěšně nahrány!'); setIsSettingsOpen(false); }
+            else alert('Chyba při nahrávání.');
+        } catch (err) { console.error(err); alert('Chyba pří připojení k backendu.'); }
+        finally { setUploading(false); }
+    };
 
     if (!gameState) {
         return (
             <div className="h-screen w-full bg-black text-white flex flex-col items-center justify-center p-8 text-center">
                 {error ? (
-                    <div className="text-red-500 text-xl font-bold max-w-md">
-                        ⚠️ {error}
-                        <button onClick={() => window.location.reload()} className="mt-4 px-6 py-2 bg-white text-black rounded-lg block mx-auto hover:bg-gray-200">
-                            Zkusit znovu
-                        </button>
-                    </div>
+                    <div className="text-red-500 text-xl font-bold max-w-md">⚠️ {error}</div>
                 ) : (
-                    <div className="animate-pulse text-indigo-300">
-                        Načítání magického světa...
-                    </div>
+                    <div className="animate-pulse text-indigo-300">Načítání magického světa...</div>
                 )}
             </div>
         );
     }
 
-    // --- LOBBY VIEW ---
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const [uploading, setUploading] = useState(false);
+    // --- VICTORY SCREEN ---
+    if (gameState.status === 'FINISHED') {
+        const winner = gameState.players.reduce((prev: any, current: any) => (prev.score > current.score) ? prev : current);
+        return (
+            <main className="h-screen w-full bg-black text-white flex flex-col items-center justify-center p-8 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-yellow-600/20 to-black"></div>
+                <div className="text-[150px] animate-bounce mb-8">👑</div>
+                <h2 className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-500 to-yellow-200 mb-8 max-w-4xl text-center leading-tight drop-shadow-2xl">
+                    {winner.nickname} vítězí!
+                </h2>
+                <div className="text-4xl text-white/50 font-serif italic mb-20">{winner.score} bodů</div>
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files?.length) return;
-        setUploading(true);
+                <div className="flex gap-12 items-end">
+                    {gameState.players.sort((a: any, b: any) => b.score - a.score).map((p: any, i: number) => (
+                        <div key={p.id} className={`flex flex-col items-center ${i === 0 ? 'scale-125 order-2' : 'opacity-70 scale-90 order-1'}`}>
+                            <div className="text-6xl mb-4 drop-shadow-lg">{{ cow: '🐮', fox: '🦊' }[p.avatar as string] || '👤'}</div>
+                            <div className="text-2xl font-bold">{p.nickname}</div>
+                            <div className="text-white/50 font-mono">{p.score}</div>
+                        </div>
+                    ))}
+                </div>
+            </main>
+        );
+    }
 
-        const formData = new FormData();
-        Array.from(e.target.files).forEach(file => {
-            formData.append('files', file);
-        });
-
-        try {
-            const res = await fetch(`${BACKEND_URL}/dixit/upload`, {
-                method: 'POST',
-                body: formData
-            });
-            if (res.ok) {
-                alert('Obrázky úspěšně nahrány!');
-                setIsSettingsOpen(false);
-            } else {
-                alert('Chyba při nahrávání.');
-            }
-        } catch (err) {
-            console.error(err);
-            alert('Chyba pří připojení k backendu.');
-        } finally {
-            setUploading(false);
-        }
-    };
-
+    // --- LOBBY ---
     if (gameState.phase === 'LOBBY') {
         const joinUrl = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}/dixit/play?pin=${gameState.pinCode}` : '';
-
         return (
             <main className="h-screen w-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900 via-purple-900 to-black text-white flex flex-col items-center justify-center p-8 relative overflow-hidden">
-                {/* Magical Background Elements */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-0 left-0 w-full h-full bg-black/20 opacity-5 mix-blend-overlay"></div>
-                    <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] animate-pulse"></div>
-                    <div className="absolute bottom-1/3 right-1/4 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] animate-pulse delay-1000"></div>
-                </div>
-
-                {/* Settings Button */}
+                {/* ... Lobby UI ... */}
                 <div className="absolute top-8 right-8 z-50">
-                    <button onClick={() => setIsSettingsOpen(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 transition-all text-2xl" title="Nastavení karet">
-                        ⚙️
-                    </button>
+                    <button onClick={() => setIsSettingsOpen(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 transition-all text-2xl">⚙️</button>
                 </div>
-
-                {/* Upload Modal */}
                 {isSettingsOpen && (
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-8">
-                        <div className="bg-zinc-900 border border-white/10 p-8 rounded-2xl max-w-md w-full relative">
+                        <div className="bg-zinc-900 p-8 rounded-2xl max-w-md w-full relative border border-white/10">
                             <button onClick={() => setIsSettingsOpen(false)} className="absolute top-4 right-4 text-white/50 hover:text-white">✕</button>
                             <h2 className="text-2xl font-bold mb-6">Správa karet</h2>
-                            <p className="mb-4 text-sm text-white/60">Nahrajte nové obrázky do hry. Systém je automaticky zmenší a uloží do databáze.</p>
-
                             <label className="block w-full border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:bg-white/5 transition-colors">
                                 <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" />
                                 <div className="text-4xl mb-2">📤</div>
-                                <div>Klikni pro výběr souborů</div>
-                                <div className="text-xs mt-2 text-white/40">(Možno vybrat více najednou)</div>
+                                <div className="text-sm">Nahrát karty</div>
                             </label>
-
-                            {uploading && <div className="mt-4 text-yellow-400 font-bold animate-pulse text-center">Nahrávání a komprese...</div>}
+                            {uploading && <div className="mt-4 text-center animate-pulse">Nahrávání...</div>}
                         </div>
                     </div>
                 )}
-
                 <div className="z-10 flex flex-col items-center w-full max-w-7xl">
-                    <h1 className="text-8xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-br from-yellow-200 via-yellow-400 to-amber-500 mb-4 drop-shadow-[0_0_25px_rgba(234,179,8,0.4)] tracking-widest">
-                        DIXIT
-                    </h1>
-                    <h2 className="text-3xl text-indigo-200/60 mb-16 uppercase tracking-[0.5em] font-light">Připojte se do hry</h2>
-
-                    <div className="flex flex-col md:flex-row items-center gap-24 w-full justify-center">
-                        {/* PIN Code */}
-                        <div className="flex flex-col items-center group">
-                            <div className="text-xl uppercase text-indigo-300 font-bold mb-4 tracking-widest">Herní PIN</div>
-                            <div className="text-[10rem] leading-none font-mono font-black text-white bg-black/30 px-16 py-8 rounded-[3rem] border-4 border-white/10 shadow-[0_0_80px_rgba(139,92,246,0.2)] backdrop-blur-md group-hover:scale-105 transition-transform duration-500 group-hover:border-yellow-500/30 group-hover:shadow-[0_0_100px_rgba(234,179,8,0.3)]">
-                                {gameState.pinCode}
+                    <h1 className="text-9xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 mb-8 drop-shadow-2xl">DIXIT</h1>
+                    <div className="flex items-center gap-16 mb-16 bg-black/30 p-12 rounded-[3rem] border border-white/10 backdrop-blur-md">
+                        <div className="flex flex-col items-center">
+                            <div className="text-2xl uppercase text-white/40 tracking-widest font-bold mb-2">PIN KÓD</div>
+                            <div className="text-9xl font-mono font-black tracking-wider text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">{gameState.pinCode}</div>
+                        </div>
+                        <div className="w-px h-32 bg-white/10"></div>
+                        <div className="bg-white p-4 rounded-xl"><QRCode value={joinUrl} size={150} /></div>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-8 mb-16 w-full">
+                        {gameState.players.map((p: any) => (
+                            <div key={p.id} className="flex flex-col items-center animate-bounce-subtle">
+                                <div className="text-6xl mb-2 drop-shadow-xl">{{ cow: '🐮', fox: '🦊' }[p.avatar as string] || '👤'}</div>
+                                <div className="font-bold text-xl">{p.nickname}</div>
                             </div>
-                        </div>
-
-                        {/* QR Code */}
-                        <div className="p-6 bg-white rounded-3xl shadow-[0_0_60px_rgba(255,255,255,0.2)] rotate-3 hover:rotate-0 transition-transform duration-500 scale-110">
-                            <QRCode value={joinUrl} size={300} />
-                        </div>
+                        ))}
+                        {gameState.players.length === 0 && <span className="text-white/30 text-2xl italic">Čekám na hráče...</span>}
                     </div>
-
-                    {/* Players Grid */}
-                    <div className="mt-20 w-full">
-                        <div className="text-center text-xl text-indigo-200/40 mb-10 border-b border-indigo-500/20 pb-4 font-serif italic">
-                            {gameState.players.length === 0 ? 'Čekám na první odvážlivce...' : `Připojeni ${gameState.players.length} snílci`}
-                        </div>
-
-                        <div className="flex flex-wrap justify-center gap-12">
-                            {gameState.players.map((p: any) => (
-                                <div key={p.id} className="flex flex-col items-center group">
-                                    <div className="text-7xl mb-4 grayscale group-hover:grayscale-0 transition-all cursor-default transform group-hover:scale-125 group-hover:rotate-6 duration-300 drop-shadow-2xl">
-                                        {{ cow: '🐮', fox: '🦊' }[p.avatar as string] || '👤'}
-                                    </div>
-                                    <div className="font-bold text-xl text-white group-hover:text-yellow-400 transition-colors">{p.nickname}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={handleStart}
-                        disabled={gameState.players.length < 3}
-                        className="mt-20 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-3xl px-20 py-8 font-black rounded-full shadow-[0_0_50px_rgba(16,185,129,0.4)] transition-all hover:scale-105 hover:shadow-[0_0_80px_rgba(16,185,129,0.6)] disabled:opacity-30 disabled:grayscale tracking-widest uppercase"
-                    >
-                        START HRY
-                    </button>
-                    {gameState.players.length < 3 && <div className="mt-6 text-indigo-300/40 text-lg animate-pulse">Ke hře jsou potřeba alespoň 3 hráči</div>}
+                    <button onClick={handleStart} disabled={gameState.players.length < 3} className="bg-gradient-to-r from-green-500 to-emerald-600 hover:scale-105 text-white text-3xl px-16 py-6 font-black rounded-full shadow-[0_0_50px_rgba(16,185,129,0.4)] transition-all disabled:opacity-50 disabled:grayscale">START HRY</button>
                 </div>
             </main>
         );
@@ -228,51 +199,45 @@ export default function DixitBoard() {
     // --- GAME VIEW ---
     const storyteller = gameState.players.find((p: any) => p.id === gameState.storytellerId);
 
+    // Determine if we show the Map overlay (only during results or if toggled? Let's show it always at bottom or as background?)
+    // User wants "Animated board".
+    // Let's make the Map visible as a background layer or distinct section.
+    // We'll put it in a fixed overlay at the bottom that expands?
+    // Or just visible behind the cards.
+    // Let's put it as a semi-transparent overlay at the bottom 1/3 of screen.
+
     return (
-        <main className="h-screen w-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-900 via-[#1a103c] to-black text-white flex flex-col p-6 relative overflow-hidden">
+        <main className="h-screen w-full bg-[#1a103c] text-white flex flex-col relative overflow-hidden">
+            {/* Background Map (Full Screen Overlay with low opacity, or dedicated area) */}
+            {/* We will use a dedicated Map Layer at the bottom */}
+
             {/* Header */}
-            <header className="flex justify-between items-center p-6 bg-black/40 rounded-3xl border border-white/5 backdrop-blur-xl z-10 shadow-2xl">
-                <div className="text-3xl font-bold text-yellow-500 font-serif">Kolo {gameState.currentRound}</div>
-                <div className="text-2xl">Vypravěč: <span className="font-black text-yellow-300 bg-yellow-500/10 px-4 py-1 rounded-lg border border-yellow-500/30">{storyteller?.nickname}</span></div>
-                <div className="text-2xl font-mono text-indigo-300/50 tracking-widest font-bold">PIN: {gameState.pinCode}</div>
+            <header className="h-20 flex justify-between items-center px-8 bg-black/30 backdrop-blur-md z-30 border-b border-white/5">
+                <div className="text-2xl font-serif text-yellow-400 font-bold">Kolo {gameState.currentRound}</div>
+                <div className="text-2xl">Vypravěč: <span className="font-bold text-yellow-300">{storyteller?.nickname}</span></div>
             </header>
 
-            {/* Content based on phase */}
-            <div className="flex-1 flex flex-col items-center justify-center relative z-10 w-full max-w-[1800px] mx-auto">
+            {/* Main Content Area */}
+            <div className="flex-1 relative z-20 flex flex-col items-center p-4 pb-[30vh]"> {/* Padding bottom for Map */}
 
                 {gameState.phase === 'STORYTELLER_PICK' && (
-                    <div className="text-center transform scale-125">
-                        <div className="text-9xl mb-12 animate-bounce-subtle filter drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">🤔</div>
-                        <h2 className="text-6xl font-bold mb-6 font-serif">Vypravěč vybírá kartu...</h2>
-                        <p className="text-3xl text-indigo-300/60 font-light">Všichni sledují {storyteller?.nickname}</p>
+                    <div className="flex flex-col items-center justify-center h-full animate-pulse">
+                        <div className="text-9xl mb-8">🤔</div>
+                        <h2 className="text-6xl font-bold mb-4 text-center">Vypravěč vybírá kartu...</h2>
                     </div>
                 )}
 
                 {gameState.phase === 'PLAYERS_PICK' && (
-                    <div className="text-center w-full flex flex-col items-center">
-                        <div className="glass-card mb-20 px-24 py-16 bg-gradient-to-b from-indigo-900/50 to-purple-900/50 border border-indigo-500/30 shadow-[0_0_100px_rgba(79,70,229,0.2)] rounded-[3rem]">
-                            <div className="text-2xl uppercase text-indigo-300 font-bold tracking-[0.5em] mb-4">Nápověda</div>
-                            <h2 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-yellow-200 to-white drop-shadow-lg font-serif italic">"{gameState.rounds?.[0]?.clue || '???'}"</h2>
+                    <div className="flex flex-col items-center w-full">
+                        <div className="bg-white/5 px-12 py-8 rounded-3xl border border-white/10 mb-12 text-center backdrop-blur-md">
+                            <div className="text-xl uppercase tracking-widest text-indigo-300 mb-2">Nápověda</div>
+                            <h2 className="text-6xl font-serif italic text-yellow-100">"{gameState.rounds?.[0]?.clue}"</h2>
                         </div>
-
-                        <h3 className="text-3xl mb-12 text-indigo-200/50 font-light tracking-wide uppercase">Hráči vybírají karty</h3>
-
-                        <div className="flex justify-center gap-8 flex-wrap">
+                        <div className="flex gap-4 flex-wrap justify-center">
                             {gameState.players.filter((p: any) => p.id !== gameState.storytellerId).map((p: any) => (
-                                <div key={p.id} className={`
-                                     relative group flex flex-col items-center
-                                 `}>
-                                    <div className={`
-                                        w-32 h-48 rounded-2xl border-4 flex items-center justify-center transition-all duration-500 mb-4
-                                        ${p.submittedCardId
-                                            ? 'bg-gradient-to-br from-emerald-500 to-teal-600 border-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.5)] scale-110 rotate-3'
-                                            : 'bg-white/5 border-white/10 opacity-30 scale-95'}
-                                     `}>
-                                        <div className="text-4xl filter drop-shadow-md">
-                                            {p.submittedCardId ? '🃏' : '...'}
-                                        </div>
-                                    </div>
-                                    <div className={`font-bold text-lg transition-colors ${p.submittedCardId ? 'text-emerald-400' : 'text-white/30'}`}>{p.nickname}</div>
+                                <div key={p.id} className={`flex flex-col items-center transition-all duration-500 ${p.submittedCardId ? 'opacity-100 scale-110' : 'opacity-50'}`}>
+                                    <div className="text-5xl mb-2">{{ cow: '🐮', fox: '🦊' }[p.avatar as string] || '👤'}</div>
+                                    <div className={`font-bold ${p.submittedCardId ? 'text-green-400' : 'text-white/50'}`}>{p.nickname}</div>
                                 </div>
                             ))}
                         </div>
@@ -280,66 +245,36 @@ export default function DixitBoard() {
                 )}
 
                 {(gameState.phase === 'VOTING' || gameState.phase === 'SCORING') && (
-                    <div className="w-full h-full flex flex-col">
-                        {/* Clue display */}
-                        <div className="text-center mb-10 mt-4">
-                            <h2 className="text-5xl font-black text-white/90 font-serif italic drop-shadow-lg inline-block px-12 py-4 rounded-full bg-black/20 border border-white/5">
-                                "{gameState.rounds?.[0]?.clue}"
-                            </h2>
-                        </div>
-
-                        {/* Cards Grid */}
-                        <div className="flex-1 flex items-center justify-center w-full px-8">
-                            <div className="flex flex-wrap gap-8 justify-center items-center">
+                    <div className="w-full h-full flex flex-col items-center">
+                        <div className="text-3xl font-serif italic mb-6 text-yellow-100/80">"{gameState.rounds?.[0]?.clue}"</div>
+                        <div className="flex-1 flex items-center justify-center w-full overflow-visible">
+                            <div className="flex flex-wrap gap-4 justify-center items-center">
                                 {gameState.rounds?.[0]?.cardsPlayed && Object.entries(gameState.rounds[0].cardsPlayed).map(([pid, cardId]: [string, any], index: number) => {
                                     const isScoring = gameState.phase === 'SCORING';
                                     const isStorytellerCard = pid === gameState.storytellerId;
-
                                     const votes = gameState.rounds?.[0]?.votes as Record<string, string> | undefined;
-                                    const voters = votes ? Object.entries(votes).filter(([voterId, votedTarget]) => votedTarget === pid).map(([voterId]) => voterId) : [];
+                                    const voters = votes ? Object.entries(votes).filter(([_, target]) => target === pid).map(([vid]) => vid) : [];
 
                                     return (
-                                        <div key={pid} className="relative group perspective">
-                                            {/* Card Image */}
+                                        <div key={pid} className={`relative group perspective transition-all duration-500 ${isScoring && isStorytellerCard ? 'z-20 scale-105' : 'z-10'}`}>
                                             <div className={`
-                                                   w-56 h-80 md:w-72 md:h-[26rem] rounded-2xl overflow-hidden shadow-2xl transition-all duration-700 ease-out border-4 relative z-10
-                                                   ${isScoring && isStorytellerCard
-                                                    ? 'border-yellow-400 ring-8 ring-yellow-500/20 shadow-[0_0_60px_rgba(234,179,8,0.4)] scale-105 z-20'
-                                                    : 'border-white/10 hover:border-white/30 hover:scale-[1.02] hover:-translate-y-2 shadow-black/50'}
-                                                   ${isScoring && !isStorytellerCard ? 'grayscale-[0.5] opacity-80' : ''}
-                                               `}>
-                                                <img src={`/dixit/${cardId}`} alt="Card" className="w-full h-full object-cover transform transition-transform duration-700 hover:scale-110" />
+                                                relative w-48 h-72 rounded-xl overflow-hidden shadow-2xl transition-all duration-500 border-2
+                                                ${isScoring && isStorytellerCard ? 'border-yellow-500 ring-4 ring-yellow-500/30' : 'border-white/10'}
+                                                ${isScoring && !isStorytellerCard ? 'opacity-60 grayscale-[0.5]' : ''}
+                                            `}>
+                                                <img src={`/dixit/${cardId}`} className="w-full h-full object-cover" />
                                             </div>
 
-                                            {/* Voting Number */}
-                                            <div className="absolute -top-6 -left-6 w-16 h-16 bg-white text-black font-black text-3xl rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-4 border-gray-900 z-30 font-serif">
-                                                {index + 1}
-                                            </div>
+                                            {/* Number */}
+                                            <div className="absolute -top-4 -left-4 w-10 h-10 bg-black text-white font-bold flex items-center justify-center rounded-full border-2 border-white/20 shadow-lg text-xl z-30">{index + 1}</div>
 
-                                            {/* Votes appearing */}
-                                            {(gameState.phase === 'SCORING' || gameState.phase === 'VOTING') && (
-                                                <div className="absolute -bottom-8 w-full flex justify-center gap-2 z-30 perspective">
+                                            {/* Voters */}
+                                            {(isScoring || gameState.phase === 'VOTING') && voters.length > 0 && (
+                                                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex -space-x-3 w-max px-2 py-1">
                                                     {voters.map(vid => {
-                                                        const voter = gameState.players.find((p: any) => p.id === vid);
-                                                        return (
-                                                            <div key={vid} className="w-14 h-14 bg-gradient-to-b from-white to-gray-200 rounded-full flex items-center justify-center text-3xl shadow-[0_5px_15px_rgba(0,0,0,0.4)] border-2 border-white -ml-4 first:ml-0 transform hover:scale-125 transition-transform cursor-help z-10" title={voter?.nickname}>
-                                                                {{ cow: '🐮', fox: '🦊' }[voter?.avatar as string || ''] || '👤'}
-                                                            </div>
-                                                        );
+                                                        const v = gameState.players.find((p: any) => p.id === vid);
+                                                        return <div key={vid} className="text-2xl filter drop-shadow-md hover:scale-125 transition-transform" title={v?.nickname}>{{ cow: '🐮', fox: '🦊' }[v?.avatar as string] || '👤'}</div>
                                                     })}
-                                                </div>
-                                            )}
-
-                                            {/* Owner Reveal (Scoring) */}
-                                            {isScoring && (
-                                                <div className={`
-                                                        absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                                                        px-6 py-3 rounded-xl backdrop-blur-xl border border-white/20
-                                                        opacity-0 group-hover:opacity-100 transition-all duration-300
-                                                        whitespace-nowrap z-50 pointer-events-none font-bold text-xl shadow-2xl
-                                                        ${isStorytellerCard ? 'bg-yellow-500/80 text-black' : 'bg-black/80 text-white'}
-                                                   `}>
-                                                    {gameState.players.find((p: any) => p.id === pid)?.nickname}
                                                 </div>
                                             )}
                                         </div>
@@ -347,30 +282,64 @@ export default function DixitBoard() {
                                 })}
                             </div>
                         </div>
-                    </div>
-                )}
-
-                {gameState.phase === 'SCORING' && (
-                    <div className="absolute bottom-12 right-12 z-50">
-                        <button onClick={handleNextRound} className="bg-white text-black text-2xl px-10 py-5 font-black rounded-full shadow-[0_0_50px_rgba(255,255,255,0.3)] hover:scale-105 transition-all hover:bg-yellow-400 animate-bounce">
-                            DALŠÍ KOLO ➜
-                        </button>
+                        {isScoring && (
+                            <div className="absolute bottom-[35vh] z-50 animate-bounce">
+                                <button onClick={handleNextRound} className="bg-yellow-500 hover:bg-yellow-400 text-black font-black text-xl px-12 py-4 rounded-full shadow-xl transition-colors">DALŠÍ KOLO ➜</button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
 
-            {/* Scoreboard Preview (Bottom) */}
-            <div className="h-24 border-t border-white/5 bg-black/40 backdrop-blur-xl flex items-center justify-center gap-12 overflow-x-auto px-8 relative z-20">
-                {gameState.players.sort((a: any, b: any) => b.score - a.score).map((p: any, i: number) => (
-                    <div key={p.id} className={`flex items-center gap-4 transition-all ${i === 0 ? 'scale-110 opacity-100' : 'opacity-60 grayscale-[0.3]'}`}>
-                        <span className="text-4xl filter drop-shadow-lg">{{ cow: '🐮', fox: '🦊' }[p.avatar as string] || '👤'}</span>
-                        <div className="flex flex-col">
-                            <span className={`font-bold text-lg leading-none ${i === 0 ? 'text-yellow-400' : 'text-white'}`}>{p.nickname}</span>
-                            <span className="text-xs uppercase tracking-widest opacity-50">Body</span>
-                        </div>
-                        <span className={`text-3xl font-black font-mono ${i === 0 ? 'text-yellow-400' : 'text-white'}`}>{p.score}</span>
-                    </div>
-                ))}
+            {/* --- MAP VISUALIZATION (Bottom 30%) --- */}
+            <div className="fixed bottom-0 left-0 w-full h-[30vh] bg-black/60 backdrop-blur-lg border-t-4 border-white/10 z-10 overflow-hidden">
+                <div className="relative w-full h-full max-w-7xl mx-auto px-12 py-8">
+                    {/* The Path Line */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20" preserveAspectRatio="none">
+                        {/* Simple connection lines between dots */}
+                        <path d={Array.from({ length: POINTS + 1 }).map((_, i) => {
+                            const pos = getMapPosition(i);
+                            const x = parseFloat(pos.left);
+                            const y = parseFloat(pos.top);
+                            // Need to convert % to approximate coordinates for SVG path d?
+                            // CSS % is relative to container. SVG coord system is arbitrary.
+                            // Let's just draw dots with div for simplicity, SVG line might be hard to align perfectly with % div positions without fixed size.
+                            return "";
+                        }).join(" ")} />
+                    </svg>
+
+                    {/* Map Dots */}
+                    {Array.from({ length: POINTS + 1 }).map((_, i) => {
+                        const pos = getMapPosition(i);
+                        return (
+                            <div key={i} className="absolute w-4 h-4 bg-white/10 rounded-full transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-[10px] text-white/30 font-mono" style={{ left: pos.left, top: pos.top }}>
+                                {i % 5 === 0 && i}
+                            </div>
+                        );
+                    })}
+
+                    {/* Finish Flag */}
+                    <div className="absolute text-4xl transform -translate-x-1/2 -translate-y-1/2 filter drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]" style={{ ...getMapPosition(POINTS), top: '10%' }}>🏰</div>
+
+                    {/* Avatars */}
+                    {gameState.players.map((p: any) => {
+                        const score = Math.min(p.score, POINTS);
+                        const pos = getMapPosition(score);
+                        return (
+                            <div key={p.id}
+                                className="absolute transition-all duration-[2000ms] ease-in-out transform -translate-x-1/2 -translate-y-1/2 z-20 hover:scale-150 cursor-pointer group"
+                                style={{ left: pos.left, top: pos.top }}
+                            >
+                                <div className="text-4xl filter drop-shadow-[0_5px_10px_rgba(0,0,0,0.5)] group-hover:drop-shadow-[0_0_20px_rgba(255,255,0,0.8)] transition-all">
+                                    {{ cow: '🐮', fox: '🦊' }[p.avatar as string] || '👤'}
+                                </div>
+                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/80 px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity pointer-events-none">
+                                    {p.nickname} ({p.score})
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         </main>
     );

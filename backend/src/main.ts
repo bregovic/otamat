@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { json, urlencoded } from 'express';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -15,12 +16,16 @@ async function bootstrap() {
       'http://www.hollyhop.cz',
       'https://otamat.w33.wedos.net',
       'http://localhost:3000',
-      'http://localhost:4000'
+      'http://localhost:4000',
+      'https://otamat-production.up.railway.app'
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
-  console.log("Backend starting with CORS enabled for hollyhop.cz... VERSION: DEBUG_IMPORT_V2 (Time: " + new Date().toISOString() + ")");
+
+  app.useWebSocketAdapter(new IoAdapter(app));
+
+  console.log("Backend starting with CORS enabled... VERSION: DEBUG_WSS_FIX (Time: " + new Date().toISOString() + ")");
   await app.listen(process.env.PORT ?? 4000);
 }
 bootstrap();

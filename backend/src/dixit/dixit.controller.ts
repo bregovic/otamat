@@ -1,5 +1,4 @@
 import { Controller, Post, Get, Param, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
-import { Response } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { DixitService } from './dixit.service';
 
@@ -16,7 +15,7 @@ export class DixitController {
         })));
     }
     @Get('image/:id')
-    async getCardImage(@Param('id') id: string, @Res() res: Response) {
+    async getCardImage(@Param('id') id: string, @Res() res) {
         const card = await this.dixitService.getCard(id);
         if (!card) return res.status(404).send('Not found');
 

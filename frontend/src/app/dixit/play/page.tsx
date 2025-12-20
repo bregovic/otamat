@@ -193,11 +193,48 @@ function DixitPlayContent() {
                                 className="w-full bg-black/40 border border-white/10 p-5 rounded-2xl text-lg text-center focus:border-yellow-500 transition-colors focus:bg-black/60 focus:outline-none"
                             />
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="relative w-full h-[50vh] flex items-center justify-center">
+                                <button
+                                    onClick={() => setSelectedCardId(myHand[(myHand.indexOf(selectedCardId || myHand[0]) - 1 + myHand.length) % myHand.length])}
+                                    className="absolute left-0 z-20 p-4 text-4xl text-white/50 hover:text-white bg-black/20 hover:bg-black/40 rounded-r-2xl backdrop-blur-sm transition-all"
+                                >
+                                    ‹
+                                </button>
+
+                                <div className="w-full h-full flex items-center justify-center overflow-hidden relative">
+                                    {myHand.map((card: string, idx: number) => {
+                                        const currentIdx = myHand.indexOf(selectedCardId || myHand[0]);
+                                        // Simple logic to set initial selection if null
+                                        if (!selectedCardId && idx === 0) setTimeout(() => setSelectedCardId(card), 0);
+
+                                        if (card !== selectedCardId) return null;
+
+                                        return (
+                                            <div key={card} className="relative w-full h-full flex items-center justify-center animate-in fade-in zoom-in duration-300">
+                                                <img
+                                                    src={`${BACKEND_URL}/dixit/image/${card}`}
+                                                    className="max-h-full max-w-full object-contain rounded-xl shadow-2xl"
+                                                    alt="Card"
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                <button
+                                    onClick={() => setSelectedCardId(myHand[(myHand.indexOf(selectedCardId || myHand[0]) + 1) % myHand.length])}
+                                    className="absolute right-0 z-20 p-4 text-4xl text-white/50 hover:text-white bg-black/20 hover:bg-black/40 rounded-l-2xl backdrop-blur-sm transition-all"
+                                >
+                                    ›
+                                </button>
+                            </div>
+
+                            <div className="flex justify-center gap-2 mb-4">
                                 {myHand.map((card: string) => (
-                                    <div key={card} onClick={() => setSelectedCardId(card)} className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-300 ${selectedCardId === card ? 'ring-4 ring-yellow-500 scale-105 z-10 shadow-[0_0_30px_rgba(234,179,8,0.4)]' : 'opacity-80 hover:opacity-100 hover:scale-[1.02]'}`}>
-                                        <img src={`/dixit/${card}`} className="w-full h-auto object-cover" />
-                                    </div>
+                                    <div
+                                        key={card}
+                                        className={`w-2 h-2 rounded-full transition-all ${selectedCardId === card ? 'bg-yellow-500 w-4' : 'bg-white/20'}`}
+                                    />
                                 ))}
                             </div>
 
@@ -237,11 +274,45 @@ function DixitPlayContent() {
                                     <p className="text-indigo-200/60 text-sm mt-3 border-t border-white/5 pt-3">Vyber kartu, která se k tomu nejlépe hodí.</p>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="relative w-full h-[50vh] flex items-center justify-center">
+                                    <button
+                                        onClick={() => setSelectedCardId(myHand[(myHand.indexOf(selectedCardId || myHand[0]) - 1 + myHand.length) % myHand.length])}
+                                        className="absolute left-0 z-20 p-4 text-4xl text-white/50 hover:text-white bg-black/20 hover:bg-black/40 rounded-r-2xl backdrop-blur-sm transition-all"
+                                    >
+                                        ‹
+                                    </button>
+
+                                    <div className="w-full h-full flex items-center justify-center overflow-hidden relative">
+                                        {myHand.map((card: string, idx: number) => {
+                                            if (!selectedCardId && idx === 0) setTimeout(() => setSelectedCardId(card), 0);
+                                            if (card !== selectedCardId) return null;
+
+                                            return (
+                                                <div key={card} className="relative w-full h-full flex items-center justify-center animate-in fade-in zoom-in duration-300">
+                                                    <img
+                                                        src={`${BACKEND_URL}/dixit/image/${card}`}
+                                                        className="max-h-full max-w-full object-contain rounded-xl shadow-2xl"
+                                                        alt="Card"
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <button
+                                        onClick={() => setSelectedCardId(myHand[(myHand.indexOf(selectedCardId || myHand[0]) + 1) % myHand.length])}
+                                        className="absolute right-0 z-20 p-4 text-4xl text-white/50 hover:text-white bg-black/20 hover:bg-black/40 rounded-l-2xl backdrop-blur-sm transition-all"
+                                    >
+                                        ›
+                                    </button>
+                                </div>
+
+                                <div className="flex justify-center gap-2 mb-4">
                                     {myHand.map((card: string) => (
-                                        <div key={card} onClick={() => setSelectedCardId(card)} className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-300 ${selectedCardId === card ? 'ring-4 ring-indigo-500 scale-105 z-10 shadow-[0_0_30px_rgba(99,102,241,0.5)]' : 'opacity-80 hover:opacity-100 hover:scale-[1.02]'}`}>
-                                            <img src={`/dixit/${card}`} className="w-full h-auto object-cover" />
-                                        </div>
+                                        <div
+                                            key={card}
+                                            className={`w-2 h-2 rounded-full transition-all ${selectedCardId === card ? 'bg-indigo-500 w-4' : 'bg-white/20'}`}
+                                        />
                                     ))}
                                 </div>
 

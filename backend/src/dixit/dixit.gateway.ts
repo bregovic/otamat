@@ -24,9 +24,16 @@ export class DixitGateway {
         @MessageBody() data: { hostId?: string; guestInfo?: { nickname: string; avatar: string } },
         @ConnectedSocket() client: Socket,
     ) {
-        const game = await this.dixitService.createGame(data.hostId, data.guestInfo);
-        client.join(game.pinCode);
-        return { event: 'dixit:created', data: game };
+        try {
+            console.log('Received dixit:create request', { hasHostId: !!data.hostId, hasGuest: !!data.guestInfo });
+            const game = await this.dixitService.createGame(data.hostId, data.guestInfo);
+            console.log('Game created successfully:', game.id);
+            client.join(game.pinCode);
+            return { success: true, event: 'dixit:created', data: game };
+        } catch (e) {
+            console.error('Error in dixit:create:', e);
+            return { success: false, error: e.message || 'Unknown backend error' };
+        }
     }
 
     @SubscribeMessage('dixit:join')

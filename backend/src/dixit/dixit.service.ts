@@ -44,10 +44,8 @@ export class DixitService {
         });
 
         if (!game) throw new Error('Game not found');
-        if (game.status !== 'WAITING' && game.status !== 'ACTIVE') {
-            // Allow rejoin?
-            // Simple logic for now: only join in Waiting
-            if (game.status !== 'WAITING') throw new Error('Game already started');
+        if (game.status === GameStatus.FINISHED) {
+            throw new Error('Game already finished');
         }
 
         const player = await this.prisma.dixitPlayer.create({

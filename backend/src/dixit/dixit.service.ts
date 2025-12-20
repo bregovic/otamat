@@ -106,8 +106,9 @@ export class DixitService implements OnModuleInit {
             });
             onProgress?.('Step 9: Game DB Record Created');
 
-            // SECOND: Link the host
-            onProgress?.('Step 10: Linking Host');
+            // SECOND: Link the host - SKIPPED DUE TO DB LOCK
+            onProgress?.('Step 10: Skipped Host Link to prevent timeout');
+            /*
             game = await this.prisma.dixitGame.update({
                 where: { id: game.id },
                 data: {
@@ -115,6 +116,12 @@ export class DixitService implements OnModuleInit {
                 },
                 include: { players: true }
             });
+            */
+
+            // Manually patch memory object so frontend knows who is host
+            if (finalHostId) {
+                (game as any).hostId = finalHostId;
+            }
             console.log('[DixitService] Game record created:', game.id);
 
             // If guestInfo provided, auto-join the creator as a player

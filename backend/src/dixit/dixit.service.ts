@@ -126,26 +126,41 @@ export class DixitService implements OnModuleInit {
 
             // If guestInfo provided, auto-join the creator as a player
             let playerId: string | null = null;
+            let player: DixitPlayer | null = null;
+
             if (guestInfo && guestInfo.nickname) {
+                onProgress?.('Step 11: Auto-joining Creator');
                 console.log('[DixitService] Auto-joining creator...');
-                const player = await this.prisma.dixitPlayer.create({
+                player = await this.prisma.dixitPlayer.create({
                     data: {
                         gameId: game.id,
                         nickname: guestInfo.nickname,
                         avatar: guestInfo.avatar || 'fox',
                         hand: [],
+                        // userId: finalHostId // Optional, keeping unlinked to avoid User lock
                     }
                 });
                 playerId = player.id;
                 console.log('[DixitService] Creator joined as player:', playerId);
+                onProgress?.('Step 11 Done: Creator Joined');
             }
 
             // Return game with players included
-            const updatedGame = await this.prisma.dixitGame.findUnique({
-                where: { id: game.id },
-                include: { players: true, rounds: true }
-            });
+            onProgress?.('Step 12: Finalizing...');
 
+            // Optimization: Skip re-fetching. Construct response manually.
+            const updatedGame = {
+                ...game,
+                players: player ? [player] : [],
+                rounds: []
+            };
+
+            // Re-apply host patch just in case
+            if (finalHostId) {
+                (updatedGame as any).hostId = finalHostId;
+            }
+
+            onProgress?.('Step 13: Success!');
             return { game: updatedGame, playerId };
         } catch (error) {
             console.error('[DixitService] Critical error in createGame:', error);

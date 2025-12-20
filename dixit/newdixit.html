@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <title>Dixit - Nová hra</title>
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/newdixit.css">
+</head>
+<body>
+    <div id="refreshIndicator">Aktualizováno</div>
+    
+    <div class="container">
+        <!-- New Game Form Card -->
+        <div class="card animate__animated animate__fadeIn">
+            <h1 class="main-title">DIXIT</h1>
+            <div class="card-body">
+                <h2 class="section-title">Nová hra</h2>
+                <form id="gameSetupForm">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="groupName" class="form-label">Název skupiny</label>
+                                <input type="text" class="form-control" id="groupName" required
+                                       placeholder="Zadejte název skupiny">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="playerName" class="form-label">Hráč</label>
+                                <input type="text" class="form-control" id="playerName" required
+                                       placeholder="Zadejte jméno hráče">
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="enableTimeLimit">
+                                    <label class="form-check-label" for="enableTimeLimit">
+                                        Časový limit kola
+                                    </label>
+                                </div>
+                                <div class="time-limit-section" id="timeLimitSection">
+                                    <select class="form-select" id="timeLimit">
+                                        <option value="30">30 sekund</option>
+                                        <option value="45">45 sekund</option>
+                                        <option value="60" selected>1 minuta</option>
+                                        <option value="90">1.5 minuty</option>
+                                        <option value="120">2 minuty</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            Začít hru
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Active Games Card -->
+        <div class="card animate__animated animate__fadeIn mt-4">
+            <div class="card-body">
+                <h2 class="section-title">Probíhající hry</h2>
+                <div id="activeGames" class="row g-3">
+                    <!-- Active games will be loaded here -->
+                </div>
+                <div id="loadingSpinner" class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Načítání...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Name Modal -->
+    <div class="modal fade" id="playerNameModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" style="color: #5C2E0B;">Zadejte své jméno</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" class="form-control" id="joinPlayerName" required
+                           placeholder="Vaše jméno">
+                    <input type="hidden" id="selectedGameId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušit</button>
+                    <button type="button" class="btn btn-primary" id="confirmJoinGame">Připojit se</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="js/newdixit.js"></script>
+</body>
+</html>

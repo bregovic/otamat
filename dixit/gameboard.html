@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dixit - Herní deska</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #2b5876, #4e4376);
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 30px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-info {
+            margin-bottom: 20px;
+            font-size: 18px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px 25px;
+            border-radius: 15px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        #game-container {
+            perspective: 1500px;
+            width: 95%;
+            max-width: 1650px;
+            overflow-x: auto;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(30, 55px);
+            grid-gap: 10px;
+            transform-style: preserve-3d;
+            transform: rotateX(20deg);
+            position: relative;
+            min-height: 200px;
+        }
+
+        .field {
+            width: 55px;
+            height: 55px;
+            background: linear-gradient(135deg, #ffffff, #eceff1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #37474f;
+            position: relative;
+            transform-style: preserve-3d;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1),
+                       inset 0 2px 4px rgba(255, 255, 255, 0.8);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .field:hover {
+            transform: translateZ(15px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .pawn {
+            width: 35px;
+            height: 60px;
+            position: absolute;
+            transform: translateZ(30px);
+            transition: left 0.5s ease, top 0.5s ease;
+            filter: drop-shadow(0 8px 15px rgba(0, 0, 0, 0.3));
+            z-index: 10;
+        }
+
+        .pawn-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .pawn-head {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            top: 0;
+            left: 5px;
+            z-index: 2;
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.5);
+        }
+
+        .pawn-body {
+            position: absolute;
+            width: 35px;
+            height: 40px;
+            bottom: 0;
+            border-radius: 60% 60% 0 0;
+            z-index: 1;
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3);
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .player-color {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            margin-right: 15px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .player-name {
+            flex-grow: 1;
+            font-weight: 500;
+        }
+
+        .player-points {
+            font-weight: bold;
+            font-size: 18px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .player-list {
+            display: flex;
+            flex-direction: column;
+            width: 300px;
+            margin-top: 30px;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .winner-badge {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FFD700"><path d="M12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28z"/></svg>');
+            background-repeat: no-repeat;
+            background-size: contain;
+            top: -15px;
+            right: -15px;
+            transform: translateZ(40px);
+            filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.3));
+        }
+
+        .back-button {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 30px;
+            background: linear-gradient(45deg, #ff5252, #ff8a80);
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(255, 82, 82, 0.4);
+            transition: all 0.3s ease;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .back-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(255, 82, 82, 0.6);
+        }
+
+        .loader {
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 5px solid #fff;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 40px auto;
+        }
+
+        .error-message {
+            background: rgba(255, 82, 82, 0.2);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #ff5252;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Dixit - Herní deska</h1>
+    
+    <div class="game-info">
+        <div id="gameInfo">Načítání herních informací...</div>
+    </div>
+
+    <div id="errorMessage" class="error-message"></div>
+
+    <div class="container">
+        <div id="game-container">
+            <div id="loader" class="loader"></div>
+            <div id="game-board" style="display: none;"></div>
+        </div>
+
+        <div class="player-list" id="playerList">
+            <!-- Seznam hráčů bude dynamicky vytvořen -->
+        </div>
+    </div>
+    
+    <a href="dixit.html" class="back-button">Zpět do hry</a>
+
+    <script>
+        // Získání ID hry z URL #gameId#playerHash
+        const hashParts = window.location.hash.substring(1).split('#');
+        const gameId = hashParts[0];
+        const playerHash = hashParts[1];
+
+        let players = [];
+        let maxPoints = 0; // Pro sledování nejvyššího skóre
+        
+        // Pomocná funkce pro zesvětlení barvy (např. pro gradient)
+        function lightenColor(color, percent) {
+            try {
+                // Odstraníme # ze začátku, pokud existuje
+                const hex = color.replace('#', '');
+                
+                // Ověříme validní hexadecimální barvu
+                if (!/^[0-9A-F]{6}$/i.test(hex)) {
+                    return '#4CAF50'; // Výchozí zelená, pokud je barva neplatná
+                }
+                
+                // Převedeme hex na RGB
+                let r = parseInt(hex.substr(0, 2), 16);
+                let g = parseInt(hex.substr(2, 2), 16);
+                let b = parseInt(hex.substr(4, 2), 16);
+                
+                // Zesvětlíme každou složku
+                r = Math.min(255, r + Math.floor(r * percent / 100));
+                g = Math.min(255, g + Math.floor(g * percent / 100));
+                b = Math.min(255, b + Math.floor(b * percent / 100));
+                
+                // Převedeme zpět na hex
+                return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+            } catch (e) {
+                console.error('Chyba při zesvětlování barvy:', e);
+                return '#4CAF50'; // Výchozí barva při chybě
+            }
+        }
+        
+        // Funkce pro zobrazení chyby
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            
+            // Skrýt chybovou zprávu po 5 sekundách
+            setTimeout(() => {
+                errorElement.style.display = 'none';
+            }, 5000);
+        }
+
+        // Funkce pro načtení dat o herní desce
+        async function loadGameBoard() {
+            try {
+                if (!gameId) {
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('gameInfo').textContent = 'Chybí ID hry. Vraťte se do hry a zkuste to znovu.';
+                    return;
+                }
+                
+                const timestamp = Date.now();
+                const response = await fetch(`/dixit/php/get_game_board_data.php?gameId=${gameId}&_=${timestamp}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('game-board').style.display = 'grid';
+                    
+                    players = data.players;
+                    
+                    // Najít nejvyšší skóre
+                    if (players.length > 0) {
+                        maxPoints = players[0].points; // Hráči jsou již seřazeni podle bodů
+                    }
+                    
+                    // Aktualizovat herní informace
+                    document.getElementById('gameInfo').textContent = 
+                        `Hra: ${gameId} | Aktivní hráči: ${data.activePlayersCount} | Aktuální kolo: ${data.currentRound}`;
+                    
+                    // Vytvořit herní desku
+                    createGameBoard();
+                    
+                    // Zobrazit seznam hráčů
+                    displayPlayerList();
+                } else {
+                    document.getElementById('loader').style.display = 'none';
+                    showError('Chyba při načítání herní desky: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error loading game board:', error);
+                document.getElementById('loader').style.display = 'none';
+                showError('Chyba při načítání herní desky. Zkuste to prosím znovu.');
+            }
+        }
+
+        // Vytvoření herního pole
+        function createGameBoard() {
+            try {
+                const board = document.getElementById('game-board');
+                board.innerHTML = '';
+
+                // Definovat maximální počet bodů pro herní pole
+                const maxFieldPoints = Math.max(30, maxPoints + 5); // Minimálně 30 polí nebo o 5 více než nejvyšší skóre
+
+                // Vytvoření herního pole
+                for (let i = 1; i <= maxFieldPoints; i++) {
+                    const field = document.createElement('div');
+                    field.className = 'field';
+                    field.id = `field-${i}`;
+                    field.textContent = i;
+                    board.appendChild(field);
+                }
+
+                // Umístění figurek hráčů na herní desku
+                players.forEach((player, index) => {
+                    const position = player.points; // Pozice podle počtu bodů
+                    if (position > 0) {
+                        const fieldPosition = document.getElementById(`field-${position}`);
+                        if (fieldPosition) {
+                            createPawn(player, index, fieldPosition);
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error creating game board:', error);
+                showError('Chyba při vytváření herní desky.');
+            }
+        }
+
+        // Vytvoření figurky hráče
+        function createPawn(player, index, parentField) {
+            try {
+                const pawn = document.createElement('div');
+                pawn.className = 'pawn';
+                pawn.id = `pawn-${player.id}`;
+                
+                // Rozmístit figurky na stejném poli lehce posunuté
+                const offsetX = (index % 3) * 10 - 15; // -15, -5, 5 pro rozmístění do trojice
+                const offsetY = Math.floor(index / 3) * 15 - 30; // Každá trojice bude o 15px níže
+                
+                pawn.style.transform = `translateZ(30px) translate(${offsetX}px, ${offsetY}px)`;
+                
+                // Vytvoření obsahu figurky
+                const pawnContent = document.createElement('div');
+                pawnContent.className = 'pawn-content';
+                
+                const pawnHead = document.createElement('div');
+                pawnHead.className = 'pawn-head';
+                pawnHead.style.background = `linear-gradient(45deg, ${player.color || '#4CAF50'}, ${lightenColor(player.color || '#4CAF50', 20)})`;
+                
+                const pawnBody = document.createElement('div');
+                pawnBody.className = 'pawn-body';
+                pawnBody.style.background = `linear-gradient(45deg, ${lightenColor(player.color || '#4CAF50', 20)}, ${player.color || '#4CAF50'})`;
+                
+                pawnContent.appendChild(pawnHead);
+                pawnContent.appendChild(pawnBody);
+                pawn.appendChild(pawnContent);
+                
+                // Přidat odznak pro vedoucího hráče
+                if (player.points === maxPoints && maxPoints > 0) {
+                    const winnerBadge = document.createElement('div');
+                    winnerBadge.className = 'winner-badge';
+                    pawn.appendChild(winnerBadge);
+                }
+                
+                parentField.appendChild(pawn);
+            } catch (error) {
+                console.error('Error creating pawn:', error);
+            }
+        }
+
+        // Zobrazení seznamu hráčů
+        function displayPlayerList() {
+            try {
+                const playerList = document.getElementById('playerList');
+                playerList.innerHTML = '';
+                
+                players.forEach(player => {
+                    const playerItem = document.createElement('div');
+                    playerItem.className = 'player-info';
+                    
+                    const playerColor = document.createElement('div');
+                    playerColor.className = 'player-color';
+                    playerColor.style.backgroundColor = player.color || '#4CAF50';
+                    
+                    const playerName = document.createElement('div');
+                    playerName.className = 'player-name';
+                    playerName.textContent = player.name;
+                    
+                    const playerPoints = document.createElement('div');
+                    playerPoints.className = 'player-points';
+                    playerPoints.textContent = player.points;
+                    
+                    playerItem.appendChild(playerColor);
+                    playerItem.appendChild(playerName);
+                    playerItem.appendChild(playerPoints);
+                    
+                    // Přidat indikátor pro vedoucího hráče
+                    if (player.points === maxPoints && maxPoints > 0) {
+                        playerItem.style.borderColor = '#FFD700';
+                        playerItem.style.boxShadow = '0 0 15px rgba(255, 215, 0, 0.5)';
+                    }
+                    
+                    playerList.appendChild(playerItem);
+                });

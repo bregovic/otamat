@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Dixit Hra</title>
+    
+    <!-- Vložíme CSS přímo do stránky - to vyřeší problémy s načítáním -->
+    <style>
+    :root {
+        --background-color: #FFF4E0;
+        --primary-brown: #8B4513;
+        --secondary-brown: #D2691E;
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Arial', sans-serif;
+        background-color: var(--background-color);
+        min-height: 100vh;
+        position: relative;
+    }
+
+    .header-panel {
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .game-status {
+        font-size: 1.1em;
+        font-weight: 300;
+    }
+
+    .start-button {
+        background: linear-gradient(45deg, #4CAF50, #45a049);
+        color: white;
+        border: none;
+        padding: 10px 25px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .start-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .start-button:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .start-button:disabled {
+        background: #cccccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .card-viewer {
+        position: relative;
+        width: 400px;
+        height: 600px;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        margin: 20px auto;
+        display: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .card-viewer.visible {
+        display: block;
+    }
+
+    .card-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .card-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        transition: transform 0.3s ease;
+    }
+
+    .card-image:hover {
+        transform: scale(1.05);
+    }
+
+    .nav-button {
+        position: absolute;
+        background: linear-gradient(45deg, var(--primary-brown), var(--secondary-brown));
+        color: white;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 20px;
+        transition: all 0.3s ease;
+        opacity: 0.8;
+        z-index: 10;
+    }
+
+    .nav-button:hover {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    .nav-button.prev {
+        left: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .nav-button.next {
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .card-counter {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(139, 69, 19, 0.8);
+        color: white;
+        padding: 5px 15px;
+        border-radius: 15px;
+        font-size: 14px;
+    }
+
+    .dixit-cards-button {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 150px;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+        z-index: 1000;
+    }
+
+    .dixit-selected-cards-button {
+        position: fixed;
+        bottom: 20px;
+        right: 180px;
+        width: 150px;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+        z-index: 1000;
+        display: none; /* Skryté ve výchozím stavu */
+    }
+
+    .dixit-gameboard-button {
+        position: fixed;
+        bottom: 20px;
+        left: 180px;
+        width: 150px;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+        z-index: 1000;
+    }
+
+    .dixit-cards-button:hover, .dixit-selected-cards-button:hover, .dixit-gameboard-button:hover {
+        transform: scale(1.1);
+    }
+
+    .player-name {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 8px 15px;
+        border-radius: 10px;
+        font-size: 14px;
+        z-index: 1000;
+    }
+
+    .player-info {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(139, 69, 19, 0.9);
+        color: white;
+        padding: 5px 15px;
+        border-radius: 15px;
+        font-size: 14px;
+        text-align: center;
+    }
+
+    /* Styly pro infobox jsou nyní definovány v ui.js */
+
+    @media (max-width: 768px) {
+        .card-viewer {
+            width: 90%;
+            height: 80vh;
+        }
+        
+        .nav-button {
+            width: 35px;
+            height: 35px;
+            font-size: 16px;
+        }
+        
+        .dixit-cards-button, .dixit-selected-cards-button, .dixit-gameboard-button {
+            width: 100px;
+        }
+        
+        .dixit-selected-cards-button {
+            right: 130px;
+        }
+        
+        .dixit-gameboard-button {
+            left: 130px;
+        }
+    }
+    </style>
+</head>
+<body>
+    <div id="refreshIndicator">Aktualizováno</div>
+
+    <div class="header-panel">
+        <div class="game-status">Čekání na zahájení hry...</div>
+        <button class="start-button" onclick="startGame()">START</button>
+    </div>
+
+    <!-- Prohlížeč karet hráče -->
+    <div class="card-viewer" id="cardViewer">
+        <div class="card-container">
+            <img src="" alt="Dixit karta" class="card-image" id="currentCard" onclick="selectCard(cards[currentCardIndex].id)">
+            <button class="nav-button prev" onclick="showPrevCard()">←</button>
+            <button class="nav-button next" onclick="showNextCard()">→</button>
+            <div class="card-counter" id="cardCounter">0/0</div>
+        </div>
+    </div>
+    
+    <!-- Prohlížeč vybraných karet v kole -->
+    <div class="card-viewer" id="selectedCardsViewer">
+        <div class="card-container">
+            <img src="" alt="Vybraná karta" class="card-image" id="currentSelectedCard">
+            <button class="nav-button prev" onclick="showPrevSelectedCard()">←</button>
+            <button class="nav-button next" onclick="showNextSelectedCard()">→</button>
+            <div class="card-counter" id="selectedCardCounter">0/0</div>
+            <div class="player-info" id="selectedCardPlayerInfo">Vybrané karty hráčů</div>
+            <div class="voting-status" id="votingStatus"></div>
+        </div>
+    </div>
+
+    <div class="player-name" id="playerName">Hráč</div>
+
+     <img src="dixitimage/karty.png" alt="Moje karty" class="dixit-cards-button" onclick="toggleCardViewer()">
+    <img src="dixitimage/karty2.png" alt="Vybrané karty" class="dixit-selected-cards-button" id="selectedCardsButton" onclick="toggleSelectedCardsViewer()">
+    <button class="dixit-gameboard-button" id="gameBoardButton" onclick="openGameBoard()">
+    <img src="dixitimage/trophy.png" alt=""> Herní deska
+    </button>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/debug.js"></script>
+    <script src="js/main.js"></script>
+    
+    <script>
+    function openGameBoard() {
+        window.open(`gameboard.html${window.location.hash}`, '_blank');
+    }
+    
+    // Funkce pro aktualizaci bodů hráče
+    async function updatePlayerPoints(points) {
+        if (!gameId || !playerHash) {
+            showNotification("Nelze aktualizovat body - chybí ID hry nebo hash hráče");
+            return;
+        }
+        
+        try {
+            const response = await fetch('/dixit/php/update_points.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    gameId: parseInt(gameId),
+                    playerHash: playerHash,
+                    points: points
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showNotification(`Body byly aktualizovány na ${points}`);
+            } else {
+                showNotification(`Chyba při aktualizaci bodů: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Error updating points:', error);
+            showNotification(`Chyba při aktualizaci bodů: ${error.message}`);
+        }
+    }
+    </script>
+</body>
+</html>

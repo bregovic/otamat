@@ -1,0 +1,204 @@
+:root {
+    --primary-brown: #8B4513;
+    --secondary-brown: #D2691E;
+    --light-brown: #DEB887;
+    --dark-brown: #3E1F0D;
+    --text-brown: #5C2E0B;
+}
+
+body {
+    background: linear-gradient(135deg, var(--primary-brown) 0%, var(--secondary-brown) 100%);
+    min-height: 100vh;
+    padding: 20px 0;
+    color: #fff;
+    font-family: 'Quicksand', sans-serif;
+}
+
+.main-title {
+    font-family: 'Cinzel', serif;
+    color: var(--dark-brown);
+    font-weight: 900;
+    font-size: 4rem;
+    margin: 0;
+    text-transform: uppercase;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    letter-spacing: 2px;
+    padding: 1.5rem 0;
+    text-align: center;
+    background: linear-gradient(45deg, #FFA500, #FF8C00);
+    border-radius: 16px 16px 0 0;
+    border-bottom: 4px solid rgba(62, 31, 13, 0.2);
+}
+
+.section-title {
+    color: var(--text-brown);
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid rgba(139, 69, 19, 0.2);
+}
+
+.card {
+    background: rgba(255, 248, 240, 0.97);
+    border-radius: 16px;
+    box-shadow: 0 15px 35px rgba(139, 69, 19, 0.3);
+    border: none;
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(139, 69, 19, 0.4);
+}
+
+.form-label {
+    color: var(--text-brown);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+}
+
+.form-control, .form-select {
+    border-radius: 12px;
+    border: 2px solid var(--light-brown);
+    padding: 12px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background-color: rgba(255, 255, 255, 0.9);
+    color: var(--text-brown);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-brown);
+    box-shadow: 0 0 0 0.25rem rgba(139, 69, 19, 0.15);
+    background-color: #fff;
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, var(--primary-brown), var(--secondary-brown));
+    border: none;
+    padding: 16px 48px;
+    font-weight: 600;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(139, 69, 19, 0.3);
+    transition: all 0.3s ease;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(139, 69, 19, 0.4);
+    background: linear-gradient(45deg, #A0522D, #CD853F);
+}
+
+.form-check {
+    padding: 1.2rem;
+    background: rgba(139, 69, 19, 0.08);
+    border-radius: 12px;
+    margin-top: 0.5rem;
+}
+
+.form-check-input {
+    width: 1.5em;
+    height: 1.5em;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-brown);
+    border-color: var(--primary-brown);
+}
+
+.form-check-label {
+    color: var(--text-brown);
+    font-weight: 600;
+}
+
+.time-limit-section {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    opacity: 0;
+    transition: opacity 0.3s ease-out, max-height 0.3s ease-out;
+}
+
+.time-limit-section.visible {
+    max-height: 200px;
+    opacity: 1;
+    padding: 1rem;
+}
+
+.card-body {
+    padding: 2.5rem;
+}
+
+.game-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.game-card:hover {
+    transform: translateY(-5px);
+}
+
+.player-count {
+    font-size: 0.9rem;
+    color: var(--primary-brown);
+    font-weight: 500;
+}
+
+.game-group {
+    font-size: 1.2rem;
+    color: var(--text-brown);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 2rem;
+}
+
+.loading-spinner.visible {
+    display: block;
+}
+
+#refreshIndicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(139, 69, 19, 0.9);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    display: none;
+    animation: fadeInOut 1s ease-in-out;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; }
+    50% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@media (max-width: 768px) {
+    .card {
+        margin: 10px;
+    }
+    
+    .btn-primary {
+        width: 100%;
+    }
+    
+    .main-title {
+        font-size: 2.5rem;
+        padding: 1rem 0;
+    }
+}

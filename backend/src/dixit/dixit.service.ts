@@ -462,4 +462,8 @@ export class DixitService {
         return await this.getGameState(game.id);
     }
 
+    async getCard(id: string) {
+        return this.prisma.dixitCard.findUnique({ where: { id } });
+    }
+
 }

@@ -97,12 +97,77 @@ export default function DixitBoard() {
     const [guestNickname, setGuestNickname] = useState('');
     const [guestAvatar, setGuestAvatar] = useState('cow');
 
+    const [isCreating, setIsCreating] = useState(false);
+
     const handleGuestCreate = () => {
         if (!guestNickname) return;
-        connectAndCreate({
-            guestInfo: { nickname: guestNickname, avatar: guestAvatar }
+        setIsCreating(true);
+        console.log("Starting guest creation process...");
+
+        setError(null);
+
+        // Force new connection
+        if (socket) socket.close();
+
+        const newSocket = io(BACKEND_URL, {
+            transports: ['websocket'],
+            upgrade: false,
+            reconnection: true,
+            reconnectionAttempts: 3
         });
+        setSocket(newSocket);
+
+        // Timeout safety
+        const timeout = setTimeout(() => {
+            if (isCreating) {
+                setIsCreating(false);
+                setError("Odezva serveru trvá příliš dlouho. Zkuste to znovu.");
+                newSocket.close();
+            }
+        }, 10000);
+
+        newSocket.on('connect', () => {
+            console.log('socket connected, emitting create...');
+            newSocket.emit('dixit:create', {
+                guestInfo: { nickname: guestNickname, avatar: guestAvatar }
+            }, (response: any) => {
+                clearTimeout(timeout);
+                setIsCreating(false);
+                console.log('Create response:', response);
+
+                if (response?.success || response?.event === 'dixit:created') {
+                    // Success handled by listener, but we can set state here too if needed
+                    // Although the listener should pick it up faster
+                } else {
+                    setError(response?.error || 'Nepodařilo se vytvořit hru (Backend Error)');
+                }
+            });
+        });
+
+        newSocket.on('connect_error', (err) => {
+            console.error('Socket connect error:', err);
+            clearTimeout(timeout);
+            setIsCreating(false);
+            setError(`Chyba připojení: ${err.message}`);
+        });
+
+        newSocket.on('dixit:created', (state) => {
+            clearTimeout(timeout);
+            setGameState(state);
+        });
+        newSocket.on('dixit:update', (state) => setGameState(state));
     };
+
+    // Timeout warning (only if logged in and waiting)
+    useEffect(() => {
+        if (!user) return;
+        const timer = setTimeout(() => {
+            if (!gameState && !error) {
+                setError('Hra se nenačetla. Zkontrolujte připojení.');
+            }
+        }, 8000);
+        return () => clearTimeout(timer);
+    }, [gameState, user, error]);
 
     if (!user && !gameState && !isLoading) {
         return (
@@ -119,6 +184,7 @@ export default function DixitBoard() {
                             className="w-full bg-black/50 text-white text-2xl p-4 rounded-xl border border-white/20 focus:border-yellow-400 outline-none text-center font-bold"
                             value={guestNickname}
                             onChange={e => setGuestNickname(e.target.value)}
+                            disabled={isCreating}
                         />
 
                         <div className="flex justify-center gap-4">
@@ -127,33 +193,32 @@ export default function DixitBoard() {
                                     key={av}
                                     onClick={() => setGuestAvatar(av)}
                                     className={`text-4xl p-4 rounded-xl transition-all ${guestAvatar === av ? 'bg-yellow-500 scale-110 shadow-lg' : 'bg-white/5 hover:bg-white/20'}`}
+                                    disabled={isCreating}
                                 >
                                     {{ cow: '🐮', fox: '🦊', pig: '🐷', chicken: '🐔' }[av]}
                                 </button>
                             ))}
                         </div>
 
+                        {error && <div className="text-red-500 font-bold bg-black/50 p-2 rounded animate-pulse">{error}</div>}
+
                         <button
                             onClick={handleGuestCreate}
-                            disabled={!guestNickname}
-                            className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:scale-105 text-white text-2xl font-black py-4 rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:scale-100 mt-4"
+                            disabled={!guestNickname || isCreating}
+                            className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:scale-105 text-white text-2xl font-black py-4 rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:scale-100 mt-4 relative"
                         >
-                            VYTVOŘIT HRU
+                            {isCreating ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <span className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                    VYTVÁŘÍM...
+                                </span>
+                            ) : "VYTVOŘIT HRU"}
                         </button>
                     </div>
                 </div>
             </div>
         );
     }
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (!gameState && !error) {
-                setError('Hra se nenačetla. Zkontrolujte připojení.');
-            }
-        }, 8000);
-        return () => clearTimeout(timer);
-    }, [gameState]);
 
     const handleStart = () => {
         if (socket && gameState) socket.emit('dixit:start', { pin: gameState.pinCode });
@@ -231,19 +296,33 @@ export default function DixitBoard() {
             <main className="h-screen w-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900 via-purple-900 to-black text-white flex flex-col items-center justify-center p-8 relative overflow-hidden">
                 {/* ... Lobby UI ... */}
                 <div className="absolute top-8 right-8 z-50">
-                    <button onClick={() => setIsSettingsOpen(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 transition-all text-2xl">⚙️</button>
+                    <button onClick={() => setIsSettingsOpen(true)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 transition-all text-2xl" title="Nastavení a Karty">⚙️</button>
                 </div>
                 {isSettingsOpen && (
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-8">
-                        <div className="bg-zinc-900 p-8 rounded-2xl max-w-md w-full relative border border-white/10">
-                            <button onClick={() => setIsSettingsOpen(false)} className="absolute top-4 right-4 text-white/50 hover:text-white">✕</button>
-                            <h2 className="text-2xl font-bold mb-6">Správa karet</h2>
-                            <label className="block w-full border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:bg-white/5 transition-colors">
-                                <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" />
-                                <div className="text-4xl mb-2">📤</div>
-                                <div className="text-sm">Nahrát karty</div>
+                        <div className="bg-zinc-900 p-8 rounded-2xl max-w-md w-full relative border border-white/10 shadow-2xl">
+                            <button onClick={() => setIsSettingsOpen(false)} className="absolute top-4 right-4 text-white/50 hover:text-white text-xl">✕</button>
+                            <h2 className="text-2xl font-bold mb-6 text-center text-yellow-400 font-serif">Správa karet</h2>
+
+                            <label className="block w-full border-2 border-dashed border-white/20 rounded-xl p-12 text-center cursor-pointer hover:bg-white/5 transition-colors group">
+                                <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" disabled={uploading} />
+                                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">📤</div>
+                                <div className="text-lg font-bold">Nahrát nové karty</div>
+                                <div className="text-sm text-white/50 mt-2">Vyberte více obrázků najednou</div>
                             </label>
-                            {uploading && <div className="mt-4 text-center animate-pulse">Nahrávání...</div>}
+
+                            {uploading && (
+                                <div className="mt-6 text-center">
+                                    <div className="flex justify-center mb-2">
+                                        <div className="w-8 h-8 boundary border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
+                                    </div>
+                                    <div className="animate-pulse text-yellow-500 font-bold">Zpracovávám a nahrávám karty...</div>
+                                </div>
+                            )}
+
+                            <p className="mt-6 text-xs text-center text-white/30">
+                                Karty se automaticky zmenší a přidají do balíčku.
+                            </p>
                         </div>
                     </div>
                 )}
@@ -260,13 +339,19 @@ export default function DixitBoard() {
                     <div className="flex flex-wrap justify-center gap-8 mb-16 w-full">
                         {gameState.players.map((p: any) => (
                             <div key={p.id} className="flex flex-col items-center animate-bounce-subtle">
-                                <div className="text-6xl mb-2 drop-shadow-xl">{{ cow: '🐮', fox: '🦊' }[p.avatar as string] || '👤'}</div>
+                                <div className="text-6xl mb-2 drop-shadow-xl">{{ cow: '🐮', fox: '🦊', pig: '🐷', chicken: '🐔' }[p.avatar as string] || '👤'}</div>
                                 <div className="font-bold text-xl">{p.nickname}</div>
                             </div>
                         ))}
                         {gameState.players.length === 0 && <span className="text-white/30 text-2xl italic">Čekám na hráče...</span>}
                     </div>
-                    <button onClick={handleStart} disabled={gameState.players.length < 3} className="bg-gradient-to-r from-green-500 to-emerald-600 hover:scale-105 text-white text-3xl px-16 py-6 font-black rounded-full shadow-[0_0_50px_rgba(16,185,129,0.4)] transition-all disabled:opacity-50 disabled:grayscale">START HRY</button>
+                    <button
+                        onClick={handleStart}
+                        disabled={gameState.players.length < 2}
+                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:scale-105 text-white text-3xl px-16 py-6 font-black rounded-full shadow-[0_0_50px_rgba(16,185,129,0.4)] transition-all disabled:opacity-50 disabled:grayscale disabled:scale-100 disabled:shadow-none"
+                    >
+                        {gameState.players.length < 2 ? `ČEKÁM NA DALŠÍ HRÁČE (${gameState.players.length}/2)` : "START HRY"}
+                    </button>
                 </div>
             </main>
         );
@@ -338,7 +423,7 @@ export default function DixitBoard() {
                                                 ${isScoring && isStorytellerCard ? 'border-yellow-500 ring-4 ring-yellow-500/30' : 'border-white/10'}
                                                 ${isScoring && !isStorytellerCard ? 'opacity-60 grayscale-[0.5]' : ''}
                                             `}>
-                                                <img src={`/dixit/${cardId}`} className="w-full h-full object-cover" />
+                                                <img src={`${BACKEND_URL}/dixit/image/${cardId}`} className="w-full h-full object-cover" />
                                             </div>
 
                                             {/* Number */}

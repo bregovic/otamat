@@ -285,7 +285,7 @@ function DixitPlayContent() {
 
                                         return (
                                             <div key={pid} onClick={() => setVotedTargetId(pid)} className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-300 ${votedTargetId === pid ? 'ring-4 ring-yellow-500 scale-105 z-10 shadow-[0_0_30px_rgba(234,179,8,0.5)]' : 'opacity-80 hover:opacity-100 hover:scale-[1.02]'}`}>
-                                                <img src={`/dixit/${cardId}`} className="w-full h-auto object-cover" />
+                                                <img src={`${BACKEND_URL}/dixit/image/${cardId}`} className="w-full h-auto object-cover" />
                                             </div>
                                         );
                                     })}

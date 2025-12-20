@@ -59,15 +59,15 @@ export class DixitService {
             if (exists) throw new Error("Failed to generate unique PIN");
 
             // Fetch cards for the deck
-            console.log('[DixitService] Fetching cards...');
+            console.log('[DixitService] Fetching cards... (SKIPPED FOR DEBUG)');
             let allCards: { id: string }[] = [];
-            try {
-                allCards = await this.prisma.dixitCard.findMany({ select: { id: true } });
-                console.log(`[DixitService] Found ${allCards.length} cards.`);
-            } catch (err) {
-                console.error('[DixitService] Failed to fetch cards:', err);
-                // Proceed with empty deck if fetch fails, to avoid blocking creation
-            }
+            // try {
+            //     allCards = await this.prisma.dixitCard.findMany({ select: { id: true } });
+            //     console.log(`[DixitService] Found ${allCards.length} cards.`);
+            // } catch (err) {
+            //     console.error('[DixitService] Failed to fetch cards:', err);
+            //     // Proceed with empty deck if fetch fails, to avoid blocking creation
+            // }
 
             const deck = allCards.map(c => c.id).sort(() => Math.random() - 0.5);
 

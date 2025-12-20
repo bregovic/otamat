@@ -57,19 +57,13 @@ export default function DixitBoard() {
     const [stagedFiles, setStagedFiles] = useState<{ file: File, id: string, rotation: number, preview: string }[]>([]);
 
     useEffect(() => {
-        if (isLoading) return;
+        // Auto-create game on mount
+        connectAndCreate({});
 
-        // If user is logged in, auto-create
-        if (user) {
-            connectAndCreate({ hostId: user.id });
-        }
-        // If not logged in, we wait for manual guest input (rendered below)
         return () => {
-            if (socket) {
-                socket.close();
-            }
+            if (socket) socket.close();
         };
-    }, [user, isLoading]);
+    }, []);
 
     const connectAndCreate = (data: { hostId?: string, guestInfo?: { nickname: string, avatar: string } }) => {
         const newSocket = io(BACKEND_URL, {

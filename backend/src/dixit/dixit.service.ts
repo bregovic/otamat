@@ -19,22 +19,55 @@ export class DixitService {
         this.server = server;
     }
 
-    async createGame(hostId: string) {
-        const pin = Math.floor(100000 + Math.random() * 900000).toString();
-        // Get all card IDs properly
-        const allCards = await this.prisma.dixitCard.findMany({ select: { id: true } });
+    async createGame(hostId?: string, guestInfo?: { nickname: string, avatar: string }) {
+        let finalHostId = hostId;
+
+        // If no hostId but guest info provided -> Create Guest User
+        if (!finalHostId && guestInfo) {
+            const guestUser = await this.prisma.user.create({
+                data: {
+                    email: `guest_${Date.now()}_${Math.random().toString(36).substring(7)}@dixit.temp`,
+                    nickname: guestInfo.nickname,
+                    avatar: guestInfo.avatar,
+                    role: 'HOST' // or USER
+                }
+            });
+            finalHostId = guestUser.id;
+        }
+
+        if (!finalHostId) throw new Error("Host ID or Guest Info required");
+
+        // Generate unique PIN
+        let pin = '';
+        let exists = true;
+        while (exists) {
+            pin = Math.floor(100000 + Math.random() * 900000).toString();
+            const existing = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin } });
+            if (!existing) exists = false;
+        }
+
+        // Fetch at least 30 cards for the deck
+        // For production, we need a lot of cards. For now, check if we have them.
+        let allCards = await this.prisma.dixitCard.findMany({ select: { id: true } });
+
+        // If no cards, maybe seed some placeholders? Or just fail?
+        // Let's assume we have cards or the user will upload them.
+
         const deck = allCards.map(c => c.id).sort(() => Math.random() - 0.5);
 
-        const game = await this.prisma.dixitGame.create({
+        return this.prisma.dixitGame.create({
             data: {
                 pinCode: pin,
-                hostId,
+                hostId: finalHostId,
                 status: GameStatus.WAITING,
                 phase: DixitPhase.LOBBY,
-                deck: deck
-            }
+                deck: deck,
+                rounds: {
+                    create: []
+                }
+            },
+            include: { players: true }
         });
-        return game;
     }
 
     async joinGame(pin: string, nickname: string, avatar: string) {

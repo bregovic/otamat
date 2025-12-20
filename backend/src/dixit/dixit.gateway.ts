@@ -21,10 +21,10 @@ export class DixitGateway {
 
     @SubscribeMessage('dixit:create')
     async handleCreateGame(
-        @MessageBody() data: { hostId: string },
+        @MessageBody() data: { hostId?: string; guestInfo?: { nickname: string; avatar: string } },
         @ConnectedSocket() client: Socket,
     ) {
-        const game = await this.dixitService.createGame(data.hostId);
+        const game = await this.dixitService.createGame(data.hostId, data.guestInfo);
         client.join(game.pinCode);
         return { event: 'dixit:created', data: game };
     }

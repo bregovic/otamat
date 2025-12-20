@@ -46,7 +46,7 @@ const getMapPosition = (index: number) => {
 };
 
 export default function DixitBoard() {
-    const { user } = useAuth();
+    const { user, isLoading } = useAuth();
     const router = useRouter();
 
     const [socket, setSocket] = useState<Socket | null>(null);
@@ -56,8 +56,21 @@ export default function DixitBoard() {
     const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
-        if (!user) return;
+        if (isLoading) return;
 
+        // If user is logged in, auto-create
+        if (user) {
+            connectAndCreate({ hostId: user.id });
+        }
+        // If not logged in, we wait for manual guest input (rendered below)
+        return () => {
+            if (socket) {
+                socket.close();
+            }
+        };
+    }, [user, isLoading]);
+
+    const connectAndCreate = (data: { hostId?: string, guestInfo?: { nickname: string, avatar: string } }) => {
         const newSocket = io(BACKEND_URL, {
             transports: ['websocket'],
             upgrade: false
@@ -66,20 +79,72 @@ export default function DixitBoard() {
 
         newSocket.on('connect', () => {
             console.log('Board connected');
-            newSocket.emit('dixit:create', { hostId: user.id }, (response: any) => {
+            newSocket.emit('dixit:create', data, (response: any) => {
                 if (response.success) {
                     console.log('Game created:', response.gameId);
                 } else {
                     console.error('Failed to create game:', response.error);
+                    setError(response.error || 'Failed to create game');
                 }
             });
         });
 
         newSocket.on('dixit:created', (state) => setGameState(state));
         newSocket.on('dixit:update', (state) => setGameState(state));
+    };
 
-        return () => { newSocket.close(); };
-    }, [user]);
+    // Guest Login State
+    const [guestNickname, setGuestNickname] = useState('');
+    const [guestAvatar, setGuestAvatar] = useState('cow');
+
+    const handleGuestCreate = () => {
+        if (!guestNickname) return;
+        connectAndCreate({
+            guestInfo: { nickname: guestNickname, avatar: guestAvatar }
+        });
+    };
+
+    if (!user && !gameState && !isLoading) {
+        return (
+            <div className="h-screen w-full bg-black text-white flex flex-col items-center justify-center p-8 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 to-black"></div>
+                <div className="z-10 bg-white/10 p-12 rounded-3xl backdrop-blur-md border border-white/10 max-w-lg w-full text-center shadow-2xl">
+                    <h1 className="text-6xl font-serif font-black mb-8 text-yellow-400">DIXIT</h1>
+                    <h2 className="text-2xl mb-8 font-light">Vytvořit hru (Host)</h2>
+
+                    <div className="space-y-6">
+                        <input
+                            type="text"
+                            placeholder="Tvoje přezdívka"
+                            className="w-full bg-black/50 text-white text-2xl p-4 rounded-xl border border-white/20 focus:border-yellow-400 outline-none text-center font-bold"
+                            value={guestNickname}
+                            onChange={e => setGuestNickname(e.target.value)}
+                        />
+
+                        <div className="flex justify-center gap-4">
+                            {['cow', 'fox', 'pig', 'chicken'].map(av => (
+                                <button
+                                    key={av}
+                                    onClick={() => setGuestAvatar(av)}
+                                    className={`text-4xl p-4 rounded-xl transition-all ${guestAvatar === av ? 'bg-yellow-500 scale-110 shadow-lg' : 'bg-white/5 hover:bg-white/20'}`}
+                                >
+                                    {{ cow: '🐮', fox: '🦊', pig: '🐷', chicken: '🐔' }[av]}
+                                </button>
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={handleGuestCreate}
+                            disabled={!guestNickname}
+                            className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:scale-105 text-white text-2xl font-black py-4 rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:scale-100 mt-4"
+                        >
+                            VYTVOŘIT HRU
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -114,10 +179,21 @@ export default function DixitBoard() {
     if (!gameState) {
         return (
             <div className="h-screen w-full bg-black text-white flex flex-col items-center justify-center p-8 text-center">
-                {error ? (
-                    <div className="text-red-500 text-xl font-bold max-w-md">⚠️ {error}</div>
+                {!user && !isLoading ? (
+                    <div className="text-yellow-400 text-xl font-bold">
+                        ⚠️ Nejste přihlášeni. Přesměrovávám na přihlášení...
+                    </div>
+                ) : error ? (
+                    <div className="text-red-500 text-xl font-bold max-w-md">
+                        ⚠️ {error}
+                        <button onClick={() => window.location.reload()} className="mt-4 px-6 py-2 bg-white text-black rounded-lg block mx-auto hover:bg-gray-200">
+                            Zkusit znovu
+                        </button>
+                    </div>
                 ) : (
-                    <div className="animate-pulse text-indigo-300">Načítání magického světa...</div>
+                    <div className="animate-pulse text-indigo-300">
+                        {isLoading ? 'Ověřování uživatele...' : 'Načítání magického světa...'}
+                    </div>
                 )}
             </div>
         );
@@ -282,7 +358,7 @@ export default function DixitBoard() {
                                 })}
                             </div>
                         </div>
-                        {isScoring && (
+                        {gameState.phase === 'SCORING' && (
                             <div className="absolute bottom-[35vh] z-50 animate-bounce">
                                 <button onClick={handleNextRound} className="bg-yellow-500 hover:bg-yellow-400 text-black font-black text-xl px-12 py-4 rounded-full shadow-xl transition-colors">DALŠÍ KOLO ➜</button>
                             </div>

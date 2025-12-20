@@ -496,37 +496,57 @@ export default function DixitBoard() {
                         <div className="text-3xl font-serif italic mb-6 text-yellow-100/80">"{gameState.rounds?.[0]?.clue}"</div>
                         <div className="flex-1 flex items-center justify-center w-full overflow-visible">
                             <div className="flex flex-wrap gap-4 justify-center items-center">
-                                {gameState.rounds?.[0]?.cardsPlayed && Object.entries(gameState.rounds[0].cardsPlayed).map(([pid, cardId]: [string, any], index: number) => {
-                                    const isScoring = gameState.phase === 'SCORING';
-                                    const isStorytellerCard = pid === gameState.storytellerId;
-                                    const votes = gameState.rounds?.[0]?.votes as Record<string, string> | undefined;
-                                    const voters = votes ? Object.entries(votes).filter(([_, target]) => target === pid).map(([vid]) => vid) : [];
+                                {(() => {
+                                    const cardsPlayed = gameState.rounds?.[0]?.cardsPlayed || {};
+                                    // Flatten
+                                    const allCards = Object.entries(cardsPlayed).flatMap(([pid, cards]) => {
+                                        if (Array.isArray(cards)) {
+                                            return cards.map(c => ({ pid, cardId: c }));
+                                        }
+                                        return [{ pid, cardId: cards as string }];
+                                    });
 
-                                    return (
-                                        <div key={pid} className={`relative group perspective transition-all duration-500 ${isScoring && isStorytellerCard ? 'z-20 scale-105' : 'z-10'}`}>
-                                            <div className={`
-                                                relative w-48 h-72 rounded-xl overflow-hidden shadow-2xl transition-all duration-500 border-2
-                                                ${isScoring && isStorytellerCard ? 'border-yellow-500 ring-4 ring-yellow-500/30' : 'border-white/10'}
-                                                ${isScoring && !isStorytellerCard ? 'opacity-60 grayscale-[0.5]' : ''}
-                                            `}>
-                                                <img src={`${BACKEND_URL}/dixit/image/${cardId}`} className="w-full h-full object-cover" />
-                                            </div>
+                                    // Deterministic Shuffle (Sort by cardId to keep it stable but random-looking)
+                                    allCards.sort((a, b) => a.cardId.localeCompare(b.cardId));
 
-                                            {/* Number */}
-                                            <div className="absolute -top-4 -left-4 w-10 h-10 bg-black text-white font-bold flex items-center justify-center rounded-full border-2 border-white/20 shadow-lg text-xl z-30">{index + 1}</div>
+                                    return allCards.map((cardData, index) => {
+                                        const { pid, cardId } = cardData;
+                                        const isScoring = gameState.phase === 'SCORING';
+                                        const isStorytellerCard = pid === gameState.storytellerId;
+                                        const votes = gameState.rounds?.[0]?.votes as Record<string, string> | undefined;
 
-                                            {/* Voters */}
-                                            {(isScoring || gameState.phase === 'VOTING') && voters.length > 0 && (
-                                                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex -space-x-3 w-max px-2 py-1">
-                                                    {voters.map(vid => {
-                                                        const v = gameState.players.find((p: any) => p.id === vid);
-                                                        return <div key={vid} className="text-2xl filter drop-shadow-md hover:scale-125 transition-transform" title={v?.nickname}>{{ cow: '🐮', fox: '🦊' }[v?.avatar as string] || '👤'}</div>
-                                                    })}
+                                        // Find voters handling targetCardId
+                                        const voters = votes ? Object.entries(votes)
+                                            .filter(([_, targetCardId]) => targetCardId === cardId)
+                                            .map(([vid]) => vid)
+                                            : [];
+
+                                        return (
+                                            <div key={cardId} className={`relative group perspective transition-all duration-500 ${isScoring && isStorytellerCard ? 'z-20 scale-105' : 'z-10'}`}>
+                                                <div className={`
+                                                    relative w-48 h-72 rounded-xl overflow-hidden shadow-2xl transition-all duration-500 border-2
+                                                    ${isScoring && isStorytellerCard ? 'border-yellow-500 ring-4 ring-yellow-500/30' : 'border-white/10'}
+                                                    ${isScoring && !isStorytellerCard ? 'opacity-60 grayscale-[0.5]' : ''}
+                                                `}>
+                                                    <img src={`${BACKEND_URL}/dixit/image/${cardId}`} className="w-full h-full object-cover" />
                                                 </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+
+                                                {/* Number */}
+                                                <div className="absolute -top-4 -left-4 w-10 h-10 bg-black text-white font-bold flex items-center justify-center rounded-full border-2 border-white/20 shadow-lg text-xl z-30">{index + 1}</div>
+
+                                                {/* Voters */}
+                                                {(isScoring || gameState.phase === 'VOTING') && voters.length > 0 && (
+                                                    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex -space-x-3 w-max px-2 py-1">
+                                                        {voters.map(vid => {
+                                                            const v = gameState.players.find((p: any) => p.id === vid);
+                                                            return <div key={vid} className="text-2xl filter drop-shadow-md hover:scale-125 transition-transform" title={v?.nickname}>{{ cow: '🐮', fox: '🦊' }[v?.avatar as string] || '👤'}</div>
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    });
+                                })()}
                             </div>
                         </div>
                         {gameState.phase === 'SCORING' && (

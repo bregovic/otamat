@@ -13,7 +13,7 @@ function DixitPlayContent() {
     const pinFromUrl = searchParams.get('pin');
 
     const [pinCode, setPinCode] = useState(pinFromUrl || '');
-    const [mode, setMode] = useState<'SELECT' | 'JOIN' | 'CREATE'>(pinFromUrl ? 'JOIN' : 'SELECT');
+    const [mode, setMode] = useState<'SELECT' | 'JOIN' | 'CREATE'>(pinFromUrl ? 'JOIN' : 'CREATE');
 
     // Connection State
     const [socket, setSocket] = useState<Socket | null>(null);
@@ -179,7 +179,7 @@ function DixitPlayContent() {
                     {(mode === 'JOIN' || mode === 'CREATE') && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-300">
                             <div className="flex items-center justify-between mb-4">
-                                <button onClick={() => setMode('SELECT')} className="text-white/50 hover:text-white text-sm uppercase tracking-wider font-bold">← Zpět</button>
+                                <button onClick={() => router.push('/dixit')} className="text-white/50 hover:text-white text-sm uppercase tracking-wider font-bold">← Zpět</button>
                                 <div className="text-white/50 text-xs uppercase tracking-widest font-bold">{mode === 'CREATE' ? 'Zakládání hry' : 'Připojení do hry'}</div>
                             </div>
 

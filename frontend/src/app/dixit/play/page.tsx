@@ -73,38 +73,13 @@ function DixitPlayContent() {
 
     const handleCreate = () => {
         if (socket && nickname) {
-            // Updated to send guestInfo so the creator is automatically joined as a player
             socket.emit('dixit:create', { guestInfo: { nickname, avatar } }, (response: any) => {
-                if (response.success) {
-                    setPinCode(response.pinCode); // Assuming response includes pinCode
-                    // The server usually returns gameId. We might need to wait for 'dixit:created' event or response data.
-                    // Based on previous code in board/page.tsx, it emits events. But for the player creating it, we want immediate feedback.
-                    // If the backend 'create' callback returns the state or at least the PIN, we are good.
-                    // Looking at backend controller/gateway... usually it returns { success: true, gameId: ... }.
-                    // We need to KNOW the player ID to identify 'me'.
-                    // Wait, if we send guestInfo, the backend *should* return the playerId of the host.
-                    // I might need to verify backend logic. If it doesn't return playerId, we might be in trouble identifying ourselves.
-
-                    // As a fallback, if the backend creates the game and socket joins the room, the next 'dixit:update' will contain the player list.
-                    // We can match by nickname? Risky.
-                    // Let's assume the backend returns playerId if guestInfo is provided.
-                    // If not, I'll need to update backend or rely on socket.id?
-
-                    if (response.playerId) {
-                        setPlayerId(response.playerId);
-                        setJoined(true);
-                        window.history.replaceState({}, '', `/dixit/play?pin=${response.pinCode || response.game?.pinCode}`);
-                    } else {
-                        // Fallback: try to find myself in the returned state (if any) or wait for update
-                        if (response.game) {
-                            const p = response.game.players.find((p: any) => p.nickname === nickname);
-                            if (p) {
-                                setPlayerId(p.id);
-                                setJoined(true);
-                                setPinCode(response.game.pinCode);
-                            }
-                        }
-                    }
+                if (response.success && response.playerId && response.game) {
+                    setPlayerId(response.playerId);
+                    setPinCode(response.pinCode || response.game.pinCode);
+                    setGameState(response.game);
+                    setJoined(true);
+                    window.history.replaceState({}, '', `/dixit/play?pin=${response.pinCode || response.game.pinCode}`);
                 } else {
                     alert('Chyba při zakládání: ' + (response.error || 'Neznámá chyba'));
                 }

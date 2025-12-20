@@ -158,39 +158,7 @@ export default function DixitBoard() {
         return () => clearTimeout(timer);
     }, [gameState, user, error]);
 
-    if (!user && !gameState && !isLoading) {
-        return (
-            <div className="h-screen w-full bg-black text-white flex flex-col items-center justify-center p-8 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 to-black"></div>
-                <div className="z-10 bg-white/10 p-12 rounded-3xl backdrop-blur-md border border-white/10 max-w-lg w-full text-center shadow-2xl">
-                    <h1 className="text-6xl font-serif font-black mb-8 text-yellow-400">DIXIT</h1>
-                    <h2 className="text-2xl mb-8 font-light text-indigo-200">Herní Plátno</h2>
 
-                    <p className="mb-8 text-white/60">
-                        Toto zařízení bude sloužit jako hlavní obrazovka.<br />
-                        Hráči (včetně organizátora) se připojí svými telefony.
-                    </p>
-
-                    <div className="space-y-6">
-                        {error && <div className="text-red-500 font-bold bg-black/50 p-2 rounded animate-pulse">{error}</div>}
-
-                        <button
-                            onClick={handleCreateBoard}
-                            disabled={isCreating}
-                            className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:scale-105 text-white text-2xl font-black py-4 rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:scale-100 relative"
-                        >
-                            {isCreating ? (
-                                <span className="flex items-center justify-center gap-2">
-                                    <span className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></span>
-                                    NAČÍTÁM...
-                                </span>
-                            ) : "ZALOŽIT NOVOU HRU"}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     const handleStart = () => {
         if (socket && gameState) socket.emit('dixit:start', { pin: gameState.pinCode });

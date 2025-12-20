@@ -15,7 +15,7 @@ export class DixitController {
         })));
     }
     @Get('image/:id')
-    async getCardImage(@Param('id') id: string, @Res() res) {
+    async getCardImage(@Param('id') id: string, @Res() res: any) {
         const card = await this.dixitService.getCard(id);
         if (!card) return res.status(404).send('Not found');
 

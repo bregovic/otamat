@@ -342,48 +342,21 @@ function DixitPlayContent() {
                             />
 
                             <div className="relative w-full h-[50vh] flex items-center justify-center">
-                                <button
-                                    onClick={() => setSelectedCardId(myHand[(myHand.indexOf(selectedCardId || myHand[0]) - 1 + myHand.length) % myHand.length])}
-                                    className="absolute left-0 z-20 p-4 text-4xl text-white/50 hover:text-white bg-black/20 hover:bg-black/40 rounded-r-2xl backdrop-blur-sm transition-all"
-                                >
-                                    ‹
-                                </button>
-
-                                <div className="w-full h-full flex items-center justify-center overflow-hidden relative">
-                                    {myHand.map((card: string, idx: number) => {
-                                        const currentIdx = myHand.indexOf(selectedCardId || myHand[0]);
-                                        // Simple logic to set initial selection if null
-                                        if (!selectedCardId && idx === 0) setTimeout(() => setSelectedCardId(card), 0);
-
-                                        if (card !== selectedCardId) return null;
-
-                                        return (
-                                            <div key={card} className="relative w-full h-full flex items-center justify-center animate-in fade-in zoom-in duration-300">
-                                                <img
-                                                    src={`${BACKEND_URL}/dixit/image/${card}`}
-                                                    className="max-h-full max-w-full object-contain rounded-xl shadow-2xl"
-                                                    alt="Card"
-                                                />
-                                            </div>
-                                        );
-                                    })}
+                                <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 px-8 w-full h-full items-center no-scrollbar pb-8">
+                                    {myHand.map((card: string) => (
+                                        <div key={card} className="snap-center shrink-0 w-[70vw] max-w-[300px] h-full relative" onClick={() => setSelectedCardId(card)}>
+                                            <img
+                                                src={`${BACKEND_URL}/dixit/image/${card}`}
+                                                className={`w-full h-full object-contain rounded-xl transition-all duration-300 ${selectedCardId === card ? 'ring-4 ring-yellow-500 scale-105 shadow-[0_0_30px_rgba(234,179,8,0.5)]' : 'opacity-80 scale-95'}`}
+                                            />
+                                            {selectedCardId === card && (
+                                                <div className="absolute top-4 right-4 bg-yellow-500 text-black w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-lg">
+                                                    ✓
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
-
-                                <button
-                                    onClick={() => setSelectedCardId(myHand[(myHand.indexOf(selectedCardId || myHand[0]) + 1) % myHand.length])}
-                                    className="absolute right-0 z-20 p-4 text-4xl text-white/50 hover:text-white bg-black/20 hover:bg-black/40 rounded-l-2xl backdrop-blur-sm transition-all"
-                                >
-                                    ›
-                                </button>
-                            </div>
-
-                            <div className="flex justify-center gap-2 mb-4">
-                                {myHand.map((card: string) => (
-                                    <div
-                                        key={card}
-                                        className={`w-2 h-2 rounded-full transition-all ${selectedCardId === card ? 'bg-yellow-500 w-4' : 'bg-white/20'}`}
-                                    />
-                                ))}
                             </div>
 
                             <div className="fixed bottom-6 left-0 w-full px-4 z-50">

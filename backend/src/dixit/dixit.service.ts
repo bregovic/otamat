@@ -20,72 +20,101 @@ export class DixitService {
     }
 
     async createGame(hostId?: string, guestInfo?: { nickname: string, avatar: string }) {
-        let finalHostId = hostId;
+        console.log(`[DixitService] Creating game. HostId: ${hostId}, Guest: ${guestInfo ? guestInfo.nickname : 'None'}`);
+        try {
+            let finalHostId = hostId;
 
-        // If no hostId but guest info provided -> Create Guest User
-        if (!finalHostId) {
-            const guestUser = await this.prisma.user.create({
+            // If no hostId but guest info provided -> Create Guest User
+            if (!finalHostId) {
+                console.log('[DixitService] Creating guest user...');
+                try {
+                    const guestUser = await this.prisma.user.create({
+                        data: {
+                            email: `guest_${Date.now()}_${Math.random().toString(36).substring(7)}@dixit.temp`,
+                            nickname: guestInfo?.nickname || 'Anonym',
+                            avatar: guestInfo?.avatar || 'fox',
+                            role: 'HOST'
+                        }
+                    });
+                    finalHostId = guestUser.id;
+                    console.log('[DixitService] Guest user created:', finalHostId);
+                } catch (err) {
+                    console.error('[DixitService] Failed to create guest user:', err);
+                    throw new Error('Failed to create guest user');
+                }
+            }
+
+            if (!finalHostId) throw new Error("Host ID or Guest Info required");
+
+            // Generate unique PIN
+            let pin = '';
+            let exists = true;
+            let attempts = 0;
+            while (exists && attempts < 10) {
+                pin = Math.floor(100000 + Math.random() * 900000).toString();
+                const existing = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin } });
+                if (!existing) exists = false;
+                attempts++;
+            }
+            if (exists) throw new Error("Failed to generate unique PIN");
+
+            // Fetch cards for the deck
+            console.log('[DixitService] Fetching cards...');
+            let allCards: { id: string }[] = [];
+            try {
+                allCards = await this.prisma.dixitCard.findMany({ select: { id: true } });
+                console.log(`[DixitService] Found ${allCards.length} cards.`);
+            } catch (err) {
+                console.error('[DixitService] Failed to fetch cards:', err);
+                // Proceed with empty deck if fetch fails, to avoid blocking creation
+            }
+
+            const deck = allCards.map(c => c.id).sort(() => Math.random() - 0.5);
+
+            // Create the game
+            console.log('[DixitService] Creating game record...');
+            const game = await this.prisma.dixitGame.create({
                 data: {
-                    email: `guest_${Date.now()}_${Math.random().toString(36).substring(7)}@dixit.temp`,
-                    nickname: guestInfo?.nickname || 'Anonym',
-                    avatar: guestInfo?.avatar || 'fox',
-                    role: 'HOST'
-                }
+                    pinCode: pin,
+                    hostId: finalHostId,
+                    status: GameStatus.WAITING,
+                    phase: DixitPhase.LOBBY,
+                    deck: deck,
+                    rounds: {
+                        create: []
+                    }
+                },
+                include: { players: true }
             });
-            finalHostId = guestUser.id;
-        }
+            console.log('[DixitService] Game record created:', game.id);
 
-        if (!finalHostId) throw new Error("Host ID or Guest Info required");
+            // If guestInfo provided, auto-join the creator as a player
+            let playerId: string | null = null;
+            if (guestInfo && guestInfo.nickname) {
+                console.log('[DixitService] Auto-joining creator...');
+                const player = await this.prisma.dixitPlayer.create({
+                    data: {
+                        gameId: game.id,
+                        nickname: guestInfo.nickname,
+                        avatar: guestInfo.avatar || 'fox',
+                        hand: [],
+                    }
+                });
+                playerId = player.id;
+                console.log('[DixitService] Creator joined as player:', playerId);
+            }
 
-        // Generate unique PIN
-        let pin = '';
-        let exists = true;
-        while (exists) {
-            pin = Math.floor(100000 + Math.random() * 900000).toString();
-            const existing = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin } });
-            if (!existing) exists = false;
-        }
-
-        // Fetch cards for the deck
-        let allCards = await this.prisma.dixitCard.findMany({ select: { id: true } });
-        const deck = allCards.map(c => c.id).sort(() => Math.random() - 0.5);
-
-        // Create the game
-        const game = await this.prisma.dixitGame.create({
-            data: {
-                pinCode: pin,
-                hostId: finalHostId,
-                status: GameStatus.WAITING,
-                phase: DixitPhase.LOBBY,
-                deck: deck,
-                rounds: {
-                    create: []
-                }
-            },
-            include: { players: true }
-        });
-
-        // If guestInfo provided, auto-join the creator as a player
-        let playerId: string | null = null;
-        if (guestInfo && guestInfo.nickname) {
-            const player = await this.prisma.dixitPlayer.create({
-                data: {
-                    gameId: game.id,
-                    nickname: guestInfo.nickname,
-                    avatar: guestInfo.avatar || 'fox',
-                    hand: [],
-                }
+            // Return game with players included
+            const updatedGame = await this.prisma.dixitGame.findUnique({
+                where: { id: game.id },
+                include: { players: true, rounds: true }
             });
-            playerId = player.id;
+
+            return { game: updatedGame, playerId };
+        } catch (error) {
+            console.error('[DixitService] Critical error in createGame:', error);
+            throw error; // Propagate to gateway
         }
-
-        // Return game with players included
-        const updatedGame = await this.prisma.dixitGame.findUnique({
-            where: { id: game.id },
-            include: { players: true, rounds: true }
-        });
-
-        return { game: updatedGame, playerId };
     }
 
     async joinGame(pin: string, nickname: string, avatar: string) {

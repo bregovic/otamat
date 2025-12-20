@@ -49,7 +49,14 @@ export class DixitGateway {
                 client.emit('dixit:debug_log', 'Gateway: Room Joined');
             }
             client.emit('dixit:debug_log', 'Gateway: Returning Response');
-            return { success: true, event: 'dixit:created', game, playerId, pinCode: game?.pinCode };
+
+            // Sanitize to plain JSON to avoid serialization hiccups
+            const safeGame = game ? JSON.parse(JSON.stringify(game)) : null;
+
+            // Small breathing room for socket
+            await new Promise(r => setTimeout(r, 100));
+
+            return { success: true, event: 'dixit:created', game: safeGame, playerId, pinCode: safeGame?.pinCode };
         } catch (e) {
             console.error('Error in dixit:create:', e);
             client.emit('dixit:debug_log', 'CRITICAL ERROR: ' + e.message);

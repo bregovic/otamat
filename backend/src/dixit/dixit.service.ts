@@ -371,63 +371,62 @@ export class DixitService {
         }
 
     }
-}
 
     async nextRound(pin: string) {
-    const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin }, include: { players: true } });
-    if (!game) throw new Error('Game not found');
+        const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin }, include: { players: true } });
+        if (!game) throw new Error('Game not found');
 
-    // Rotate storyteller
-    const currentIdx = game.players.findIndex(p => p.id === game.storytellerId);
-    const nextIdx = (currentIdx + 1) % game.players.length;
-    const nextStoryteller = game.players[nextIdx];
+        // Rotate storyteller
+        const currentIdx = game.players.findIndex(p => p.id === game.storytellerId);
+        const nextIdx = (currentIdx + 1) % game.players.length;
+        const nextStoryteller = game.players[nextIdx];
 
-    let deck = [...game.deck];
+        let deck = [...game.deck];
 
-    // Deal 1 card to everyone to back to 5
-    for (const player of game.players) {
-        // Player hand should have 4 cards now
-        const needed = 5 - player.hand.length;
-        if (needed > 0 && deck.length >= needed) {
-            const newCards = deck.splice(0, needed);
-            const hand = [...player.hand, ...newCards];
-            await this.prisma.dixitPlayer.update({ where: { id: player.id }, data: { hand } });
+        // Deal 1 card to everyone to back to 5
+        for (const player of game.players) {
+            // Player hand should have 4 cards now
+            const needed = 5 - player.hand.length;
+            if (needed > 0 && deck.length >= needed) {
+                const newCards = deck.splice(0, needed);
+                const hand = [...player.hand, ...newCards];
+                await this.prisma.dixitPlayer.update({ where: { id: player.id }, data: { hand } });
+            }
         }
+
+        // If deck is empty, maybe reshuffle? For now, if empty, we just continue without new cards.
+
+        // Update Game (Phase, Storyteller, Round, Deck)
+        await this.prisma.dixitGame.update({
+            where: { id: game.id },
+            data: {
+                phase: DixitPhase.STORYTELLER_PICK,
+                storytellerId: nextStoryteller.id,
+                currentRound: game.currentRound + 1,
+                deck: deck
+            }
+        });
+
+        // Create new round
+        await this.prisma.dixitRound.create({
+            data: {
+                gameId: game.id,
+                roundNumber: game.currentRound + 1,
+                storytellerId: nextStoryteller.id,
+                clue: "",
+                cardsPlayed: {},
+                votes: {},
+                scores: {}
+            }
+        });
+
+        // Reset player temp fields
+        await this.prisma.dixitPlayer.updateMany({
+            where: { gameId: game.id },
+            data: { submittedCardId: null, votedCardId: null }
+        });
+
+        return await this.getGameState(game.id);
     }
 
-    // If deck is empty, maybe reshuffle? For now, if empty, we just continue without new cards.
-
-    // Update Game (Phase, Storyteller, Round, Deck)
-    await this.prisma.dixitGame.update({
-        where: { id: game.id },
-        data: {
-            phase: DixitPhase.STORYTELLER_PICK,
-            storytellerId: nextStoryteller.id,
-            currentRound: game.currentRound + 1,
-            deck: deck
-        }
-    });
-
-    // Create new round
-    await this.prisma.dixitRound.create({
-        data: {
-            gameId: game.id,
-            roundNumber: game.currentRound + 1,
-            storytellerId: nextStoryteller.id,
-            clue: "",
-            cardsPlayed: {},
-            votes: {},
-            scores: {}
-        }
-    });
-
-    // Reset player temp fields
-    await this.prisma.dixitPlayer.updateMany({
-        where: { gameId: game.id },
-        data: { submittedCardId: null, votedCardId: null }
-    });
-
-    return await this.getGameState(game.id);
 }
-
-    }

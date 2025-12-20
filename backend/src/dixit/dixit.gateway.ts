@@ -38,13 +38,17 @@ export class DixitGateway {
                 data.guestInfo,
                 (msg) => client.emit('dixit:debug_log', msg) // Send debug logs to client
             );
+            client.emit('dixit:debug_log', 'Gateway: Service Return OK');
 
             console.log('Game created successfully:', game?.id, 'Player:', playerId);
             if (game) {
+                client.emit('dixit:debug_log', 'Gateway: Joining Room...');
                 client.join(game.pinCode);
                 // Emit to room so all spectators get the update
                 this.server.to(game.pinCode).emit('dixit:update', game);
+                client.emit('dixit:debug_log', 'Gateway: Room Joined');
             }
+            client.emit('dixit:debug_log', 'Gateway: Returning Response');
             return { success: true, event: 'dixit:created', game, playerId, pinCode: game?.pinCode };
         } catch (e) {
             console.error('Error in dixit:create:', e);

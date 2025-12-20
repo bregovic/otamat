@@ -8,7 +8,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { DixitService } from './dixit.service';
 
-@WebSocketGateway({ cors: { origin: '*' } })
+@WebSocketGateway({ namespace: 'dixit', cors: { origin: '*' } })
 export class DixitGateway {
     @WebSocketServer()
     server: Server;

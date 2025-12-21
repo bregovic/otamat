@@ -85,6 +85,32 @@ export class DixitGateway {
         }
     }
 
+    @SubscribeMessage('dixit:reconnect')
+    async handleReconnect(
+        @MessageBody() data: { pin: string; playerId: string },
+        @ConnectedSocket() client: Socket,
+    ) {
+        try {
+            const gameState = await this.dixitService.getGameStateByPin(data.pin);
+            if (!gameState) {
+                return { success: false, error: 'Hra nenalezena' };
+            }
+
+            const me = (gameState.players as any[]).find(p => p.id === data.playerId);
+            if (!me) {
+                return { success: false, error: 'Hráč nenalezen' };
+            }
+
+            client.join(data.pin);
+            // Send immediate update to this client
+            client.emit('dixit:update', gameState);
+
+            return { success: true, game: gameState };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }
+
     // Watch/Spectate game (for Board/TV screen)
     @SubscribeMessage('dixit:watch')
     async handleWatchGame(

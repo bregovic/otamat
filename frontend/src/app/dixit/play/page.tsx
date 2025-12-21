@@ -3,55 +3,18 @@ import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 import { BACKEND_URL } from '@/utils/config';
-import { User, Crown, Play, ArrowRight, Loader2, Users, Monitor, RotateCcw } from 'lucide-react';
+import { User, Crown, Play, ArrowRight, Loader2, Users, Monitor, RotateCcw, Settings, X, Mic, Images } from 'lucide-react';
 import QRCode from "react-qr-code";
 import Link from 'next/link';
 import DixitGame from './DixitGame';
+import ImageManager from './ImageManager';
+import { avatarCategories, avatarMap } from '@/utils/avatars';
 
-// --- OTA-MAT AVATARS ---
-const avatarCategories = {
-    "Zvířátka": {
-        cow: '🐮', fox: '🦊', cat: '🐱', dog: '🐶', lion: '🦁', panda: '🐼', koala: '🐨', pig: '🐷',
-        mouse: '🐭', frog: '🐸', bear: '🐻', tiger: '🐯', rabbit: '🐰', hamster: '🐹', dragon: '🐲', monkey: '🐵',
-        chicken: '🐔', penguin: '🐧', bird: '🐦', duck: '🦆', eagle: '🦅', owl: '🦉', bat: '🦇', wolf: '🐺',
-        boar: '🐗', horse: '🐴', unicorn: '🦄', bee: '🐝', bug: '🐛', butterfly: '🦋', snail: '🐌', beetle: '🐞',
-        ant: '🐜', spider: '🕷', scorpion: '🦂', turtle: '🐢', snake: '🐍', lizard: '🦎', t_rex: '🦖', sauropod: '🦕',
-        octopus: '🐙', squid: '🦑', shrimp: '🦐', lobster: '🦞', crab: '🦀', puffer: '🐡', fish: '🐠', dolphin: '🐬',
-        whale: '🐳', shark: '🦈', crocodile: '🐊', leopard: '🐆', zebra: '🦓', gorilla: '🦍', orangutan: '🦧', elephant: '🐘',
-        hippo: '🦛', rhino: '🦏', camel: '🐫', llama: '🦙', giraffe: '🦒', buffalo: '🐃', ox: '🐂', ram: '🐏',
-        sheep: '🐑', goat: '🐐', deer: '🦌', turkey: '🦃', rooster: '🐓', peacock: '🦚', parrot: '🦜', swan: '🦢',
-        flamingo: '🦩', dove: '🕊', raccoon: '🦝', skunk: '🦨', badger: '🦡', beaver: '🦫', otter: '🦦', sloth: '🦥'
-    },
-    "Jídlo": {
-        apple: '🍎', pear: '🍐', orange: '🍊', lemon: '🍋', banana: '🍌', watermelon: '🍉', grapes: '🍇', strawberry: '🍓',
-        cherry: '🍒', peach: '🍑', pineapple: '🍍', coconut: '🥥', kiwi: '🥝', tomato: '🍅', avocado: '🥑', broccoli: '🥦',
-        carrot: '🥕', corn: '🌽', potato: '🥔', bread: '🍞', cheese: '🧀', egg: '🥚', bacon: '🥓', steak: '🥩',
-        hotdog: '🌭', burger: '🍔', fries: '🍟', pizza: '🍕', sandwich: '🥪', taco: '🌮', burrito: '🌯', popcorn: '🍿',
-        donut: '🍩', cookie: '🍪', cake: '🍰', chocolate: '🍫', candy: '🍬', beer: '🍺', wine: '🍷', coffee: '☕'
-    },
-    "Sport": {
-        soccer: '⚽', basketball: '🏀', football: '🏈', baseball: '⚾', tennis: '🎾', volleyball: '🏐', rugby: '🏉',
-        pool: '🎱', pingpong: '🏓', badminton: '🏸', hockey: '🏒', golf: '⛳', boxing: '🥊', ski: '🎿', snowboard: '🏂',
-        swim: '🏊‍♀️', surf: '🏄‍♀️', cycle: '🚴‍♀️', trophy: '🏆', medal: '🥇', guitar: '🎸', piano: '🎹', drum: '🥁',
-        game: '🎮', dart: '🎯', dice: '🎲', bowling: '🎳', art: '🎨', mic: '🎤', movie: '🎬'
-    },
-    "Obličeje": {
-        smile: '😀', laugh: '😂', wink: '😉', love: '😍', cool: '😎', nerd: '🤓', think: '🤔', mindblown: '🤯',
-        cry: '😢', sob: '😭', scream: '😱', angry: '😡', devil: '😈', clown: '🤡', ghost: '👻', alien: '👽',
-        robot: '🤖', poop: '💩', skull: '💀', mask: '😷', sick: '🤢', dizzy: '😵', cowboy: '🤠', party: '🥳'
-    },
-    "Věci": {
-        watch: '⌚', phone: '📱', laptop: '💻', camera: '📷', tv: '📺', bulb: '💡', money: '💸', diamond: '💎',
-        tool: '🛠', bomb: '💣', knife: '🔪', sword: '⚔️', shield: '🛡', pill: '💊', car: '🚗', bus: '🚌',
-        plane: '✈️', rocket: '🚀', boat: '🚤', bike: '🚲', house: '🏠', castle: '🏰', heart: '❤️', star: '⭐',
-        fire: '🔥', water: '💧', sun: '☀️', moon: '🌙', earth: '🌍', rainbow: '🌈', umbrella: '☂️', balloon: '🎈'
-    }
-};
-// Flatten for lookup
-const avatarMap: { [key: string]: string } = Object.assign({}, ...Object.values(avatarCategories));
+
 
 function DixitContent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     // State
     const [socket, setSocket] = useState<Socket | null>(null);
@@ -74,6 +37,11 @@ function DixitContent() {
     const nicknameRef = useRef('');
     const creationPendingRef = useRef(false);
 
+    // Settings State
+    const [showSettings, setShowSettings] = useState(false);
+    const [showImageManager, setShowImageManager] = useState(false);
+    const [gameSettings, setGameSettings] = useState({ winningScore: 30, clueMode: 'TEXT' });
+
     useEffect(() => { nicknameRef.current = nickname; }, [nickname]);
 
     // Initial Setup
@@ -86,6 +54,28 @@ function DixitContent() {
         newSocket.on('connect', () => {
             console.log('Connected to Dixit Gateway');
             setConnected(true);
+
+            // Reconnect Logic
+            try {
+                const session = sessionStorage.getItem('dixit_session');
+                const urlPin = new URLSearchParams(window.location.search).get('pin');
+                if (session && urlPin) {
+                    const { pin, playerId: savedId } = JSON.parse(session);
+                    if (pin === urlPin && savedId) {
+                        console.log('Attempting reconnect...', pin, savedId);
+                        newSocket.emit('dixit:reconnect', { pin, playerId: savedId }, (res: any) => {
+                            if (res.success && res.game) {
+                                console.log('Reconnected!');
+                                setPlayerId(savedId);
+                                setPinCode(pin);
+                                setHasIdentity(true);
+                                setGameState(res.game);
+                                setLoading(false);
+                            }
+                        });
+                    }
+                }
+            } catch (err) { console.error('Reconnect failed', err); }
         });
 
         newSocket.on('disconnect', () => {
@@ -109,7 +99,7 @@ function DixitContent() {
 
                     const newUrl = `/dixit/play?pin=${game.pinCode}`;
                     if (window.location.pathname + window.location.search !== newUrl) {
-                        window.history.replaceState({}, '', newUrl);
+                        router.replace(newUrl); // Use router to handle basePath correctly
                     }
                 }
             }
@@ -148,14 +138,18 @@ function DixitContent() {
 
         try {
             if (createMode) {
-                socket.emit('dixit:create', { guestInfo: { nickname, avatar } }, (response: any) => {
+                socket.emit('dixit:create', {
+                    guestInfo: { nickname, avatar },
+                    options: gameSettings
+                }, (response: any) => {
                     if (response.success) {
                         setLoading(false);
                         setPlayerId(response.playerId);
                         setPinCode(response.pinCode);
                         setHasIdentity(true);
                         creationPendingRef.current = false;
-                        window.history.replaceState({}, '', `/dixit/play?pin=${response.pinCode}`);
+                        sessionStorage.setItem('dixit_session', JSON.stringify({ pin: response.pinCode, playerId: response.playerId }));
+                        router.replace(`/dixit/play?pin=${response.pinCode}`);
                         if (response.game) setGameState(response.game);
                     } else {
                         if (creationPendingRef.current) {
@@ -173,6 +167,7 @@ function DixitContent() {
                         setPinCode(targetPin);
                         setHasIdentity(true);
                         creationPendingRef.current = false;
+                        sessionStorage.setItem('dixit_session', JSON.stringify({ pin: targetPin, playerId: response.playerId }));
                         if (response.game) setGameState(response.game);
                     } else {
                         if (creationPendingRef.current) {
@@ -233,7 +228,15 @@ function DixitContent() {
                     .avatar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 0.5rem; }
                 `}</style>
 
-                <div className="glass-card w-full max-w-2xl bg-slate-900/50 p-6 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-md">
+                <div className="glass-card w-full max-w-2xl bg-slate-900/50 p-6 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-md relative">
+                    {isCreate && (
+                        <button
+                            onClick={() => setShowSettings(true)}
+                            className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors"
+                        >
+                            <Settings size={24} />
+                        </button>
+                    )}
                     <h1 className="text-4xl font-bold mb-4 text-center text-white">Tvoje postava</h1>
 
                     {/* Category Tabs */}
@@ -282,6 +285,70 @@ function DixitContent() {
                         </button>
                     </div>
                 </div>
+
+                {/* Settings Modal */}
+                {showSettings && (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                        <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl w-full max-w-sm relative shadow-2xl animate-in fade-in zoom-in duration-200">
+                            <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={24} /></button>
+                            <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2"><Settings size={24} /> Nastavení hry</h2>
+
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-slate-400 text-xs uppercase font-bold tracking-widest mb-2">Cílové skóre</label>
+                                    <div className="flex items-center gap-4">
+                                        <input
+                                            type="number"
+                                            value={gameSettings.winningScore}
+                                            onChange={(e) => setGameSettings({ ...gameSettings, winningScore: parseInt(e.target.value) || 30 })}
+                                            className="w-full bg-slate-800 text-white p-3 rounded-xl border border-slate-700 font-bold text-center text-xl focus:border-indigo-500 outline-none"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-1">Počet bodů nutný pro vítězství.</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-slate-400 text-xs uppercase font-bold tracking-widest mb-2">Režim nápovědy</label>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        <button
+                                            onClick={() => setGameSettings({ ...gameSettings, clueMode: 'TEXT' })}
+                                            className={`p-3 rounded-xl border text-left font-bold transition-all relative overflow-hidden ${gameSettings.clueMode === 'TEXT' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                        >
+                                            <div className="relative z-10 flex items-center gap-2">📝 Text (Klasika)</div>
+                                            <div className="text-xs font-normal opacity-70 relative z-10">Zadávání nápovědy psaním.</div>
+                                        </button>
+                                        <button
+                                            onClick={() => setGameSettings({ ...gameSettings, clueMode: 'REAL' })}
+                                            className={`p-3 rounded-xl border text-left font-bold transition-all ${gameSettings.clueMode === 'REAL' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                        >
+                                            <div className="flex items-center gap-2">🗣️ Hlas (Offline)</div>
+                                            <div className="text-xs font-normal opacity-70">Hráči jsou v jedné místnosti.</div>
+                                        </button>
+                                        <button
+                                            disabled
+                                            className={`p-3 rounded-xl border text-left font-bold transition-all bg-slate-800/30 border-slate-700/30 text-slate-600 cursor-not-allowed`}
+                                        >
+                                            <div className="flex items-center gap-2"><Mic size={16} /> Nahrávání (Brzy)</div>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button onClick={() => setShowSettings(false)} className="w-full mt-8 bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-colors border border-white/10">
+                                Uložit nastavení
+                            </button>
+
+                            <div className="pt-6 border-t border-white/10 mt-6">
+                                <button onClick={() => setShowImageManager(true)} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 border border-slate-700">
+                                    <Images size={20} /> Správa obrázků
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Image Manager Overlay */}
+                {showImageManager && <ImageManager onClose={() => setShowImageManager(false)} />}
             </div>
         );
     }

@@ -644,6 +644,47 @@ export class DixitService implements OnModuleInit {
         return await this.getGameState(game.id);
     }
 
+    async getAllCardsMetadata() {
+        return this.prisma.dixitCard.findMany({
+            select: { id: true, fileName: true, createdAt: true },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
+    async deleteCard(id: string) {
+        return this.prisma.dixitCard.delete({ where: { id } });
+    }
+
+    async rotateCard(id: string) {
+        const card = await this.prisma.dixitCard.findUnique({ where: { id } });
+        if (!card) throw new Error("Card not found");
+
+        let sharp;
+        try {
+            sharp = require('sharp');
+        } catch (e) {
+            throw new Error("Sharp not installed (needed for rotation)");
+        }
+
+        if (!card.data.startsWith('data:')) throw new Error("Invalid card data format");
+
+        const matches = card.data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (!matches || matches.length !== 3) {
+            throw new Error('Invalid image data parsing');
+        }
+
+        const type = matches[1]; // e.g. image/jpeg
+        const buffer = Buffer.from(matches[2], 'base64');
+
+        const processedBuffer = await sharp(buffer).rotate(90).toBuffer();
+        const base64Data = `data:${type};base64,${processedBuffer.toString('base64')}`;
+
+        return this.prisma.dixitCard.update({
+            where: { id },
+            data: { data: base64Data }
+        });
+    }
+
     async getCard(id: string) {
         return this.prisma.dixitCard.findUnique({ where: { id } });
     }

@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Param, Res, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { DixitService } from './dixit.service';
 
@@ -14,6 +14,22 @@ export class DixitController {
             originalname: f.originalname
         })));
     }
+
+    @Get('cards')
+    async listCards() {
+        return this.dixitService.getAllCardsMetadata();
+    }
+
+    @Delete('cards/:id') // Note: need Delete import
+    async deleteCard(@Param('id') id: string) {
+        return this.dixitService.deleteCard(id);
+    }
+
+    @Post('cards/:id/rotate')
+    async rotateCard(@Param('id') id: string) {
+        return this.dixitService.rotateCard(id);
+    }
+
     @Get('image/:id')
     async getCardImage(@Param('id') id: string, @Res() res: any) {
         const card = await this.dixitService.getCard(id);

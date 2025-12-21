@@ -500,16 +500,21 @@ function DixitContent() {
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
                             {gameState?.players?.map((p: any, i: number) => (
                                 <div key={p.id} className="flex flex-col items-center gap-4 avatar-float relative group" style={{ animationDelay: `${i * 0.1}s` }}>
-                                    <div className="text-6xl bg-white/10 w-24 h-24 rounded-full flex items-center justify-center border-4 border-white/20 shadow-lg relative">
-                                        {/* Kick Button */}
+                                    <div
+                                        onClick={() => {
+                                            if (isHost && p.id !== playerId) {
+                                                if (confirm(`Opravdu chcete vyhodit hráče ${p.nickname}?`)) {
+                                                    socket?.emit('dixit:kick', { pin: pinCode, playerId: p.id });
+                                                }
+                                            }
+                                        }}
+                                        className={`text-6xl bg-white/10 w-24 h-24 rounded-full flex items-center justify-center border-4 border-white/20 shadow-lg relative ${isHost && p.id !== playerId ? 'cursor-pointer hover:border-red-500 hover:bg-red-500/20 transition-all' : ''}`}
+                                    >
+                                        {/* Visual Kick Indicator */}
                                         {isHost && p.id !== playerId && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); if (confirm(`Vyhodit hráče ${p.nickname}?`)) socket?.emit('dixit:kick', { pin: pinCode, playerId: p.id }); }}
-                                                className="absolute -top-2 -left-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg border-2 border-white hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-all z-20 scale-90 hover:scale-110"
-                                                title="Vyhodit hráče"
-                                            >
+                                            <div className="absolute -top-2 -left-2 bg-red-500 text-white p-1 rounded-full shadow-lg border-2 border-white z-20">
                                                 <X size={14} />
-                                            </button>
+                                            </div>
                                         )}
                                         {avatarMap[p.avatar] || p.avatar}
                                         {/* Matches OtaMat rendering */}

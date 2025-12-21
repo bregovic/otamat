@@ -26,16 +26,21 @@ export class DixitGateway {
 
     @SubscribeMessage('dixit:create')
     async handleCreateGame(
-        @MessageBody() data: { hostId?: string; guestInfo?: { nickname: string; avatar: string } },
+        @MessageBody() data: {
+            hostId?: string;
+            guestInfo?: { nickname: string; avatar: string };
+            options?: { winningScore?: number; clueMode?: string };
+        },
         @ConnectedSocket() client: Socket,
     ) {
         try {
-            console.log('Received dixit:create request', { hasHostId: !!data.hostId, hasGuest: !!data.guestInfo });
+            console.log('Received dixit:create request', { hasHostId: !!data.hostId, hasGuest: !!data.guestInfo, options: data.options });
 
             // Pass the progress callback
             const { game, playerId } = await this.dixitService.createGame(
                 data.hostId,
                 data.guestInfo,
+                data.options,
                 (msg) => client.emit('dixit:debug_log', msg) // Send debug logs to client
             );
             client.emit('dixit:debug_log', 'Gateway: Service Return OK');

@@ -216,6 +216,9 @@ model DixitGame {
   
   deck        String[]
   storytellerId String?
+  
+  winningScore Int     @default(30)
+  clueMode     String  @default("TEXT")
 }
 
 model DixitPlayer {

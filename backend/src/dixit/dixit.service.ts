@@ -29,7 +29,7 @@ export class DixitService implements OnModuleInit {
         this.server = server;
     }
 
-    async createGame(hostId?: string, guestInfo?: { nickname: string, avatar: string }, onProgress?: (msg: string) => void) {
+    async createGame(hostId?: string, guestInfo?: { nickname: string, avatar: string }, options?: { winningScore?: number, clueMode?: string }, onProgress?: (msg: string) => void) {
         onProgress?.('Step 1: Starting');
         console.log(`[DixitService] Creating game...`);
         try {
@@ -102,6 +102,8 @@ export class DixitService implements OnModuleInit {
                     status: GameStatus.WAITING,
                     phase: DixitPhase.LOBBY,
                     deck: deck,
+                    winningScore: options?.winningScore || 30,
+                    clueMode: options?.clueMode || 'TEXT'
                 }
             });
             onProgress?.('Step 9: Game DB Record Created');
@@ -567,7 +569,7 @@ export class DixitService implements OnModuleInit {
         await this.prisma.$transaction(updates);
 
         // Win check
-        const WIN_SCORE = 30; // user specified 30
+        const WIN_SCORE = game.winningScore || 30;
         const winner = game.players.find(p => (pointsMap[p.id] ? p.score + pointsMap[p.id] : p.score) >= WIN_SCORE);
 
         if (winner) {

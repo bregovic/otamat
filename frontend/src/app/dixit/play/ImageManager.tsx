@@ -83,32 +83,34 @@ export default function ImageManager({ onClose }: { onClose: () => void }) {
                         const isDup = c.fileName && filenameCounts[c.fileName] > 1;
                         const url = `${BACKEND_URL}/dixit/image/${c.id}?t=${c._ts || ''}`;
                         return (
-                            <div key={c.id} className={`relative group rounded-xl overflow-hidden bg-slate-800 border-2 aspect-[2/3] transition-all shadow-md hover:shadow-xl ${isDup ? 'border-red-500 ring-4 ring-red-500/30' : 'border-slate-700 hover:border-slate-500'}`}>
-                                <img src={url} className="w-full h-full object-cover" loading="lazy" alt={c.fileName} />
+                            <div key={c.id} className={`relative group rounded-xl bg-slate-800 border-2 w-full shadow-md hover:shadow-xl transition-all ${isDup ? 'border-red-500 ring-4 ring-red-500/30' : 'border-slate-700 hover:border-slate-500'}`}>
+                                <div className="relative w-full pb-[150%] overflow-hidden rounded-xl">
+                                    <img src={url} className="absolute inset-0 w-full h-full object-cover" loading="lazy" alt={c.fileName} />
 
-                                {/* Always Visible Controls */}
-                                <div className="absolute top-2 left-2 right-2 flex justify-between z-10">
-                                    <button
-                                        onClick={() => handleRotate(c.id)}
-                                        className="p-3 bg-black/60 hover:bg-blue-600/90 text-white rounded-full backdrop-blur-md transition-all shadow-lg border border-white/10 hover:scale-110"
-                                        title="Otočit o 90°"
-                                    >
-                                        <RotateCw size={20} />
-                                    </button>
+                                    {/* Always Visible Controls */}
+                                    <div className="absolute top-2 left-2 right-2 flex justify-between z-10">
+                                        <button
+                                            onClick={() => handleRotate(c.id)}
+                                            className="p-3 bg-black/60 hover:bg-blue-600/90 text-white rounded-full backdrop-blur-md transition-all shadow-lg border border-white/10 hover:scale-110"
+                                            title="Otočit o 90°"
+                                        >
+                                            <RotateCw size={24} />
+                                        </button>
 
-                                    <button
-                                        onClick={() => handleDelete(c.id)}
-                                        className="p-3 bg-black/60 hover:bg-red-600/90 text-white rounded-full backdrop-blur-md transition-all shadow-lg border border-white/10 hover:scale-110"
-                                        title="Smazat"
-                                    >
-                                        <Trash2 size={20} />
-                                    </button>
-                                </div>
+                                        <button
+                                            onClick={() => handleDelete(c.id)}
+                                            className="p-3 bg-black/60 hover:bg-red-600/90 text-white rounded-full backdrop-blur-md transition-all shadow-lg border border-white/10 hover:scale-110"
+                                            title="Smazat"
+                                        >
+                                            <Trash2 size={24} />
+                                        </button>
+                                    </div>
 
-                                {isDup && <div className="absolute bottom-20 left-0 right-0 text-center pointer-events-none"><span className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg animate-pulse">DUPLICITA</span></div>}
+                                    {isDup && <div className="absolute bottom-20 left-0 right-0 text-center pointer-events-none"><span className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg animate-pulse">DUPLICITA</span></div>}
 
-                                <div className="absolute bottom-0 inset-x-0 bg-black/80 p-3 text-xs text-slate-300 truncate text-center font-mono border-t border-white/5">
-                                    {c.fileName || 'Bez názvu'}
+                                    <div className="absolute bottom-0 inset-x-0 bg-black/80 p-3 text-xs text-slate-300 truncate text-center font-mono border-t border-white/5">
+                                        {c.fileName || 'Bez názvu'}
+                                    </div>
                                 </div>
                             </div>
                         )

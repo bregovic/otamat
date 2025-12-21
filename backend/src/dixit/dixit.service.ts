@@ -585,9 +585,18 @@ export class DixitService implements OnModuleInit {
         const playerCount = game.players.length;
         const HAND_SIZE = playerCount === 3 ? 7 : 6;
 
-        const currentIdx = game.players.findIndex(p => p.id === game.storytellerId);
-        const nextIdx = (currentIdx + 1) % game.players.length;
-        const nextStoryteller = game.players[nextIdx];
+        // Sort players to ensure stable rotation (game.players order from DB is not guaranteed)
+        const sortedPlayers = [...game.players].sort((a, b) => a.id.localeCompare(b.id));
+
+        const currentIdx = sortedPlayers.findIndex(p => p.id === game.storytellerId);
+        let nextIdx = 0;
+
+        // If current storyteller left or is invalid, start from 0, otherwise rotate
+        if (currentIdx !== -1) {
+            nextIdx = (currentIdx + 1) % sortedPlayers.length;
+        }
+
+        const nextStoryteller = sortedPlayers[nextIdx];
 
         let deck = [...game.deck];
 

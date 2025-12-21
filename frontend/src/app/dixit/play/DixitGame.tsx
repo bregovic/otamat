@@ -33,7 +33,7 @@ const CardSelector = ({ cards, selectedCardId, onSelect, disabledIds = [], showO
             // Defer slightly to avoid render loop if necessary, but direct call is usually fine in React 18+
             if (selectedCardId !== cid) onSelect(cid);
         }
-    }, [currentIndex, viewMode]);
+    }, [currentIndex, viewMode, cards]);
 
     // Keyboard Navigation
     useEffect(() => {
@@ -140,16 +140,9 @@ const CardSelector = ({ cards, selectedCardId, onSelect, disabledIds = [], showO
                         />
 
                         {/* Status Overlay */}
-                        {disabledIds.includes(currentCardId) ? (
+                        {disabledIds.includes(currentCardId) && (
                             <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-[2px] flex items-center justify-center z-10">
                                 <span className="bg-black/80 px-4 py-2 rounded-xl text-white text-sm font-bold border border-white/10">Tvoje karta</span>
-                            </div>
-                        ) : (
-                            // Auto-selected indicator
-                            <div className="absolute top-4 right-4 z-10">
-                                <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
-                                    <Check size={12} /> VYBRÁNO
-                                </span>
                             </div>
                         )}
                     </div>

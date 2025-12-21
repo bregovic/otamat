@@ -264,23 +264,31 @@ export class DixitService implements OnModuleInit {
             });
         }
 
-        await this.prisma.dixitGame.update({
-            where: { id: game.id },
-            data: { deck }
-        });
+        const storyteller = game.players[0]; // Default to first player
 
+        // Create FIRST Round
+        await this.prisma.dixitRound.create({
+            data: {
+                gameId: game.id,
+                roundNumber: 1,
+                storytellerId: storyteller.id,
+                clue: "",
+                cardsPlayed: {},
+                votes: {},
+                scores: {}
+            }
+        });
 
         await this.prisma.dixitGame.update({
             where: { id: game.id },
             data: {
+                deck: deck,
                 status: GameStatus.ACTIVE,
                 phase: DixitPhase.STORYTELLER_PICK,
-                storytellerId: null, // No storyteller yet
+                storytellerId: storyteller.id,
                 currentRound: 1
             }
         });
-
-        // Round 1 will be created when a player claims storyteller
 
         return this.getGameState(game.id);
     }
@@ -591,6 +599,19 @@ export class DixitService implements OnModuleInit {
                 await this.prisma.dixitPlayer.update({ where: { id: player.id }, data: { hand } });
             }
         }
+
+        // Create Next Round
+        await this.prisma.dixitRound.create({
+            data: {
+                gameId: game.id,
+                roundNumber: game.currentRound + 1,
+                storytellerId: nextStoryteller.id,
+                clue: "",
+                cardsPlayed: {},
+                votes: {},
+                scores: {}
+            }
+        });
 
         await this.prisma.dixitGame.update({
             where: { id: game.id },

@@ -84,7 +84,7 @@ export default function ImageManager({ onClose }: { onClose: () => void }) {
                         const url = `${BACKEND_URL}/dixit/image/${c.id}?t=${c._ts || ''}`;
                         return (
                             <div key={c.id} className={`relative group rounded-xl bg-slate-800 border-2 w-full shadow-md hover:shadow-xl transition-all ${isDup ? 'border-red-500 ring-4 ring-red-500/30' : 'border-slate-700 hover:border-slate-500'}`}>
-                                <div className="relative w-full pb-[150%] overflow-hidden rounded-xl">
+                                <div className="relative w-full overflow-hidden rounded-xl" style={{ paddingBottom: '150%' }}>
                                     <img src={url} className="absolute inset-0 w-full h-full object-cover" loading="lazy" alt={c.fileName} />
 
                                     {/* Always Visible Controls */}

@@ -78,22 +78,38 @@ export default function ImageManager({ onClose }: { onClose: () => void }) {
             {loading ? (
                 <div className="flex-1 flex items-center justify-center text-white"><Loader2 className="animate-spin w-12 h-12" /></div>
             ) : (
-                <div className="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 pb-20 custom-scrollbar content-start">
+                <div className="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20 custom-scrollbar content-start p-2">
                     {cards.map(c => {
                         const isDup = c.fileName && filenameCounts[c.fileName] > 1;
                         const url = `${BACKEND_URL}/dixit/image/${c.id}?t=${c._ts || ''}`;
                         return (
-                            <div key={c.id} className={`relative group rounded-xl overflow-hidden bg-slate-800 border-2 aspect-[2/3] transition-all shadow-md hover:shadow-xl ${isDup ? 'border-red-500 ring-2 ring-red-500/30' : 'border-slate-700 hover:border-slate-500'}`}>
-                                <img src={url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" alt={c.fileName} />
+                            <div key={c.id} className={`relative group rounded-xl overflow-hidden bg-slate-800 border-2 aspect-[2/3] transition-all shadow-md hover:shadow-xl ${isDup ? 'border-red-500 ring-4 ring-red-500/30' : 'border-slate-700 hover:border-slate-500'}`}>
+                                <img src={url} className="w-full h-full object-cover" loading="lazy" alt={c.fileName} />
 
-                                {/* Overlay */}
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-4 backdrop-blur-sm">
-                                    <button onClick={() => handleRotate(c.id)} className="p-3 bg-blue-600 rounded-full hover:bg-blue-500 text-white shadow-lg transform hover:rotate-180 transition-transform"><RotateCw /></button>
-                                    <button onClick={() => handleDelete(c.id)} className="p-3 bg-red-600 rounded-full hover:bg-red-500 text-white shadow-lg hover:scale-110 transition-transform"><Trash2 /></button>
+                                {/* Always Visible Controls */}
+                                <div className="absolute top-2 left-2 right-2 flex justify-between z-10">
+                                    <button
+                                        onClick={() => handleRotate(c.id)}
+                                        className="p-3 bg-black/60 hover:bg-blue-600/90 text-white rounded-full backdrop-blur-md transition-all shadow-lg border border-white/10 hover:scale-110"
+                                        title="Otočit o 90°"
+                                    >
+                                        <RotateCw size={20} />
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleDelete(c.id)}
+                                        className="p-3 bg-black/60 hover:bg-red-600/90 text-white rounded-full backdrop-blur-md transition-all shadow-lg border border-white/10 hover:scale-110"
+                                        title="Smazat"
+                                    >
+                                        <Trash2 size={20} />
+                                    </button>
                                 </div>
 
-                                {isDup && <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] px-2 py-0.5 rounded shadow font-bold animate-pulse">DUPLICITA</div>}
-                                <div className="absolute bottom-0 inset-x-0 bg-black/80 p-1.5 text-[10px] text-slate-300 truncate text-center font-mono border-t border-white/5">{c.fileName || 'Bez názvu'}</div>
+                                {isDup && <div className="absolute bottom-20 left-0 right-0 text-center pointer-events-none"><span className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg animate-pulse">DUPLICITA</span></div>}
+
+                                <div className="absolute bottom-0 inset-x-0 bg-black/80 p-3 text-xs text-slate-300 truncate text-center font-mono border-t border-white/5">
+                                    {c.fileName || 'Bez názvu'}
+                                </div>
                             </div>
                         )
                     })}

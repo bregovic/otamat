@@ -288,59 +288,96 @@ function DixitContent() {
 
                 {/* Settings Modal */}
                 {showSettings && (
-                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                        <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl w-full max-w-sm relative shadow-2xl animate-in fade-in zoom-in duration-200">
-                            <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={24} /></button>
-                            <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2"><Settings size={24} /> Nastavení hry</h2>
+                    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-slate-900 border border-white/10 p-8 rounded-3xl w-full max-w-2xl relative shadow-2xl animate-in zoom-in-95 duration-200 ring-1 ring-white/10">
 
-                            <div className="space-y-6">
+                            {/* Header */}
+                            <div className="flex justify-between items-start mb-8">
                                 <div>
-                                    <label className="block text-slate-400 text-xs uppercase font-bold tracking-widest mb-2">Cílové skóre</label>
-                                    <div className="flex items-center gap-4">
+                                    <h2 className="text-4xl font-black text-white flex items-center gap-3">
+                                        <Settings className="w-8 h-8 text-indigo-500" />
+                                        Nastavení hry
+                                    </h2>
+                                    <p className="text-slate-400 mt-2">Uprav pravidla hry a spravuj obsah.</p>
+                                </div>
+                                <button onClick={() => setShowSettings(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-8">
+                                {/* Winning Score */}
+                                <div className="bg-black/20 p-6 rounded-2xl border border-white/5">
+                                    <label className="block text-indigo-400 text-xs uppercase font-black tracking-widest mb-4">🏆 Cílové skóre (Délka hry)</label>
+                                    <div className="flex items-center gap-6">
                                         <input
-                                            type="number"
+                                            type="range"
+                                            min="15"
+                                            max="60"
+                                            step="5"
                                             value={gameSettings.winningScore}
-                                            onChange={(e) => setGameSettings({ ...gameSettings, winningScore: parseInt(e.target.value) || 30 })}
-                                            className="w-full bg-slate-800 text-white p-3 rounded-xl border border-slate-700 font-bold text-center text-xl focus:border-indigo-500 outline-none"
+                                            onChange={(e) => setGameSettings({ ...gameSettings, winningScore: parseInt(e.target.value) })}
+                                            className="w-full accent-indigo-500 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
                                         />
+                                        <div className="text-4xl font-black text-white w-20 text-center bg-slate-800 py-2 rounded-xl border border-white/10">
+                                            {gameSettings.winningScore}
+                                        </div>
                                     </div>
-                                    <p className="text-xs text-slate-500 mt-1">Počet bodů nutný pro vítězství.</p>
+                                    <div className="flex justify-between text-xs text-slate-500 mt-2 font-bold px-1">
+                                        <span>Rychlá (15)</span>
+                                        <span>Standard (30)</span>
+                                        <span>Dlouhá (60)</span>
+                                    </div>
                                 </div>
 
+                                {/* Clue Mode */}
                                 <div>
-                                    <label className="block text-slate-400 text-xs uppercase font-bold tracking-widest mb-2">Režim nápovědy</label>
-                                    <div className="grid grid-cols-1 gap-2">
+                                    <label className="block text-indigo-400 text-xs uppercase font-black tracking-widest mb-4">🎭 Režim nápovědy</label>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <button
                                             onClick={() => setGameSettings({ ...gameSettings, clueMode: 'TEXT' })}
-                                            className={`p-3 rounded-xl border text-left font-bold transition-all relative overflow-hidden ${gameSettings.clueMode === 'TEXT' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                            className={`p-6 rounded-2xl border-2 text-left transition-all relative overflow-hidden group ${gameSettings.clueMode === 'TEXT'
+                                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                                                    : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-750 hover:border-slate-700'
+                                                }`}
                                         >
-                                            <div className="relative z-10 flex items-center gap-2">📝 Text (Klasika)</div>
-                                            <div className="text-xs font-normal opacity-70 relative z-10">Zadávání nápovědy psaním.</div>
+                                            <div className="relative z-10">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <span className="text-2xl">📝</span>
+                                                    <span className="font-black text-lg">Text (Klasika)</span>
+                                                </div>
+                                                <p className={`text-sm leading-relaxed ${gameSettings.clueMode === 'TEXT' ? 'text-indigo-100' : 'text-slate-500'}`}>
+                                                    Vypravěč píše nápovědu. Pro on-line hraní.
+                                                </p>
+                                            </div>
                                         </button>
+
                                         <button
                                             onClick={() => setGameSettings({ ...gameSettings, clueMode: 'REAL' })}
-                                            className={`p-3 rounded-xl border text-left font-bold transition-all ${gameSettings.clueMode === 'REAL' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                            className={`p-6 rounded-2xl border-2 text-left transition-all group ${gameSettings.clueMode === 'REAL'
+                                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                                                    : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-750 hover:border-slate-700'
+                                                }`}
                                         >
-                                            <div className="flex items-center gap-2">🗣️ Hlas (Offline)</div>
-                                            <div className="text-xs font-normal opacity-70">Hráči jsou v jedné místnosti.</div>
-                                        </button>
-                                        <button
-                                            disabled
-                                            className={`p-3 rounded-xl border text-left font-bold transition-all bg-slate-800/30 border-slate-700/30 text-slate-600 cursor-not-allowed`}
-                                        >
-                                            <div className="flex items-center gap-2"><Mic size={16} /> Nahrávání (Brzy)</div>
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className="text-2xl">🗣️</span>
+                                                <span className="font-black text-lg">Hlas (Offline)</span>
+                                            </div>
+                                            <p className={`text-sm leading-relaxed ${gameSettings.clueMode === 'REAL' ? 'text-indigo-100' : 'text-slate-500'}`}>
+                                                Vypravěč mluví. Pro hraní v jedné místnosti.
+                                            </p>
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
-                            <button onClick={() => setShowSettings(false)} className="w-full mt-8 bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-colors border border-white/10">
-                                Uložit nastavení
-                            </button>
-
-                            <div className="pt-6 border-t border-white/10 mt-6">
-                                <button onClick={() => setShowImageManager(true)} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 border border-slate-700">
+                            {/* Actions */}
+                            <div className="mt-10 flex gap-4">
+                                <button onClick={() => setShowImageManager(true)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2 hover:border-white/20">
                                     <Images size={20} /> Správa obrázků
+                                </button>
+                                <button onClick={() => setShowSettings(false)} className="flex-[2] bg-white text-black hover:bg-gray-200 font-black py-4 rounded-xl transition-transform hover:scale-[1.02] shadow-lg border-2 border-transparent">
+                                    ULOŽIT A ZAVŘÍT
                                 </button>
                             </div>
                         </div>

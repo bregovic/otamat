@@ -623,17 +623,7 @@ export class DixitService implements OnModuleInit {
             }
         });
 
-        await this.prisma.dixitRound.create({
-            data: {
-                gameId: game.id,
-                roundNumber: game.currentRound + 1,
-                storytellerId: nextStoryteller.id,
-                clue: "",
-                cardsPlayed: {},
-                votes: {},
-                scores: {}
-            }
-        });
+
 
         await this.prisma.dixitPlayer.updateMany({
             where: { gameId: game.id },

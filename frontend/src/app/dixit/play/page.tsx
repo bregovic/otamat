@@ -33,6 +33,11 @@ function DixitContent() {
     const [gameState, setGameState] = useState<any>(null);
     const [pinCode, setPinCode] = useState<string | null>(null);
 
+    // Derived State
+    const isHost = (gameState?.hostId && gameState.hostId === playerId) || (gameState?.players && gameState.players[0]?.id === playerId);
+    const playerCount = gameState?.players?.length || 0;
+    const canStart = playerCount >= 2;
+
     // Refs for Event-based confirmation
     const nicknameRef = useRef('');
     const creationPendingRef = useRef(false);
@@ -349,8 +354,8 @@ function DixitContent() {
                                         <button
                                             onClick={() => setGameSettings({ ...gameSettings, clueMode: 'TEXT' })}
                                             className={`p-8 rounded-3xl border-2 text-left transition-all relative overflow-hidden group ${gameSettings.clueMode === 'TEXT'
-                                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-500/20 scale-[1.02]'
-                                                    : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-750 hover:border-slate-700'
+                                                ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-500/20 scale-[1.02]'
+                                                : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-750 hover:border-slate-700'
                                                 }`}
                                         >
                                             <div className="relative z-10">
@@ -367,8 +372,8 @@ function DixitContent() {
                                         <button
                                             onClick={() => setGameSettings({ ...gameSettings, clueMode: 'REAL' })}
                                             className={`p-8 rounded-3xl border-2 text-left transition-all group ${gameSettings.clueMode === 'REAL'
-                                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-500/20 scale-[1.02]'
-                                                    : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-750 hover:border-slate-700'
+                                                ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-500/20 scale-[1.02]'
+                                                : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-750 hover:border-slate-700'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-4 mb-3">
@@ -412,6 +417,15 @@ function DixitContent() {
                     <div className="flex items-center gap-2">
                         <div className="text-xl font-black bg-white/10 w-10 h-10 flex items-center justify-center rounded-lg">{gameState.rounds?.length || 1}</div>
                         <span className="text-xs font-bold text-slate-400 uppercase">KOLO</span>
+                        {isHost && (
+                            <button
+                                onClick={() => { if (confirm('Opravdu vynutit posun hry? Použijte jen když se hra zasekne.')) socket?.emit('dixit:forceNext', { pin: pinCode }); }}
+                                className="bg-red-500/10 hover:bg-red-500/30 text-red-500 p-2 rounded-lg border border-red-500/20 flex items-center gap-2 text-[10px] font-bold ml-2 transition-colors uppercase tracking-wider"
+                                title="Vynutit další krok (pro zaseknutou hru)"
+                            >
+                                <ArrowRight size={12} /> <span className="hidden md:inline">SKIP</span>
+                            </button>
+                        )}
                     </div>
                     <div className="flex flex-col items-end">
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">TVOJE SKÓRE</span>
@@ -433,9 +447,6 @@ function DixitContent() {
 
     // 4. LOBBY SCREEN (OtaMat Style)
     // NOTE: This is OtaMat Host Style adapted.
-    const isHost = (gameState?.hostId && gameState.hostId === playerId) || (gameState?.players && gameState.players[0]?.id === playerId);
-    const playerCount = gameState?.players?.length || 0;
-    const canStart = playerCount >= 2;
 
     return (
         <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#09090b] to-black">
@@ -488,8 +499,18 @@ function DixitContent() {
                     ) : (
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
                             {gameState?.players?.map((p: any, i: number) => (
-                                <div key={p.id} className="flex flex-col items-center gap-4 avatar-float" style={{ animationDelay: `${i * 0.1}s` }}>
+                                <div key={p.id} className="flex flex-col items-center gap-4 avatar-float relative group" style={{ animationDelay: `${i * 0.1}s` }}>
                                     <div className="text-6xl bg-white/10 w-24 h-24 rounded-full flex items-center justify-center border-4 border-white/20 shadow-lg relative">
+                                        {/* Kick Button */}
+                                        {isHost && p.id !== playerId && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); if (confirm(`Vyhodit hráče ${p.nickname}?`)) socket?.emit('dixit:kick', { pin: pinCode, playerId: p.id }); }}
+                                                className="absolute -top-2 -left-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg border-2 border-white hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-all z-20 scale-90 hover:scale-110"
+                                                title="Vyhodit hráče"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        )}
                                         {avatarMap[p.avatar] || p.avatar}
                                         {/* Matches OtaMat rendering */}
                                         {/* Crown logic: host */}

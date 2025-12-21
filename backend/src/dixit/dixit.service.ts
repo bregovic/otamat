@@ -689,4 +689,65 @@ export class DixitService implements OnModuleInit {
         return this.prisma.dixitCard.findUnique({ where: { id } });
     }
 
+    async kickPlayer(pin: string, playerId: string) {
+        const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin }, include: { players: true } });
+        if (!game) throw new Error('Game not found');
+
+        await this.prisma.dixitPlayer.delete({ where: { id: playerId } });
+
+        return this.getGameState(game.id);
+    }
+
+    async forceNextPhase(pin: string) {
+        const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin }, include: { players: true } });
+        if (!game) throw new Error('Game not found');
+
+        const round = await this.prisma.dixitRound.findFirst({
+            where: { gameId: game.id },
+            orderBy: { roundNumber: 'desc' }
+        });
+
+        if (!round) return game;
+
+        if (game.phase === DixitPhase.STORYTELLER_PICK) {
+            const st = game.players.find(p => p.id === game.storytellerId);
+            if (st && st.hand.length > 0) {
+                await this.setClueAndCard(pin, st.id, "Vynucená nápověda (AFK)", st.hand[0]);
+            }
+        } else if (game.phase === DixitPhase.PLAYERS_PICK) {
+            const played = Object.keys(round.cardsPlayed as any || {});
+            const needed = game.players.filter(p => p.id !== game.storytellerId && !played.includes(p.id));
+
+            for (const p of needed) {
+                if (p.hand.length > 0) {
+                    await this.submitPlayerCard(pin, p.id, p.hand[0]);
+                }
+            }
+        } else if (game.phase === DixitPhase.VOTING) {
+            const voted = Object.keys(round.votes as any || {});
+            const cardsPlayedMap = round.cardsPlayed as any || {};
+
+            let allPlayedCards: string[] = [];
+            Object.values(cardsPlayedMap).forEach((val: any) => {
+                if (Array.isArray(val)) allPlayedCards.push(...val);
+                else allPlayedCards.push(val);
+            });
+
+            const needed = game.players.filter(p => p.id !== game.storytellerId && !voted.includes(p.id));
+
+            for (const p of needed) {
+                const target = allPlayedCards[Math.floor(Math.random() * allPlayedCards.length)];
+                try {
+                    await this.submitVote(pin, p.id, target);
+                } catch (e) {
+                    // Ignore err (e.g. self-vote check if strict)
+                }
+            }
+        } else if (game.phase === DixitPhase.SCORING) {
+            await this.nextRound(pin);
+        }
+
+        return this.getGameState(game.id);
+    }
+
 }

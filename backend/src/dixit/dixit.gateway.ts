@@ -201,4 +201,20 @@ export class DixitGateway {
         const gameState = await this.dixitService.nextRound(data.pin);
         this.server.to(data.pin).emit('dixit:update', gameState);
     }
+
+    @SubscribeMessage('dixit:kick')
+    async handleKickPlayer(
+        @MessageBody() data: { pin: string; playerId: string }
+    ) {
+        const gameState = await this.dixitService.kickPlayer(data.pin, data.playerId);
+        this.server.to(data.pin).emit('dixit:update', gameState);
+    }
+
+    @SubscribeMessage('dixit:forceNext')
+    async handleForceNext(
+        @MessageBody() data: { pin: string }
+    ) {
+        const gameState = await this.dixitService.forceNextPhase(data.pin);
+        this.server.to(data.pin).emit('dixit:update', gameState);
+    }
 }

@@ -143,6 +143,16 @@ export class DixitService implements OnModuleInit {
                 playerId = player.id;
                 console.log('[DixitService] Creator joined as player:', playerId);
                 onProgress?.('Step 11 Done: Creator Joined');
+
+                // ASYNC: Try to link host in background to fix "Start Game" permissions
+                // We don't await this to avoid blocking the response if it hangs
+                if (finalHostId) {
+                    this.prisma.dixitGame.update({
+                        where: { id: game.id },
+                        data: { hostId: finalHostId }
+                    }).then(() => console.log('[DixitService] Background: Host linked successfully'))
+                        .catch(e => console.error('[DixitService] Background: Host link failed', e));
+                }
             }
 
             // Return game with players included

@@ -350,10 +350,13 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
                         {clueMode === 'TEXT' ? (
                             <input
                                 type="text"
-                                placeholder="Zadej nápovědu..."
+                                placeholder={selectedCardId && !clueInput ? "👈 NAPIŠ NÁPOVĚDU SEM!" : "Zadej nápovědu..."}
                                 value={clueInput}
                                 onChange={e => setClueInput(e.target.value)}
-                                className="bg-slate-800 border-2 border-slate-500 text-white placeholder-slate-300 p-4 rounded-xl text-xl font-bold outline-none focus:border-emerald-400 focus:bg-slate-700 transition-all text-center w-full shadow-[0_0_15px_rgba(0,0,0,0.5)]"
+                                className={`bg-slate-800 border-2 text-white placeholder-slate-400 p-4 rounded-xl text-xl font-bold outline-none transition-all text-center w-full shadow-[0_0_15px_rgba(0,0,0,0.5)] ${(selectedCardId && !clueInput)
+                                        ? 'border-amber-500 animate-pulse ring-4 ring-amber-500/20'
+                                        : 'border-slate-500 focus:border-emerald-400 focus:bg-slate-700'
+                                    }`}
                             />
                         ) : (
                             <div className="bg-indigo-900/50 border border-indigo-500 text-indigo-200 p-4 rounded-xl text-center mb-2 font-bold animate-pulse flex items-center justify-center gap-2">

@@ -191,6 +191,10 @@ export class DixitService implements OnModuleInit {
             throw new Error('Game already finished');
         }
 
+        if (game.players.some(p => p.nickname.trim().toLowerCase() === nickname.trim().toLowerCase())) {
+            throw new Error(`Jméno "${nickname}" je již obsazeno.`);
+        }
+
         const player = await this.prisma.dixitPlayer.create({
             data: {
                 gameId: game.id,

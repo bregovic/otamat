@@ -31,9 +31,12 @@ const CardSelector = ({ cards, selectedCardId, onSelect, disabledIds = [], showO
         const cid = cards[currentIndex];
         if (viewMode === 'gallery' && cid && !disabledIds.includes(cid)) {
             // Defer slightly to avoid render loop if necessary, but direct call is usually fine in React 18+
-            if (selectedCardId !== cid) onSelect(cid);
+            const t = setTimeout(() => {
+                if (selectedCardId !== cid) onSelect(cid);
+            }, 50);
+            return () => clearTimeout(t);
         }
-    }, [currentIndex, viewMode, cards]);
+    }, [currentIndex, viewMode, cards, selectedCardId]);
 
     // Keyboard Navigation
     useEffect(() => {
@@ -124,7 +127,7 @@ const CardSelector = ({ cards, selectedCardId, onSelect, disabledIds = [], showO
                     onTouchEnd={handleTouchEnd}
                 >
                     {/* Gallery Card - Height constrained for mobile */}
-                    <div className="relative h-[55vh] aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl bg-slate-800 border border-slate-700 mx-auto">
+                    <div className={`relative h-[55vh] aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl bg-slate-800 border-4 mx-auto transition-all duration-300 ${selectedCardId === currentCardId ? 'border-emerald-500 shadow-emerald-500/20 scale-[1.02]' : 'border-slate-700'}`}>
                         {/* Nav Buttons (Absolute) */}
                         <button onClick={() => cycle(-1)} className="absolute left-2 top-1/2 -translate-y-1/2 p-3 bg-black/40 text-white rounded-full z-20 backdrop-blur-sm hover:bg-black/60 border border-white/5 active:scale-95 transition-all">
                             <ChevronLeft size={28} />

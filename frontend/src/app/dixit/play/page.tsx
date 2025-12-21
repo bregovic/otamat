@@ -337,8 +337,8 @@ function DixitContent() {
                                         <button
                                             onClick={() => setGameSettings({ ...gameSettings, clueMode: 'TEXT' })}
                                             className={`p-6 rounded-2xl border-2 text-left transition-all relative overflow-hidden group ${gameSettings.clueMode === 'TEXT'
-                                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                                                    : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-750 hover:border-slate-700'
+                                                ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                                                : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-750 hover:border-slate-700'
                                                 }`}
                                         >
                                             <div className="relative z-10">
@@ -355,8 +355,8 @@ function DixitContent() {
                                         <button
                                             onClick={() => setGameSettings({ ...gameSettings, clueMode: 'REAL' })}
                                             className={`p-6 rounded-2xl border-2 text-left transition-all group ${gameSettings.clueMode === 'REAL'
-                                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                                                    : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-750 hover:border-slate-700'
+                                                ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                                                : 'bg-slate-800 border-transparent text-slate-400 hover:bg-slate-750 hover:border-slate-700'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-3 mb-2">
@@ -391,7 +391,7 @@ function DixitContent() {
     }
 
     // 3. Game Running
-    if (gameState?.status === 'ACTIVE') {
+    if (gameState?.status === 'ACTIVE' || gameState?.status === 'FINISHED') {
         return (
             <div className="min-h-screen bg-slate-950 text-white relative bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#09090b] to-black">
                 {/* Header / Top Bar */}

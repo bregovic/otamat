@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { BACKEND_URL } from '@/utils/config';
 import { getAvatarIcon } from '@/utils/avatars';
-import { Check, X, Crown, Lightbulb, Trophy, ArrowRight, Loader2, Grid as GridIcon, Square, ChevronLeft, ChevronRight, Volume2 } from 'lucide-react';
+import { Check, X, Crown, Lightbulb, Trophy, ArrowRight, Loader2, Grid as GridIcon, Square, ChevronLeft, ChevronRight, Volume2, RotateCcw } from 'lucide-react';
 
 interface DixitGameProps {
     socket: Socket;
@@ -165,7 +165,7 @@ const CardSelector = ({ cards, selectedCardId, onSelect, disabledIds = [], showO
     );
 };
 
-const ResultsView = ({ players }: { players: any[] }) => {
+const ResultsView = ({ players, isHost, onRestart }: { players: any[], isHost: boolean, onRestart: () => void }) => {
     const sorted = [...players].sort((a, b) => a.score - b.score); // Ascending
     const [visibleCount, setVisibleCount] = useState(0);
 
@@ -218,12 +218,25 @@ const ResultsView = ({ players }: { players: any[] }) => {
             </div>
 
             {visibleCount === sorted.length && (
-                <button
-                    onClick={() => window.location.href = '/otamat/dixit'}
-                    className="mt-12 bg-white/10 hover:bg-white/20 text-white font-bold py-4 px-12 rounded-full transition-all border border-white/20 hover:scale-105"
-                >
-                    Zpět do menu
-                </button>
+                <div className="flex flex-col gap-4 items-center mt-12 w-full max-w-sm">
+                    {/* Host Restart Button */}
+                    {isHost && (
+                        <button
+                            onClick={() => { if (confirm('Opravdu chcete spustit novou hru? Všichni budou vráceni do Lobby.')) onRestart(); }}
+                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 px-8 rounded-xl transition-all shadow-lg hover:scale-105 flex items-center justify-center gap-2"
+                        >
+                            <RotateCcw size={24} /> NOVÁ HRA
+                        </button>
+                    )}
+
+                    {/* Back to Menu (Leave) */}
+                    <button
+                        onClick={() => window.location.href = '/otamat/dixit'}
+                        className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-4 px-8 rounded-xl transition-all border border-white/20 hover:scale-105"
+                    >
+                        Zpět do menu
+                    </button>
+                </div>
             )}
         </div>
     );
@@ -314,7 +327,8 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
     };
 
     if (gameState.status === 'FINISHED') {
-        return <ResultsView players={gameState.players} />;
+        const isHost = gameState.hostId === playerId || (!gameState.hostId && gameState.players[0]?.id === playerId);
+        return <ResultsView players={gameState.players} isHost={isHost} onRestart={() => socket.emit('dixit:restart', { pin: pinCode })} />;
     }
 
     if (phase === 'STORYTELLER_PICK') {

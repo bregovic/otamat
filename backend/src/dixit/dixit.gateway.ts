@@ -217,4 +217,12 @@ export class DixitGateway {
         const gameState = await this.dixitService.forceNextPhase(data.pin);
         this.server.to(data.pin).emit('dixit:update', gameState);
     }
+
+    @SubscribeMessage('dixit:restart')
+    async handleRestart(
+        @MessageBody() data: { pin: string }
+    ) {
+        const gameState = await this.dixitService.restartGame(data.pin);
+        this.server.to(data.pin).emit('dixit:update', gameState);
+    }
 }

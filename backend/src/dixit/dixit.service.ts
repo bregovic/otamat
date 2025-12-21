@@ -750,4 +750,28 @@ export class DixitService implements OnModuleInit {
         return this.getGameState(game.id);
     }
 
+    async restartGame(pin: string) {
+        const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin } });
+        if (!game) throw new Error('Game not found');
+
+        await this.prisma.dixitRound.deleteMany({ where: { gameId: game.id } });
+
+        await this.prisma.dixitPlayer.updateMany({
+            where: { gameId: game.id },
+            data: { score: 0, hand: [], votedCardId: null, submittedCardId: null }
+        });
+
+        await this.prisma.dixitGame.update({
+            where: { id: game.id },
+            data: {
+                status: GameStatus.WAITING,
+                currentRound: 0,
+                storytellerId: null,
+                deck: []
+            }
+        });
+
+        return this.getGameState(game.id);
+    }
+
 }

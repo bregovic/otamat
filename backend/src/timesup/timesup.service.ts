@@ -57,6 +57,13 @@ export class TimesUpService {
         });
     }
 
+    async getPlayer(playerId: number) {
+        return this.prisma.timesUpPlayer.findUnique({
+            where: { id: playerId },
+            include: { game: true }
+        });
+    }
+
     async joinGame(code: string, playerName: string, avatar: string, socketId?: string): Promise<TimesUpPlayer> {
         const game = await this.prisma.timesUpGame.findUnique({ where: { gameCode: code } });
         if (!game) throw new Error('Hra nenalezena');

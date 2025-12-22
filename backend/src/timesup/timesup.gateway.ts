@@ -50,4 +50,17 @@ export class TimesUpGateway {
             return { success: false, error: 'Hra nenalezena' };
         }
     }
+    @SubscribeMessage('timesup:rejoin')
+    async handleRejoinGame(@MessageBody() data: { playerId: number }, @ConnectedSocket() client: Socket) {
+        try {
+            const player = await this.timesupService.getPlayer(data.playerId);
+            if (player) {
+                client.join(player.game.gameCode);
+                return { success: true, gameCode: player.game.gameCode, player };
+            }
+            return { success: false, error: 'Hráč nenalezen' };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }
 }

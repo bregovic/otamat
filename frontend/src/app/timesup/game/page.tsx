@@ -10,7 +10,20 @@ function GameControllerContent() {
     const socket = useTimesUpSocket();
     const [status, setStatus] = useState('WAITING');
 
-    // In future: listen for 'gameState' updates to show cards if active player
+    useEffect(() => {
+        if (!socket || !code) return;
+
+        const playerId = localStorage.getItem('timesup_playerId');
+        if (playerId) {
+            socket.emit('timesup:rejoin', { playerId: parseInt(playerId) }, (response: any) => {
+                if (response.success) {
+                    console.log("Rejoined successfully");
+                } else {
+                    console.error("Rejoin failed:", response.error);
+                }
+            });
+        }
+    }, [socket, code]);
 
     if (!code) return <div className="text-white text-center p-8">Chybí kód hry!</div>;
 

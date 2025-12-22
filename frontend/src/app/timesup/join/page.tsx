@@ -31,6 +31,7 @@ export default function JoinPage() {
         if (!socket) return;
         socket.emit('timesup:join', { code: code.toUpperCase(), name, avatar }, (response: any) => {
             if (response.success) {
+                localStorage.setItem('timesup_playerId', response.playerId);
                 router.push(`/timesup/game?code=${response.gameCode}`);
             } else {
                 alert(response.error || "Chyba při připojování");

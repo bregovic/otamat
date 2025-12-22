@@ -15,9 +15,23 @@ export default function HostPage() {
     useEffect(() => {
         if (!socket) return;
 
+        // Check for existing session
+        const storedHostId = localStorage.getItem('timesup_hostId');
+        if (storedHostId) {
+            console.log("Restoring session for host:", storedHostId);
+            socket.emit('timesup:getHostGame', { hostId: storedHostId });
+        }
+
         // Listen for events from TimesUpGateway
         socket.on('timesup:created', (game) => {
             console.log("Game Created:", game);
+            localStorage.setItem('timesup_hostId', game.hostId);
+            setCreatedGame(game);
+            setPlayers(game.players || []);
+        });
+
+        socket.on('timesup:gameData', (game) => {
+            console.log("Game Restored:", game);
             setCreatedGame(game);
             setPlayers(game.players || []);
         });
@@ -29,6 +43,7 @@ export default function HostPage() {
 
         return () => {
             socket.off('timesup:created');
+            socket.off('timesup:gameData');
             socket.off('timesup:playerJoined');
         };
     }, [socket]);

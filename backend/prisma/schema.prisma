@@ -264,3 +264,97 @@ model DixitCard {
   fileName  String?
   createdAt DateTime @default(now())
 }
+
+// --- TIMES UP MODELS ---
+
+model TimesUpCard {
+  id       Int    @id @default(autoincrement())
+  value    String
+  level    Int    // Difficulty?
+  category String
+
+  @@map("timesup_cards")
+}
+
+model TimesUpGame {
+  id        Int      @id @default(autoincrement())
+  hostId    String   @unique @default(uuid())
+  gameCode  String   @unique // 4-char code
+  status    TimesUpGameStatus @default(LOBBY)
+
+  // Settings
+  teamCount Int      @default(2)
+  round     Int      @default(1) // 1: Text, 2: One Word, 3: Pantomime
+  timeLimit Int      @default(60)
+  category  String?  // Filter for cards
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  teams     TimesUpTeam[]
+  players   TimesUpPlayer[]
+  cards     TimesUpGameCard[]
+  
+  currentTeamId Int?
+  currentPlayerId Int?
+
+  timerEnd  DateTime? // When the current turn ends
+  isTimerRunning Boolean @default(false)
+  
+  @@map("timesup_games")
+}
+
+enum TimesUpGameStatus {
+  SETUP
+  LOBBY
+  PLAYING
+  FINISHED
+}
+
+model TimesUpTeam {
+  id        Int      @id @default(autoincrement())
+  gameId    Int
+  game      TimesUpGame     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  name      String
+  score     Int      @default(0)
+  order     Int      // Turn order
+
+  players   TimesUpPlayer[]
+  
+  @@map("timesup_teams")
+}
+
+model TimesUpPlayer {
+  id        Int      @id @default(autoincrement())
+  gameId    Int
+  game      TimesUpGame     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  teamId    Int?
+  team      TimesUpTeam?    @relation(fields: [teamId], references: [id])
+  
+  name      String
+  avatar    String?
+  socketId  String?  // To track connection
+  isHost    Boolean  @default(false)
+  
+  @@map("timesup_players")
+}
+
+model TimesUpGameCard {
+  id        Int      @id @default(autoincrement())
+  gameId    Int
+  game      TimesUpGame     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  
+  value     String   // Copied from Card
+  
+  state     TimesUpCardState @default(DECK)
+  roundGuessed Int?   // In which round it was guessed
+  
+  @@map("timesup_game_cards")
+}
+
+enum TimesUpCardState {
+  DECK
+  IN_HAND
+  GUESSED
+  SKIPPED
+}

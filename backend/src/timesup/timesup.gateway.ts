@@ -63,4 +63,17 @@ export class TimesUpGateway {
             return { success: false, error: e.message };
         }
     }
+
+    @SubscribeMessage('timesup:startGame')
+    async handleStartGame(@MessageBody() data: { gameCode: string }, @ConnectedSocket() client: Socket) {
+        try {
+            console.log("Starting game:", data.gameCode);
+            const game = await this.timesupService.startGame(data.gameCode);
+            this.server.to(data.gameCode).emit('timesup:gameStarted', game);
+            return { success: true };
+        } catch (e) {
+            console.error("Start game failed:", e);
+            return { success: false, error: e.message };
+        }
+    }
 }

@@ -36,6 +36,12 @@ export default function HostPage() {
             setPlayers(game.players || []);
         });
 
+        socket.on('timesup:gameStarted', (game) => {
+            console.log("Game Started:", game);
+            setCreatedGame(game);
+            setPlayers(game.players || []);
+        });
+
         socket.on('timesup:playerJoined', (player) => {
             console.log("Player Joined:", player);
             setPlayers(prev => [...prev, player]);
@@ -44,6 +50,7 @@ export default function HostPage() {
         return () => {
             socket.off('timesup:created');
             socket.off('timesup:gameData');
+            socket.off('timesup:gameStarted');
             socket.off('timesup:playerJoined');
         };
     }, [socket]);
@@ -55,10 +62,56 @@ export default function HostPage() {
 
     const startGame = () => {
         if (!socket || !createdGame) return;
-        // TODO: Implement start game logic
-        console.log("Starting game...");
+        socket.emit('timesup:startGame', { gameCode: createdGame.gameCode });
     }
 
+    // GAME BOARD VIEW (When status is PLAYING or ROUND_1)
+    if (createdGame && (createdGame.status === 'PLAYING' || createdGame.status === 'ROUND_1')) {
+        return (
+            <div className="min-h-screen bg-[#0a0a0f] text-white p-8 flex flex-col items-center w-full relative overflow-hidden">
+                {/* Grid Background */}
+                <div className="absolute inset-0 bg-[url('/otamat/grid.svg')] opacity-10 pointer-events-none"></div>
+
+                <div className="text-center z-10 mt-12 mb-8 space-y-2">
+                    <h2 className="text-purple-500 font-bold tracking-widest uppercase">KOLO {createdGame.round || 1}</h2>
+                    <h1 className="text-6xl font-black text-white tracking-tighter">
+                        {createdGame.round === 1 && "POPIS SLOVY"}
+                        {createdGame.round === 2 && "JEDNO SLOVO"}
+                        {createdGame.round === 3 && "PANTOMIMA"}
+                    </h1>
+                </div>
+
+                {/* Scoreboard */}
+                <div className="flex gap-8 z-10 w-full max-w-4xl justify-center mb-12">
+                    {createdGame.teams?.map((team: any, idx: number) => (
+                        <div key={team.id} className={`glass-card p-6 flex-1 rounded-2xl border-t-4 transition-all ${createdGame.currentTeamId === team.id ? 'border-yellow-400 bg-white/10 scale-105 shadow-yellow-500/20 shadow-2xl' : 'border-slate-700 opacity-70'}`}>
+                            <div className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Tým {idx + 1}</div>
+                            <div className="text-2xl font-bold truncate mb-2">{team.name}</div>
+                            <div className="text-5xl font-black font-mono">{team.score || 0}</div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Timer / Active Player Info */}
+                <div className="z-10 bg-[#1e1e24] p-12 rounded-3xl border border-[#2a2a35] shadow-2xl flex flex-col items-center gap-6">
+                    {createdGame.currentTeamId ? (
+                        <>
+                            <p className="text-2xl text-slate-300">Na řadě je:</p>
+                            <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                                {/* Find current team name, player logic to be added */}
+                                {createdGame.teams.find((t: any) => t.id === createdGame.currentTeamId)?.name}
+                            </h2>
+                        </>
+                    ) : (
+                        <h2 className="text-4xl font-bold">Připravte se!</h2>
+                    )}
+                    {/* Here we will show the timer and current card later */}
+                </div>
+            </div>
+        )
+    }
+
+    // LOBBY VIEW
     if (createdGame) {
         const joinUrl = `https://hollyhop.cz/otamat/timesup/join?code=${createdGame.gameCode}`;
 

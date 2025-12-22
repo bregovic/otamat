@@ -16,16 +16,40 @@ export default function HostPage() {
     const [gameMode, setGameMode] = useState<'LOBBY' | 'SINGLE_DEVICE'>('LOBBY');
     const [manualPlayersText, setManualPlayersText] = useState('');
 
-    // New: Category State
-    const [category, setCategory] = useState<string>('CLASSIC'); // CLASSIC, KIDS, EVERYTHING
-
     // Game Settings
     const [teamCount, setTeamCount] = useState(2);
     const [timeLimit, setTimeLimit] = useState(60);
 
+    // New: Category State
+    const [difficulty, setDifficulty] = useState<number>(1);
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [availableCats, setAvailableCats] = useState<string[]>([]);
+
     // Live Game State
     const [createdGame, setCreatedGame] = useState<any>(null);
     const [players, setPlayers] = useState<any[]>([]);
+
+    useEffect(() => {
+        // Fetch categories
+        const apiUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+            ? 'http://localhost:4000'
+            : 'https://otamat-production.up.railway.app';
+
+        fetch(`${apiUrl}/timesup/admin/cards/categories`)
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setAvailableCats(data);
+            })
+            .catch(err => console.error("Failed to load categories", err));
+    }, []);
+
+    const toggleCategory = (cat: string) => {
+        if (selectedCategories.includes(cat)) {
+            setSelectedCategories(selectedCategories.filter(c => c !== cat));
+        } else {
+            setSelectedCategories([...selectedCategories, cat]);
+        }
+    };
 
     useEffect(() => {
         if (!socket) return;
@@ -92,9 +116,10 @@ export default function HostPage() {
             hostAvatar,
             mode: gameMode,
             players: manualPlayers,
-            teamCount: gameMode === 'SINGLE_DEVICE' ? Math.ceil((manualPlayers.length + 1) / 2) : teamCount, // Auto-calc teams for single device based on count? Or explicit
+            teamCount: gameMode === 'SINGLE_DEVICE' ? Math.ceil((manualPlayers.length + 1) / 2) : teamCount,
             timeLimit,
-            category // Passing category to backend
+            difficulty,
+            selectedCategories
         });
     };
 
@@ -107,7 +132,6 @@ export default function HostPage() {
     if (step === 'GAME' && createdGame) {
         return (
             <div className="min-h-screen bg-[#0a0a0f] text-white p-8 flex flex-col items-center w-full relative overflow-hidden">
-                {/* Grid Background */}
                 <div className="absolute inset-0 bg-[url('/otamat/grid.svg')] opacity-10 pointer-events-none"></div>
 
                 <div className="text-center z-10 mt-12 mb-8 space-y-2">
@@ -136,7 +160,6 @@ export default function HostPage() {
                         <>
                             <p className="text-2xl text-slate-300">Na řadě je:</p>
                             <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-                                {/* Find current team name, player logic to be added */}
                                 {createdGame.teams.find((t: any) => t.id === createdGame.currentTeamId)?.name}
                             </h2>
                         </>
@@ -154,10 +177,8 @@ export default function HostPage() {
 
         return (
             <div className="min-h-screen bg-[#0a0a0f] text-white p-8 flex flex-col items-center justify-between w-full relative overflow-hidden">
-                {/* Grid Background */}
                 <div className="absolute inset-0 bg-[url('/otamat/grid.svg')] opacity-10 pointer-events-none"></div>
 
-                {/* Header section with PIN */}
                 <div className="flex flex-col items-center gap-2 mt-10 z-10 w-full relative">
                     <h1 className="text-4xl font-black mb-2 tracking-tighter">Lobby</h1>
                     <p className="text-slate-400 text-lg">Připojte se na <span className="font-bold text-white">hollyhop.cz</span> pomocí PINu:</p>
@@ -168,14 +189,12 @@ export default function HostPage() {
                         </span>
                     </div>
 
-                    {/* QR Code */}
                     <div className="absolute right-0 top-0 hidden xl:flex flex-col items-center gap-2 bg-white p-3 rounded-xl shadow-xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
                         <QRCode value={joinUrl} size={150} />
                         <p className="text-black font-bold text-sm uppercase tracking-wider">Naskenuj a hraj!</p>
                     </div>
                 </div>
 
-                {/* Player list section */}
                 <div className="w-full max-w-4xl flex-1 mt-12 mb-8 z-10">
                     <div className="bg-[#15151a] border border-[#2a2a35] rounded-3xl p-8 h-full min-h-[400px] flex flex-col shadow-2xl">
                         <div className="flex items-center gap-4 border-b border-[#2a2a35] pb-6 mb-6">
@@ -208,7 +227,6 @@ export default function HostPage() {
                     </div>
                 </div>
 
-                {/* Footer Actions */}
                 <div className="flex items-center gap-6 z-10 mb-8">
                     <button onClick={startGame} className="bg-white hover:bg-slate-200 text-black px-12 py-5 rounded-2xl font-black text-xl flex items-center gap-3 shadow-lg shadow-white/10 hover:scale-105 transition-all active:scale-95 group">
                         <Play size={24} className="fill-black group-hover:scale-110 transition-transform" />
@@ -283,31 +301,42 @@ export default function HostPage() {
                     {/* RIGHT CARD: SETTINGS & CATEGORY */}
                     <div className="bg-[#15151a] border border-[#2a2a35] p-8 rounded-3xl shadow-2xl space-y-8 h-full flex flex-col">
 
-                        {/* Category Selection */}
+                        {/* Difficulty Selection */}
                         <div className="space-y-4">
                             <label className="text-slate-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-pink-500"></span> Kategorie
+                                <span className="w-2 h-2 rounded-full bg-pink-500"></span> Obtížnost
                             </label>
-                            <div className="grid grid-cols-3 gap-3">
-                                {[
-                                    { id: 'CLASSIC', label: 'Klasika', icon: '🎭', color: 'text-yellow-400' },
-                                    { id: 'KIDS', label: 'Děti', icon: '🎨', color: 'text-green-400' },
-                                    { id: 'EVERYTHING', label: 'Mix', icon: '🎲', color: 'text-purple-400' }
-                                ].map((cat) => (
+                            <div className="grid grid-cols-4 gap-2">
+                                <button onClick={() => setDifficulty(1)} className={`p-3 rounded-xl border-2 font-bold transition-all ${difficulty === 1 ? 'border-yellow-400 bg-yellow-400/20 text-yellow-50' : 'border-[#2a2a35] text-slate-500'}`}>1</button>
+                                <button onClick={() => setDifficulty(2)} className={`p-3 rounded-xl border-2 font-bold transition-all ${difficulty === 2 ? 'border-orange-400 bg-orange-400/20 text-orange-50' : 'border-[#2a2a35] text-slate-500'}`}>2</button>
+                                <button onClick={() => setDifficulty(3)} className={`p-3 rounded-xl border-2 font-bold transition-all ${difficulty === 3 ? 'border-red-500 bg-red-500/20 text-red-50' : 'border-[#2a2a35] text-slate-500'}`}>3</button>
+                                <button onClick={() => setDifficulty(0)} className={`p-3 rounded-xl border-2 font-bold transition-all ${difficulty === 0 ? 'border-green-400 bg-green-400/20 text-green-50' : 'border-[#2a2a35] text-slate-500'}`}>Děti</button>
+                            </div>
+                        </div>
+
+                        {/* Categories Selection */}
+                        <div className="space-y-4">
+                            <label className="text-slate-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2 justify-between">
+                                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-purple-500"></span> Kategorie</div>
+                                <span className="text-xs normal-case opacity-50 text-right">{selectedCategories.length === 0 ? 'Všechny' : `${selectedCategories.length} vybráno`}</span>
+                            </label>
+
+                            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-transparent">
+                                {availableCats.length === 0 && <span className="text-slate-600 text-xs italic">Žádné kategorie</span>}
+                                {availableCats.map(cat => (
                                     <button
-                                        key={cat.id}
-                                        onClick={() => setCategory(cat.id)}
-                                        className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${category === cat.id ? 'border-pink-500 bg-pink-500/10 text-white' : 'border-[#2a2a35] bg-[#0a0a0f] text-slate-500 hover:border-slate-600'}`}
+                                        key={cat}
+                                        onClick={() => toggleCategory(cat)}
+                                        className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${selectedCategories.includes(cat) ? 'bg-purple-600 border-purple-500 text-white' : 'bg-[#0a0a0f] border-[#2a2a35] text-slate-400 hover:border-slate-500'}`}
                                     >
-                                        <span className="text-3xl">{cat.icon}</span>
-                                        <span className="font-bold text-sm">{cat.label}</span>
+                                        {cat}
                                     </button>
                                 ))}
                             </div>
                         </div>
 
                         {gameMode === 'SINGLE_DEVICE' && (
-                            <div className="space-y-3 flex-1 flex flex-col min-h-[200px]">
+                            <div className="space-y-3 flex-1 flex flex-col min-h-[200px] mt-4">
                                 <label className="text-slate-400 text-sm font-bold uppercase tracking-widest">Hráči (každý na nový řádek)</label>
                                 <textarea
                                     className="w-full flex-1 bg-[#0a0a0f] border-2 border-[#2a2a35] rounded-2xl p-4 text-white font-medium focus:border-purple-500 focus:outline-none transition-colors resize-none placeholder:text-slate-700 leading-relaxed"
@@ -318,7 +347,7 @@ export default function HostPage() {
                             </div>
                         )}
 
-                        <div className="grid grid-cols-2 gap-6">
+                        <div className="grid grid-cols-2 gap-6 mt-6">
                             {gameMode === 'LOBBY' && (
                                 <div className="space-y-3">
                                     <label className="text-slate-400 text-sm font-bold uppercase tracking-widest">Týmy</label>
@@ -349,7 +378,6 @@ export default function HostPage() {
                                 VYTVOŘIT HRU
                             </button>
                         </div>
-
                     </div>
                 </div>
             </div>

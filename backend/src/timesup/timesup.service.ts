@@ -6,7 +6,15 @@ import { TimesUpGame, TimesUpGameStatus, TimesUpPlayer } from '@prisma/client';
 export class TimesUpService {
     constructor(private prisma: PrismaService) { }
 
-    async createGame(data: { teamCount: number; timeLimit: number; category?: string }): Promise<TimesUpGame> {
+    async createGame(data: {
+        hostName: string;
+        hostAvatar: string;
+        mode: 'LOBBY' | 'SINGLE_DEVICE';
+        players?: string[]; // Manual players list
+        teamCount: number;
+        timeLimit: number;
+        category?: string
+    }): Promise<TimesUpGame> {
         const gameCode = this.generateCode();
 
         const game = await this.prisma.timesUpGame.create({
@@ -19,10 +27,40 @@ export class TimesUpService {
             },
         });
 
-        // Create teams automatically
+        // 1. Create teams structure
         await this.createTeams(game.id, data.teamCount);
 
-        return game;
+        // 2. Add Host as a player
+        if (data.hostName) {
+            await this.prisma.timesUpPlayer.create({
+                data: {
+                    gameId: game.id,
+                    name: data.hostName,
+                    avatar: data.hostAvatar || '👑',
+                    isHost: true,
+                    // Host is usually not assigned to a team yet or random
+                }
+            });
+        }
+
+        // 3. If SINGLE_DEVICE mode, add manual players
+        if (data.mode === 'SINGLE_DEVICE' && data.players && data.players.length > 0) {
+            for (const name of data.players) {
+                // Skip if name is same as host (already added)
+                if (name === data.hostName) continue;
+
+                await this.prisma.timesUpPlayer.create({
+                    data: {
+                        gameId: game.id,
+                        name: name,
+                        avatar: '👤', // Default avatar
+                        isHost: false
+                    }
+                });
+            }
+        }
+
+        return this.getGameByHostId(game.hostId) as any;
     }
 
     async createTeams(gameId: number, count: number, names?: string[]) {

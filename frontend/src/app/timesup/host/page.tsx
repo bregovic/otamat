@@ -7,8 +7,19 @@ import QRCode from "react-qr-code";
 
 export default function HostPage() {
     const socket = useTimesUpSocket();
+    const [step, setStep] = useState<'SETUP' | 'LOBBY' | 'GAME'>('SETUP');
+
+    // Setup Form State
+    const [hostName, setHostName] = useState('');
+    const [hostAvatar, setHostAvatar] = useState('🐶');
+    const [gameMode, setGameMode] = useState<'LOBBY' | 'SINGLE_DEVICE'>('LOBBY');
+    const [manualPlayersText, setManualPlayersText] = useState('');
+
+    // Game Settings
     const [teamCount, setTeamCount] = useState(2);
     const [timeLimit, setTimeLimit] = useState(60);
+
+    // Live Game State
     const [createdGame, setCreatedGame] = useState<any>(null);
     const [players, setPlayers] = useState<any[]>([]);
 
@@ -28,18 +39,25 @@ export default function HostPage() {
             localStorage.setItem('timesup_hostId', game.hostId);
             setCreatedGame(game);
             setPlayers(game.players || []);
+            setStep('LOBBY');
         });
 
         socket.on('timesup:gameData', (game) => {
             console.log("Game Restored:", game);
             setCreatedGame(game);
             setPlayers(game.players || []);
+            if (game.status === 'PLAYING' || game.status === 'ROUND_1') {
+                setStep('GAME');
+            } else {
+                setStep('LOBBY');
+            }
         });
 
         socket.on('timesup:gameStarted', (game) => {
             console.log("Game Started:", game);
             setCreatedGame(game);
             setPlayers(game.players || []);
+            setStep('GAME');
         });
 
         socket.on('timesup:playerJoined', (player) => {
@@ -57,7 +75,22 @@ export default function HostPage() {
 
     const createGame = () => {
         if (!socket) return;
-        socket.emit('timesup:create', { teamCount, timeLimit });
+        if (!hostName) return alert("Zadej jméno organizátora!");
+
+        const manualPlayers = gameMode === 'SINGLE_DEVICE'
+            ? manualPlayersText.split('\n').map(s => s.trim()).filter(s => s.length > 0)
+            : [];
+
+        if (gameMode === 'SINGLE_DEVICE' && manualPlayers.length < 3) return alert("Zadej alespoň 3 další hráče!");
+
+        socket.emit('timesup:create', {
+            hostName,
+            hostAvatar,
+            mode: gameMode,
+            players: manualPlayers,
+            teamCount: gameMode === 'SINGLE_DEVICE' ? Math.ceil((manualPlayers.length + 1) / 2) : teamCount, // Auto-calc teams for single device based on count? Or explicit
+            timeLimit
+        });
     };
 
     const startGame = () => {
@@ -65,8 +98,8 @@ export default function HostPage() {
         socket.emit('timesup:startGame', { gameCode: createdGame.gameCode });
     }
 
-    // GAME BOARD VIEW (When status is PLAYING or ROUND_1)
-    if (createdGame && (createdGame.status === 'PLAYING' || createdGame.status === 'ROUND_1')) {
+    // === RENDER: GAME BOARD (GAME) ===
+    if (step === 'GAME' && createdGame) {
         return (
             <div className="min-h-screen bg-[#0a0a0f] text-white p-8 flex flex-col items-center w-full relative overflow-hidden">
                 {/* Grid Background */}
@@ -92,7 +125,7 @@ export default function HostPage() {
                     ))}
                 </div>
 
-                {/* Timer / Active Player Info */}
+                {/* Active Player Info */}
                 <div className="z-10 bg-[#1e1e24] p-12 rounded-3xl border border-[#2a2a35] shadow-2xl flex flex-col items-center gap-6">
                     {createdGame.currentTeamId ? (
                         <>
@@ -105,14 +138,13 @@ export default function HostPage() {
                     ) : (
                         <h2 className="text-4xl font-bold">Připravte se!</h2>
                     )}
-                    {/* Here we will show the timer and current card later */}
                 </div>
             </div>
         )
     }
 
-    // LOBBY VIEW
-    if (createdGame) {
+    // === RENDER: LOBBY (LOBBY) ===
+    if (step === 'LOBBY' && createdGame) {
         const joinUrl = `https://hollyhop.cz/otamat/timesup/join?code=${createdGame.gameCode}`;
 
         return (
@@ -131,7 +163,7 @@ export default function HostPage() {
                         </span>
                     </div>
 
-                    {/* QR Code absolute positioned top right */}
+                    {/* QR Code */}
                     <div className="absolute right-0 top-0 hidden xl:flex flex-col items-center gap-2 bg-white p-3 rounded-xl shadow-xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
                         <QRCode value={joinUrl} size={150} />
                         <p className="text-black font-bold text-sm uppercase tracking-wider">Naskenuj a hraj!</p>
@@ -160,7 +192,10 @@ export default function HostPage() {
                                         <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-xl shadow-lg">
                                             {p.avatar || '👤'}
                                         </div>
-                                        <span className="font-bold text-lg truncate">{p.name}</span>
+                                        <span className="font-bold text-lg truncate flex items-center gap-2">
+                                            {p.name}
+                                            {p.isHost && <span className="text-xs bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded-full border border-yellow-500/50">HOST</span>}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
@@ -170,57 +205,114 @@ export default function HostPage() {
 
                 {/* Footer Actions */}
                 <div className="flex items-center gap-6 z-10 mb-8">
-                    <button className="text-slate-500 hover:text-white font-bold uppercase tracking-wider text-sm transition-colors">
-                        Ukončit hru
-                    </button>
-
                     <button onClick={startGame} className="bg-white hover:bg-slate-200 text-black px-12 py-5 rounded-2xl font-black text-xl flex items-center gap-3 shadow-lg shadow-white/10 hover:scale-105 transition-all active:scale-95 group">
                         <Play size={24} className="fill-black group-hover:scale-110 transition-transform" />
                         SPUSTIT HRU
                     </button>
-
-                    <button className="text-slate-500 hover:text-white p-4 rounded-full hover:bg-white/5 transition-colors">
-                        <Settings size={24} />
-                    </button>
                 </div>
-
             </div>
         )
     }
 
+    // === RENDER: SETUP WIZARD (SETUP) ===
     return (
         <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden w-full bg-[#0a0a0f]">
             <div className="absolute inset-0 bg-[url('/otamat/grid.svg')] opacity-10 pointer-events-none"></div>
 
-            <div className="glass-card w-full max-w-lg relative z-10 bg-[#15151a] border-[#2a2a35] p-8 shadow-2xl rounded-3xl">
-                <h1 className="text-4xl font-black mb-8 text-center text-white tracking-tight">Nastavení hry</h1>
+            <div className="glass-card w-full max-w-4xl relative z-10 bg-[#15151a] border-[#2a2a35] p-8 shadow-2xl rounded-3xl flex flex-col md:flex-row gap-8">
 
-                <div className="space-y-8">
-                    <div className="space-y-3">
-                        <label className="block text-slate-400 text-sm font-bold uppercase tracking-widest">Počet týmů</label>
-                        <div className="flex items-center justify-between bg-[#0a0a0f] rounded-2xl p-2 border border-[#2a2a35]">
-                            <button onClick={() => setTeamCount(Math.max(2, teamCount - 1))} className="w-16 h-16 hover:bg-[#2a2a35] rounded-xl transition text-slate-300 hover:text-white flex items-center justify-center"><Minus size={24} /></button>
-                            <span className="text-5xl font-black text-purple-500 tabular-nums">{teamCount}</span>
-                            <button onClick={() => setTeamCount(Math.min(8, teamCount + 1))} className="w-16 h-16 hover:bg-[#2a2a35] rounded-xl transition text-slate-300 hover:text-white flex items-center justify-center"><Plus size={24} /></button>
-                        </div>
-                    </div>
+                {/* Left Column: Identity & Mode */}
+                <div className="flex-1 space-y-8 border-r border-[#2a2a35] pr-8">
+                    <h1 className="text-3xl font-black text-white tracking-tight">Vytvořit hru</h1>
 
-                    <div className="space-y-3">
-                        <label className="block text-slate-400 text-sm font-bold uppercase tracking-widest">Časový limit</label>
-                        <div className="flex items-center justify-between bg-[#0a0a0f] rounded-2xl p-2 border border-[#2a2a35]">
-                            <button onClick={() => setTimeLimit(Math.max(30, timeLimit - 10))} className="w-16 h-16 hover:bg-[#2a2a35] rounded-xl transition text-slate-300 hover:text-white flex items-center justify-center"><Minus size={24} /></button>
-                            <div className="text-center">
-                                <span className="text-5xl font-black text-pink-500 tabular-nums">{timeLimit}</span>
-                                <span className="text-sm font-bold text-slate-500 ml-1">s</span>
+                    {/* 1. Host Identity */}
+                    <div className="space-y-4">
+                        <label className="text-slate-400 text-xs font-bold uppercase tracking-widest">Organizátor</label>
+                        <div className="flex gap-4">
+                            <div className="flex-1">
+                                <input
+                                    type="text"
+                                    placeholder="Tvoje jméno"
+                                    className="w-full bg-[#0a0a0f] border border-[#2a2a35] rounded-xl p-4 text-white font-bold focus:border-purple-500 focus:outline-none transition-colors"
+                                    value={hostName}
+                                    onChange={e => setHostName(e.target.value)}
+                                />
                             </div>
-                            <button onClick={() => setTimeLimit(Math.min(120, timeLimit + 10))} className="w-16 h-16 hover:bg-[#2a2a35] rounded-xl transition text-slate-300 hover:text-white flex items-center justify-center"><Plus size={24} /></button>
+                            <button className="w-14 h-14 bg-[#0a0a0f] border border-[#2a2a35] rounded-xl text-2xl flex items-center justify-center hover:bg-[#1e1e24] transition-colors">
+                                {hostAvatar}
+                            </button>
                         </div>
                     </div>
 
-                    <button onClick={createGame} className="w-full bg-white hover:bg-slate-200 text-black font-black text-xl py-5 rounded-2xl flex items-center justify-center gap-3 mt-4 group shadow-xl hover:scale-[1.02] transition-all">
-                        <Play size={28} className="fill-black group-hover:scale-110 transition-transform" />
-                        Vytvořit hru
-                    </button>
+                    {/* 2. Game Mode */}
+                    <div className="space-y-4">
+                        <label className="text-slate-400 text-xs font-bold uppercase tracking-widest">Režim hry</label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <button
+                                onClick={() => setGameMode('LOBBY')}
+                                className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${gameMode === 'LOBBY' ? 'border-purple-500 bg-purple-500/10 text-white' : 'border-[#2a2a35] bg-[#0a0a0f] text-slate-500 hover:border-slate-600'}`}
+                            >
+                                <span className="text-2xl">📱</span>
+                                <span className="font-bold text-sm">Lobby</span>
+                            </button>
+                            <button
+                                onClick={() => setGameMode('SINGLE_DEVICE')}
+                                className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${gameMode === 'SINGLE_DEVICE' ? 'border-purple-500 bg-purple-500/10 text-white' : 'border-[#2a2a35] bg-[#0a0a0f] text-slate-500 hover:border-slate-600'}`}
+                            >
+                                <span className="text-2xl">📺</span>
+                                <span className="font-bold text-sm">Jedno zařízení</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Column: Dynamic Settings */}
+                <div className="flex-1 space-y-8 flex flex-col">
+
+                    {gameMode === 'LOBBY' ? (
+                        <>
+                            <div className="space-y-3">
+                                <label className="text-slate-400 text-xs font-bold uppercase tracking-widest">Počet týmů</label>
+                                <div className="flex items-center justify-between bg-[#0a0a0f] rounded-xl p-2 border border-[#2a2a35]">
+                                    <button onClick={() => setTeamCount(Math.max(2, teamCount - 1))} className="w-12 h-12 hover:bg-[#2a2a35] rounded-lg transition text-slate-300 hover:text-white flex items-center justify-center"><Minus size={20} /></button>
+                                    <span className="text-3xl font-black text-purple-500 tabular-nums">{teamCount}</span>
+                                    <button onClick={() => setTeamCount(Math.min(8, teamCount + 1))} className="w-12 h-12 hover:bg-[#2a2a35] rounded-lg transition text-slate-300 hover:text-white flex items-center justify-center"><Plus size={20} /></button>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="space-y-3 flex-1 flex flex-col">
+                                <label className="text-slate-400 text-xs font-bold uppercase tracking-widest">Hráči (každý na nový řádek)</label>
+                                <textarea
+                                    className="w-full flex-1 bg-[#0a0a0f] border border-[#2a2a35] rounded-xl p-4 text-white font-medium focus:border-purple-500 focus:outline-none transition-colors resize-none placeholder:text-slate-700"
+                                    placeholder={`Jirka\nKarel\nAlena...`}
+                                    value={manualPlayersText}
+                                    onChange={e => setManualPlayersText(e.target.value)}
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    <div className="space-y-3">
+                        <label className="text-slate-400 text-xs font-bold uppercase tracking-widest">Časový limit</label>
+                        <div className="flex items-center justify-between bg-[#0a0a0f] rounded-xl p-2 border border-[#2a2a35]">
+                            <button onClick={() => setTimeLimit(Math.max(30, timeLimit - 10))} className="w-12 h-12 hover:bg-[#2a2a35] rounded-lg transition text-slate-300 hover:text-white flex items-center justify-center"><Minus size={20} /></button>
+                            <div className="text-center">
+                                <span className="text-3xl font-black text-pink-500 tabular-nums">{timeLimit}</span>
+                                <span className="text-xs font-bold text-slate-500 ml-1">s</span>
+                            </div>
+                            <button onClick={() => setTimeLimit(Math.min(120, timeLimit + 10))} className="w-12 h-12 hover:bg-[#2a2a35] rounded-lg transition text-slate-300 hover:text-white flex items-center justify-center"><Plus size={20} /></button>
+                        </div>
+                    </div>
+
+                    <div className="pt-4 mt-auto">
+                        <button onClick={createGame} className="w-full bg-white hover:bg-slate-200 text-black font-black text-lg py-4 rounded-xl flex items-center justify-center gap-3 group shadow-xl hover:scale-[1.02] transition-all">
+                            <Play size={24} className="fill-black group-hover:scale-110 transition-transform" />
+                            Vytvořit hru
+                        </button>
+                    </div>
+
                 </div>
             </div>
         </div>

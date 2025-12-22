@@ -4,6 +4,7 @@ import { useTimesUpSocket } from "@/context/TimesUpSocketContext";
 import { useState, useEffect } from "react";
 import { Play, Plus, Minus, Settings } from "lucide-react";
 import QRCode from "react-qr-code";
+import Link from "next/link";
 
 export default function HostPage() {
     const socket = useTimesUpSocket();
@@ -222,6 +223,10 @@ export default function HostPage() {
     return (
         <div className="min-h-screen flex items-center justify-center p-8 relative overflow-hidden w-full bg-[#0a0a0f]">
             <div className="absolute inset-0 bg-[url('/otamat/grid.svg')] opacity-10 pointer-events-none"></div>
+
+            <Link href="/timesup/admin" className="absolute top-8 right-8 text-slate-600 hover:text-white transition-colors p-2 z-20 bg-[#15151a] rounded-full border border-[#2a2a35] hover:border-slate-500 shadow-xl">
+                <Settings size={24} />
+            </Link>
 
             <div className="w-full max-w-6xl relative z-10 flex flex-col gap-8">
                 <h1 className="text-5xl font-black text-white text-center tracking-tighter mb-4">Vytvořit hru</h1>

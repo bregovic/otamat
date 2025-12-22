@@ -211,4 +211,31 @@ export class TimesUpService {
         const max = 999999;
         return Math.floor(Math.random() * (max - min + 1) + min).toString();
     }
+
+    // --- CARD MANAGEMENT (ADMIN) ---
+    async getAllCards() {
+        return this.prisma.timesUpCard.findMany({
+            orderBy: { id: 'desc' },
+            take: 1000
+        });
+    }
+
+    async createCard(data: { value: string, category: string, level: number }) {
+        return this.prisma.timesUpCard.create({ data });
+    }
+
+    async updateCard(id: number, data: { value?: string, category?: string, level?: number }) {
+        return this.prisma.timesUpCard.update({ where: { id }, data });
+    }
+
+    async deleteCard(id: number) {
+        return this.prisma.timesUpCard.delete({ where: { id } });
+    }
+
+    async importCards(cards: { value: string, category: string, level: number }[]) {
+        return this.prisma.timesUpCard.createMany({
+            data: cards,
+            skipDuplicates: true
+        });
+    }
 }

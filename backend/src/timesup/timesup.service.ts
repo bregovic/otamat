@@ -148,9 +148,31 @@ export class TimesUpService {
             }
         }
 
-        // 2. Select Cards (e.g., 40 random cards)
-        // Taking more to shuffle properly. Ideally filter by category if needed.
-        const allCards = await this.prisma.timesUpCard.findMany({ take: 300 });
+        // 2. Select Cards based on Category
+        let whereClause = {};
+
+        if (game.category === 'KIDS') {
+            whereClause = { level: 0 };
+        } else if (game.category === 'CLASSIC') {
+            whereClause = { level: { gte: 1 } };
+        }
+        // EVERYTHING uses empty whereClause (all cards)
+
+        // Taking more to shuffle properly.
+        let allCards = await this.prisma.timesUpCard.findMany({
+            where: whereClause,
+            take: 300
+        });
+
+        // Fallback: If KIDS has no cards yet, fallback to Level 1 but log warning
+        if (game.category === 'KIDS' && allCards.length < 10) {
+            console.warn("Not enough KIDS cards found (level 0), falling back to Level 1");
+            allCards = await this.prisma.timesUpCard.findMany({
+                where: { level: { gte: 1 } },
+                take: 300
+            });
+        }
+
         const selectedCards = this.shuffleArray(allCards).slice(0, 40);
 
         for (const card of selectedCards) {

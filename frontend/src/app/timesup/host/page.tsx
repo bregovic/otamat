@@ -15,6 +15,9 @@ export default function HostPage() {
     const [gameMode, setGameMode] = useState<'LOBBY' | 'SINGLE_DEVICE'>('LOBBY');
     const [manualPlayersText, setManualPlayersText] = useState('');
 
+    // New: Category State
+    const [category, setCategory] = useState<string>('CLASSIC'); // CLASSIC, KIDS, EVERYTHING
+
     // Game Settings
     const [teamCount, setTeamCount] = useState(2);
     const [timeLimit, setTimeLimit] = useState(60);
@@ -89,7 +92,8 @@ export default function HostPage() {
             mode: gameMode,
             players: manualPlayers,
             teamCount: gameMode === 'SINGLE_DEVICE' ? Math.ceil((manualPlayers.length + 1) / 2) : teamCount, // Auto-calc teams for single device based on count? Or explicit
-            timeLimit
+            timeLimit,
+            category // Passing category to backend
         });
     };
 
@@ -216,103 +220,132 @@ export default function HostPage() {
 
     // === RENDER: SETUP WIZARD (SETUP) ===
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden w-full bg-[#0a0a0f]">
+        <div className="min-h-screen flex items-center justify-center p-8 relative overflow-hidden w-full bg-[#0a0a0f]">
             <div className="absolute inset-0 bg-[url('/otamat/grid.svg')] opacity-10 pointer-events-none"></div>
 
-            <div className="glass-card w-full max-w-4xl relative z-10 bg-[#15151a] border-[#2a2a35] p-8 shadow-2xl rounded-3xl flex flex-col md:flex-row gap-8">
+            <div className="w-full max-w-6xl relative z-10 flex flex-col gap-8">
+                <h1 className="text-5xl font-black text-white text-center tracking-tighter mb-4">Vytvořit hru</h1>
 
-                {/* Left Column: Identity & Mode */}
-                <div className="flex-1 space-y-8 border-r border-[#2a2a35] pr-8">
-                    <h1 className="text-3xl font-black text-white tracking-tight">Vytvořit hru</h1>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
 
-                    {/* 1. Host Identity */}
-                    <div className="space-y-4">
-                        <label className="text-slate-400 text-xs font-bold uppercase tracking-widest">Organizátor</label>
-                        <div className="flex gap-4">
-                            <div className="flex-1">
-                                <input
-                                    type="text"
-                                    placeholder="Tvoje jméno"
-                                    className="w-full bg-[#0a0a0f] border border-[#2a2a35] rounded-xl p-4 text-white font-bold focus:border-purple-500 focus:outline-none transition-colors"
-                                    value={hostName}
-                                    onChange={e => setHostName(e.target.value)}
-                                />
-                            </div>
-                            <button className="w-14 h-14 bg-[#0a0a0f] border border-[#2a2a35] rounded-xl text-2xl flex items-center justify-center hover:bg-[#1e1e24] transition-colors">
-                                {hostAvatar}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* 2. Game Mode */}
-                    <div className="space-y-4">
-                        <label className="text-slate-400 text-xs font-bold uppercase tracking-widest">Režim hry</label>
-                        <div className="grid grid-cols-2 gap-4">
-                            <button
-                                onClick={() => setGameMode('LOBBY')}
-                                className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${gameMode === 'LOBBY' ? 'border-purple-500 bg-purple-500/10 text-white' : 'border-[#2a2a35] bg-[#0a0a0f] text-slate-500 hover:border-slate-600'}`}
-                            >
-                                <span className="text-2xl">📱</span>
-                                <span className="font-bold text-sm">Lobby</span>
-                            </button>
-                            <button
-                                onClick={() => setGameMode('SINGLE_DEVICE')}
-                                className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${gameMode === 'SINGLE_DEVICE' ? 'border-purple-500 bg-purple-500/10 text-white' : 'border-[#2a2a35] bg-[#0a0a0f] text-slate-500 hover:border-slate-600'}`}
-                            >
-                                <span className="text-2xl">📺</span>
-                                <span className="font-bold text-sm">Jedno zařízení</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Column: Dynamic Settings */}
-                <div className="flex-1 space-y-8 flex flex-col">
-
-                    {gameMode === 'LOBBY' ? (
-                        <>
-                            <div className="space-y-3">
-                                <label className="text-slate-400 text-xs font-bold uppercase tracking-widest">Počet týmů</label>
-                                <div className="flex items-center justify-between bg-[#0a0a0f] rounded-xl p-2 border border-[#2a2a35]">
-                                    <button onClick={() => setTeamCount(Math.max(2, teamCount - 1))} className="w-12 h-12 hover:bg-[#2a2a35] rounded-lg transition text-slate-300 hover:text-white flex items-center justify-center"><Minus size={20} /></button>
-                                    <span className="text-3xl font-black text-purple-500 tabular-nums">{teamCount}</span>
-                                    <button onClick={() => setTeamCount(Math.min(8, teamCount + 1))} className="w-12 h-12 hover:bg-[#2a2a35] rounded-lg transition text-slate-300 hover:text-white flex items-center justify-center"><Plus size={20} /></button>
+                    {/* LEFT CARD: IDENTITY & MODE */}
+                    <div className="bg-[#15151a] border border-[#2a2a35] p-8 rounded-3xl shadow-2xl space-y-8 h-full">
+                        <div className="space-y-4">
+                            <label className="text-slate-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-purple-500"></span> Organizátor
+                            </label>
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <input
+                                        type="text"
+                                        placeholder="Tvoje jméno"
+                                        className="w-full bg-[#0a0a0f] border-2 border-[#2a2a35] rounded-2xl p-5 text-xl text-white font-bold focus:border-purple-500 focus:outline-none transition-colors placeholder:text-slate-700"
+                                        value={hostName}
+                                        onChange={e => setHostName(e.target.value)}
+                                    />
                                 </div>
+                                <button className="w-20 h-[72px] bg-[#0a0a0f] border-2 border-[#2a2a35] rounded-2xl text-4xl flex items-center justify-center hover:bg-[#1e1e24] transition-colors relative group">
+                                    {hostAvatar}
+                                </button>
                             </div>
-                        </>
-                    ) : (
-                        <>
-                            <div className="space-y-3 flex-1 flex flex-col">
-                                <label className="text-slate-400 text-xs font-bold uppercase tracking-widest">Hráči (každý na nový řádek)</label>
+                        </div>
+
+                        <div className="space-y-4">
+                            <label className="text-slate-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-blue-500"></span> Režim hry
+                            </label>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    onClick={() => setGameMode('LOBBY')}
+                                    className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all active:scale-95 ${gameMode === 'LOBBY' ? 'border-blue-500 bg-blue-500/10 text-white shadow-lg shadow-blue-500/10' : 'border-[#2a2a35] bg-[#0a0a0f] text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}
+                                >
+                                    <span className="text-4xl mb-1">📱</span>
+                                    <span className="font-black text-lg">Lobby</span>
+                                    <span className="text-xs font-semibold opacity-60">Každý na svém mobilu</span>
+                                </button>
+                                <button
+                                    onClick={() => setGameMode('SINGLE_DEVICE')}
+                                    className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all active:scale-95 ${gameMode === 'SINGLE_DEVICE' ? 'border-blue-500 bg-blue-500/10 text-white shadow-lg shadow-blue-500/10' : 'border-[#2a2a35] bg-[#0a0a0f] text-slate-500 hover:border-slate-600 hover:text-slate-300'}`}
+                                >
+                                    <span className="text-4xl mb-1">📺</span>
+                                    <span className="font-black text-lg">Jedno zařízení</span>
+                                    <span className="text-xs font-semibold opacity-60">Hra koluje dokola</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* RIGHT CARD: SETTINGS & CATEGORY */}
+                    <div className="bg-[#15151a] border border-[#2a2a35] p-8 rounded-3xl shadow-2xl space-y-8 h-full flex flex-col">
+
+                        {/* Category Selection */}
+                        <div className="space-y-4">
+                            <label className="text-slate-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-pink-500"></span> Kategorie
+                            </label>
+                            <div className="grid grid-cols-3 gap-3">
+                                {[
+                                    { id: 'CLASSIC', label: 'Klasika', icon: '🎭', color: 'text-yellow-400' },
+                                    { id: 'KIDS', label: 'Děti', icon: '🎨', color: 'text-green-400' },
+                                    { id: 'EVERYTHING', label: 'Mix', icon: '🎲', color: 'text-purple-400' }
+                                ].map((cat) => (
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => setCategory(cat.id)}
+                                        className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${category === cat.id ? 'border-pink-500 bg-pink-500/10 text-white' : 'border-[#2a2a35] bg-[#0a0a0f] text-slate-500 hover:border-slate-600'}`}
+                                    >
+                                        <span className="text-3xl">{cat.icon}</span>
+                                        <span className="font-bold text-sm">{cat.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {gameMode === 'SINGLE_DEVICE' && (
+                            <div className="space-y-3 flex-1 flex flex-col min-h-[200px]">
+                                <label className="text-slate-400 text-sm font-bold uppercase tracking-widest">Hráči (každý na nový řádek)</label>
                                 <textarea
-                                    className="w-full flex-1 bg-[#0a0a0f] border border-[#2a2a35] rounded-xl p-4 text-white font-medium focus:border-purple-500 focus:outline-none transition-colors resize-none placeholder:text-slate-700"
-                                    placeholder={`Jirka\nKarel\nAlena...`}
+                                    className="w-full flex-1 bg-[#0a0a0f] border-2 border-[#2a2a35] rounded-2xl p-4 text-white font-medium focus:border-purple-500 focus:outline-none transition-colors resize-none placeholder:text-slate-700 leading-relaxed"
+                                    placeholder={`Jirka\nKarel\nAlena\n...`}
                                     value={manualPlayersText}
                                     onChange={e => setManualPlayersText(e.target.value)}
                                 />
                             </div>
-                        </>
-                    )}
+                        )}
 
-                    <div className="space-y-3">
-                        <label className="text-slate-400 text-xs font-bold uppercase tracking-widest">Časový limit</label>
-                        <div className="flex items-center justify-between bg-[#0a0a0f] rounded-xl p-2 border border-[#2a2a35]">
-                            <button onClick={() => setTimeLimit(Math.max(30, timeLimit - 10))} className="w-12 h-12 hover:bg-[#2a2a35] rounded-lg transition text-slate-300 hover:text-white flex items-center justify-center"><Minus size={20} /></button>
-                            <div className="text-center">
-                                <span className="text-3xl font-black text-pink-500 tabular-nums">{timeLimit}</span>
-                                <span className="text-xs font-bold text-slate-500 ml-1">s</span>
+                        <div className="grid grid-cols-2 gap-6">
+                            {gameMode === 'LOBBY' && (
+                                <div className="space-y-3">
+                                    <label className="text-slate-400 text-sm font-bold uppercase tracking-widest">Týmy</label>
+                                    <div className="flex items-center justify-between bg-[#0a0a0f] rounded-2xl p-2 border-2 border-[#2a2a35]">
+                                        <button onClick={() => setTeamCount(Math.max(2, teamCount - 1))} className="w-12 h-12 hover:bg-[#2a2a35] rounded-xl transition text-slate-300 hover:text-white flex items-center justify-center"><Minus size={20} /></button>
+                                        <span className="text-2xl font-black text-white tabular-nums">{teamCount}</span>
+                                        <button onClick={() => setTeamCount(Math.min(8, teamCount + 1))} className="w-12 h-12 hover:bg-[#2a2a35] rounded-xl transition text-slate-300 hover:text-white flex items-center justify-center"><Plus size={20} /></button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className={`space-y-3 ${gameMode === 'SINGLE_DEVICE' ? 'col-span-2' : ''}`}>
+                                <label className="text-slate-400 text-sm font-bold uppercase tracking-widest">Čas / Kolo</label>
+                                <div className="flex items-center justify-between bg-[#0a0a0f] rounded-2xl p-2 border-2 border-[#2a2a35]">
+                                    <button onClick={() => setTimeLimit(Math.max(30, timeLimit - 10))} className="w-12 h-12 hover:bg-[#2a2a35] rounded-xl transition text-slate-300 hover:text-white flex items-center justify-center"><Minus size={20} /></button>
+                                    <div className="text-center">
+                                        <span className="text-2xl font-black text-pink-500 tabular-nums">{timeLimit}</span>
+                                        <span className="text-xs font-bold text-slate-500 ml-1">s</span>
+                                    </div>
+                                    <button onClick={() => setTimeLimit(Math.min(120, timeLimit + 10))} className="w-12 h-12 hover:bg-[#2a2a35] rounded-xl transition text-slate-300 hover:text-white flex items-center justify-center"><Plus size={20} /></button>
+                                </div>
                             </div>
-                            <button onClick={() => setTimeLimit(Math.min(120, timeLimit + 10))} className="w-12 h-12 hover:bg-[#2a2a35] rounded-lg transition text-slate-300 hover:text-white flex items-center justify-center"><Plus size={20} /></button>
                         </div>
-                    </div>
 
-                    <div className="pt-4 mt-auto">
-                        <button onClick={createGame} className="w-full bg-white hover:bg-slate-200 text-black font-black text-lg py-4 rounded-xl flex items-center justify-center gap-3 group shadow-xl hover:scale-[1.02] transition-all">
-                            <Play size={24} className="fill-black group-hover:scale-110 transition-transform" />
-                            Vytvořit hru
-                        </button>
-                    </div>
+                        <div className="pt-4 mt-auto">
+                            <button onClick={createGame} className="w-full bg-white hover:bg-slate-200 text-black font-black text-xl py-6 rounded-2xl flex items-center justify-center gap-3 group shadow-xl shadow-white/5 hover:scale-[1.02] transition-all">
+                                <Play size={28} className="fill-black group-hover:scale-110 transition-transform" />
+                                VYTVOŘIT HRU
+                            </button>
+                        </div>
 
+                    </div>
                 </div>
             </div>
         </div>

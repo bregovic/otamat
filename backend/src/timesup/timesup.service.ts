@@ -19,10 +19,12 @@ export class TimesUpService {
         selectedCategories?: string[]; // Array of categories
     }): Promise<TimesUpGame> {
         const gameCode = this.generateCode();
+        const hostId = Math.random().toString(36).substring(2) + Date.now().toString(36);
 
         const game = await this.prisma.timesUpGame.create({
             data: {
                 gameCode,
+                hostId,
                 teamCount: data.teamCount,
                 timeLimit: data.timeLimit,
                 status: 'LOBBY',

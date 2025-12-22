@@ -49,6 +49,36 @@ function DixitContent() {
 
     useEffect(() => { nicknameRef.current = nickname; }, [nickname]);
 
+    // Wake Lock to prevent sleep
+    useEffect(() => {
+        let wakeLock: any = null;
+
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await (navigator as any).wakeLock.request('screen');
+                    console.log('Wake Lock active');
+                }
+            } catch (err) {
+                console.warn('Wake Lock warning:', err); // Normal if battery low or blocked
+            }
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                requestWakeLock(); // Re-request on return
+            }
+        };
+
+        requestWakeLock();
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            if (wakeLock) wakeLock.release().catch(() => { });
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, []);
+
     // Initial Setup
     useEffect(() => {
         const newSocket = io(`${BACKEND_URL}/dixit`, {

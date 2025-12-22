@@ -54,4 +54,8 @@ export class DixitController {
             res.status(400).send('Image data format not supported');
         }
     }
+    @Post('admin/compress')
+    async compressAll() {
+        return this.dixitService.compressAllCards();
+    }
 }

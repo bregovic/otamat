@@ -224,8 +224,8 @@ export class DixitService implements OnModuleInit {
                 try {
                     processedBuffer = await sharp(file.buffer)
                         .rotate() // Auto-orient based on EXIF
-                        .resize({ width: 800, height: 1200, fit: 'inside' })
-                        .jpeg({ quality: 80 })
+                        .resize({ width: 600, height: 900, fit: 'inside' })
+                        .jpeg({ quality: 70 })
                         .toBuffer();
                 } catch (err) {
                     console.error('Error processing image:', err);
@@ -776,6 +776,49 @@ export class DixitService implements OnModuleInit {
         });
 
         return this.getGameState(game.id);
+    }
+
+    async compressAllCards() {
+        console.log('[Dixit] Starting compression of all cards...');
+        let sharp;
+        try { sharp = require('sharp'); } catch { throw new Error('Sharp not installed'); }
+
+        const cards = await this.prisma.dixitCard.findMany();
+        let count = 0;
+        let errors = 0;
+
+        for (const c of cards) {
+            try {
+                if (!c.data.startsWith('data:')) continue;
+                const parts = c.data.match(/^data:(.+);base64,(.+)$/);
+                if (!parts) continue;
+
+                const buffer = Buffer.from(parts[2], 'base64');
+                // Skip already small images (< 150KB)
+                if (buffer.length < 150000) continue;
+
+                const newBuffer = await sharp(buffer)
+                    .rotate()
+                    .resize({ width: 600, height: 900, fit: 'inside' })
+                    .jpeg({ quality: 70 })
+                    .toBuffer();
+
+                // Only save if smaller
+                if (newBuffer.length < buffer.length) {
+                    const newData = `data:image/jpeg;base64,${newBuffer.toString('base64')}`;
+                    await this.prisma.dixitCard.update({
+                        where: { id: c.id },
+                        data: { data: newData }
+                    });
+                    count++;
+                    if (count % 10 === 0) console.log(`[Dixit] Compressed ${count}...`);
+                }
+            } catch (e) {
+                console.error('[Dixit] Failed to compress card', c.id, e);
+                errors++;
+            }
+        }
+        return { count, errors, total: cards.length };
     }
 
 }

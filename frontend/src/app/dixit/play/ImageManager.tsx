@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Loader2, Trash2, RotateCw, Upload, X, AlertTriangle, Images } from 'lucide-react';
+import { Loader2, Trash2, RotateCw, Upload, X, AlertTriangle, Images, Sparkles } from 'lucide-react';
 import { BACKEND_URL } from '@/utils/config';
 
 export default function ImageManager({ onClose }: { onClose: () => void }) {
@@ -31,6 +31,22 @@ export default function ImageManager({ onClose }: { onClose: () => void }) {
         } catch (err) { console.error('Upload failed', err); }
         setUploading(false);
         fetchCards();
+    }
+
+
+    const handleCompress = async () => {
+        if (!confirm('Spustit kompresi všech obrázků? Může to trvat několik minut. (Doporučeno pokud se hra načítá pomalu)')) return;
+        setLoading(true);
+        try {
+            const res = await fetch(`${BACKEND_URL}/dixit/admin/compress`, { method: 'POST' });
+            const data = await res.json();
+            alert(`Dokončeno!\nUpraveno: ${data.count}\nChyb: ${data.errors}\nZ celkových: ${data.total}`);
+        } catch (err) {
+            console.error('Compression failed', err);
+            alert('Chyba při kompresi.');
+        }
+        setLoading(false);
+        // fetchCards();
     }
 
     const handleDelete = async (id: string) => {
@@ -68,6 +84,14 @@ export default function ImageManager({ onClose }: { onClose: () => void }) {
                     {uploading ? 'Nahrávání...' : 'Nahrát obrázky'}
                     <input type="file" multiple accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
                 </label>
+
+                <button
+                    onClick={handleCompress}
+                    className="btn bg-amber-600 hover:bg-amber-500 text-white px-6 py-3 rounded-xl cursor-pointer flex items-center gap-2 font-bold shadow-lg transition-transform hover:scale-105 active:scale-95 whitespace-nowrap"
+                    title="Zmenší velikost obrázků pro rychlejší načítání"
+                >
+                    <Sparkles size={20} /> Optimalizovat
+                </button>
 
                 <div className="bg-slate-800 px-4 py-2 rounded-xl flex items-center gap-2 text-slate-400 text-sm border border-slate-700">
                     <AlertTriangle className="w-4 h-4 text-amber-500" />

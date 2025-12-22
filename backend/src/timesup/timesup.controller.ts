@@ -10,8 +10,13 @@ export class TimesUpAdminController {
         return this.service.getAllCards();
     }
 
+    @Get('categories') // Shortcut for now, technically timesup/admin/cards/categories but handy
+    async getCategories() {
+        return this.service.getUniqueCategories();
+    }
+
     @Post()
-    async create(@Body() data: { value: string, category: string, level: number }) {
+    async create(@Body() data: { value: string, category: string, level: number, description?: string }) {
         return this.service.createCard(data);
     }
 
@@ -21,12 +26,22 @@ export class TimesUpAdminController {
     }
 
     @Put(':id')
-    async update(@Param('id', ParseIntPipe) id: number, @Body() data: { value?: string, category?: string, level?: number }) {
+    async update(@Param('id', ParseIntPipe) id: number, @Body() data: { value?: string, category?: string, level?: number, description?: string }) {
         return this.service.updateCard(id, data);
     }
 
     @Delete(':id')
     async delete(@Param('id', ParseIntPipe) id: number) {
         return this.service.deleteCard(id);
+    }
+}
+
+@Controller('timesup')
+export class TimesUpInfoController {
+    constructor(private readonly service: TimesUpService) { }
+
+    @Get('categories')
+    async getCategories() {
+        return this.service.getUniqueCategories();
     }
 }

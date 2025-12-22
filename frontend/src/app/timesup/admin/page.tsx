@@ -26,29 +26,28 @@ export default function TimesUpAdmin() {
         classic: cards.filter(c => c.level >= 1).length
     };
 
+    const getApiUrl = () => {
+        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+            return 'http://localhost:4000';
+        }
+        return 'https://otamat-production.up.railway.app';
+    };
+
     const fetchCards = async () => {
         setLoading(true);
         try {
-            const res = await fetch('https://hollyhop.cz/otamat/backend/timesup/admin/cards'); // Use full URL if needed or relative depending on proxy
-            // Assuming proxy or direct call. Since we are on same domain roughly:
-            // But usually development is localhost:3000 and backend localhost:3001
-            // In PROD it is usually /otamat/backend... let's try standard fetch
+            const apiUrl = getApiUrl();
+            const res = await fetch(`${apiUrl}/timesup/admin/cards`);
 
-            // NOTE: Adjusting logic to use relative path if we setup proxy, but for now hardcode/env might be needed.
-            // Let's assume the frontend knows where backend is. I will use relative '/api' if configured, but here I'll use direct URL logic used in other parts if any.
-            // Wait, other parts use Socket.IO.
-            // Let's assume standard fetch works if we point to correct port.
-            // In dev: navigate to localhost:4000
+            if (!res.ok) throw new Error("Failed to fetch");
 
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://hollyhop.cz/otamat/backend';
-
-            const data = await (await fetch(`${apiUrl}/timesup/admin/cards`)).json();
+            const data = await res.json();
             if (Array.isArray(data)) {
                 setCards(data);
             }
         } catch (e) {
             console.error(e);
-            alert("Chyba při načítání dat");
+            alert("Chyba při načítání dat. Zkontrolujte konzoli.");
         }
         setLoading(false);
     }
@@ -59,7 +58,7 @@ export default function TimesUpAdmin() {
 
     const handleDelete = async (id: number) => {
         if (!confirm("Opravdu smazat?")) return;
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://hollyhop.cz/otamat/backend';
+        const apiUrl = getApiUrl();
         await fetch(`${apiUrl}/timesup/admin/cards/${id}`, { method: 'DELETE' });
         setCards(cards.filter(c => c.id !== id));
     };
@@ -69,7 +68,7 @@ export default function TimesUpAdmin() {
         const oldCards = [...cards];
         setCards(cards.map(c => c.id === id ? { ...c, [field]: value } : c));
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://hollyhop.cz/otamat/backend';
+        const apiUrl = getApiUrl();
         try {
             await fetch(`${apiUrl}/timesup/admin/cards/${id}`, {
                 method: 'PUT',
@@ -84,7 +83,7 @@ export default function TimesUpAdmin() {
 
     const handleCreate = async () => {
         if (!newCard.value) return;
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://hollyhop.cz/otamat/backend';
+        const apiUrl = getApiUrl();
 
         const res = await fetch(`${apiUrl}/timesup/admin/cards`, {
             method: 'POST',
@@ -127,7 +126,7 @@ export default function TimesUpAdmin() {
         }
 
         if (importData.length > 0 && confirm(`Importovat ${importData.length} karet?`)) {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://hollyhop.cz/otamat/backend';
+            const apiUrl = getApiUrl();
             await fetch(`${apiUrl}/timesup/admin/cards/import`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

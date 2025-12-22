@@ -267,40 +267,35 @@ model DixitCard {
 
 // --- TIMES UP MODELS ---
 
-model TimesUpCard {
-  id       Int    @id @default(autoincrement())
-  value    String
-  level    Int    // Difficulty?
-  category String
 
-  @@map("timesup_cards")
-}
 
 model TimesUpGame {
   id        Int      @id @default(autoincrement())
-  hostId    String   @unique @default(uuid())
-  gameCode  String   @unique // 4-char code
-  status    TimesUpGameStatus @default(LOBBY)
-
-  // Settings
-  teamCount Int      @default(2)
-  round     Int      @default(1) // 1: Text, 2: One Word, 3: Pantomime
-  timeLimit Int      @default(60)
-  category  String?  // Filter for cards
-  
+  gameCode  String   @unique
+  hostId    String   @unique // Socket/Device ID of the host
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  status    TimesUpGameStatus @default(LOBBY)
+
+
+  
+  // Settings
+  teamCount Int      @default(2)
+  timeLimit Int      @default(60)
+  category  String?  @default("CLASSIC") // Deprecated/Legacy, kept for backup
+  
+  // New Settings
+  difficulty Int     @default(1) // 0=Kids, 1=Easy, 2=Medium, 3=Hard (All non-kids)
+  selectedCategories String? // Semicolon separated list of categories to include. If null/empty -> All categories
+  
+  // State
+  currentTeamId Int?
+  round         Int      @default(0) // 0=Lobby, 1=Describe, 2=OneWord, 3=Pantomime
   
   teams     TimesUpTeam[]
   players   TimesUpPlayer[]
   cards     TimesUpGameCard[]
-  
-  currentTeamId Int?
-  currentPlayerId Int?
 
-  timerEnd  DateTime? // When the current turn ends
-  isTimerRunning Boolean @default(false)
-  
   @@map("timesup_games")
 }
 
@@ -317,25 +312,25 @@ model TimesUpTeam {
   game      TimesUpGame     @relation(fields: [gameId], references: [id], onDelete: Cascade)
   name      String
   score     Int      @default(0)
-  order     Int      // Turn order
+  order     Int      // Turn order (1, 2, 3...)
 
   players   TimesUpPlayer[]
-  
+
   @@map("timesup_teams")
 }
 
 model TimesUpPlayer {
   id        Int      @id @default(autoincrement())
   gameId    Int
-  game      TimesUpGame     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  game      TimesUpGame @relation(fields: [gameId], references: [id], onDelete: Cascade)
   teamId    Int?
-  team      TimesUpTeam?    @relation(fields: [teamId], references: [id])
+  team      TimesUpTeam? @relation(fields: [teamId], references: [id])
   
   name      String
-  avatar    String?
-  socketId  String?  // To track connection
+  avatar    String   @default("👤")
   isHost    Boolean  @default(false)
-  
+  socketId  String?  // Current socket ID if online
+
   @@map("timesup_players")
 }
 
@@ -357,4 +352,14 @@ enum TimesUpCardState {
   IN_HAND
   GUESSED
   SKIPPED
+}
+
+model TimesUpCard {
+  id        Int      @id @default(autoincrement())
+  value     String   
+  category  String   
+  level     Int      @default(1)
+  description String? 
+
+  @@map("timesup_cards")
 }

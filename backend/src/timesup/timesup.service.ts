@@ -13,7 +13,10 @@ export class TimesUpService {
         players?: string[]; // Manual players list
         teamCount: number;
         timeLimit: number;
-        category?: string
+
+        // New filters
+        difficulty?: number; // 1 (Default), 2, 3, 0 (Kids)
+        selectedCategories?: string[]; // Array of categories
     }): Promise<TimesUpGame> {
         const gameCode = this.generateCode();
 
@@ -22,8 +25,9 @@ export class TimesUpService {
                 gameCode,
                 teamCount: data.teamCount,
                 timeLimit: data.timeLimit,
-                category: data.category,
                 status: 'LOBBY',
+                difficulty: data.difficulty ?? 1,
+                selectedCategories: data.selectedCategories ? data.selectedCategories.join(';') : null
             },
         });
 
@@ -38,7 +42,6 @@ export class TimesUpService {
                     name: data.hostName,
                     avatar: data.hostAvatar || '👑',
                     isHost: true,
-                    // Host is usually not assigned to a team yet or random
                 }
             });
         }
@@ -131,7 +134,6 @@ export class TimesUpService {
         });
 
         if (!game) throw new Error("Game not found");
-        //if (game.players.length < 2) throw new Error("Not enough players"); // Disabled for testing
 
         // 1. Assign players to teams (Round Robin)
         const unassignedPlayers = game.players.filter(p => !p.teamId);
@@ -148,28 +150,46 @@ export class TimesUpService {
             }
         }
 
-        // 2. Select Cards based on Category
-        let whereClause = {};
+        // 2. Select Cards based on Difficulty and Categories
+        let whereClause: any = {};
 
-        if (game.category === 'KIDS') {
-            whereClause = { level: 0 };
-        } else if (game.category === 'CLASSIC') {
-            whereClause = { level: { gte: 1 } };
+        // Difficulty: 0=Kids, 1=Lvl1, 2=Lvl1+2, 3=All (Adults)
+        if (game.difficulty === 0) {
+            whereClause.level = 0;
+        } else if (game.difficulty === 1) {
+            whereClause.level = 1;
+        } else if (game.difficulty === 2) {
+            whereClause.level = { in: [1, 2] };
+        } else {
+            // Level 3 (Default) -> Everything >= 1
+            whereClause.level = { gte: 1 };
         }
-        // EVERYTHING uses empty whereClause (all cards)
 
-        // Taking more to shuffle properly.
+        // Fetch all potentially matching cards
         let allCards = await this.prisma.timesUpCard.findMany({
-            where: whereClause,
-            take: 300
+            where: whereClause
         });
 
-        // Fallback: If KIDS has no cards yet, fallback to Level 1 but log warning
-        if (game.category === 'KIDS' && allCards.length < 10) {
-            console.warn("Not enough KIDS cards found (level 0), falling back to Level 1");
+        // Filter by Categories (In-Memory because of semicolon separation)
+        if (game.selectedCategories && game.selectedCategories.trim().length > 0) {
+            const selectedCats = game.selectedCategories.split(';');
+            allCards = allCards.filter(card => {
+                if (!card.category) return false;
+                // Split card categories (e.g. "Osobnosti;Politika;Česko")
+                const cardCats = card.category.split(';');
+                // Check if there is ANY intersection
+                return cardCats.some(c => selectedCats.includes(c));
+            });
+        }
+
+        // Security check: If selection results in too few cards, create fallback?
+        // Or just let it be. If 0 cards, game is instant over or error?
+        if (allCards.length < 10) {
+            console.warn(`Warning: Only ${allCards.length} cards found for Diff=${game.difficulty}, Cats=${game.selectedCategories}. Fallback to ignores category.`);
+            // Fallback - ignore category, keep difficulty
             allCards = await this.prisma.timesUpCard.findMany({
-                where: { level: { gte: 1 } },
-                take: 300
+                where: whereClause,
+                take: 100 // fallback limit
             });
         }
 
@@ -179,7 +199,7 @@ export class TimesUpService {
             await this.prisma.timesUpGameCard.create({
                 data: {
                     gameId: game.id,
-                    value: card.value, // Copy value from TimesUpCard
+                    value: card.value,
                     state: 'DECK'
                 }
             });
@@ -213,18 +233,38 @@ export class TimesUpService {
     }
 
     // --- CARD MANAGEMENT (ADMIN) ---
+    // --- CARD MANAGEMENT (ADMIN) ---
     async getAllCards() {
         return this.prisma.timesUpCard.findMany({
             orderBy: { id: 'desc' },
-            take: 1000
+            take: 2000
         });
     }
 
-    async createCard(data: { value: string, category: string, level: number }) {
+    async getUniqueCategories() {
+        // Fetch all categories strings
+        const cards = await this.prisma.timesUpCard.findMany({
+            select: { category: true }
+        });
+
+        // Split and deduplicate
+        const unique = new Set<string>();
+        for (const c of cards) {
+            if (c.category) {
+                c.category.split(';').forEach(cat => {
+                    const trimmed = cat.trim();
+                    if (trimmed) unique.add(trimmed);
+                });
+            }
+        }
+        return Array.from(unique).sort();
+    }
+
+    async createCard(data: { value: string, category: string, level: number, description?: string }) {
         return this.prisma.timesUpCard.create({ data });
     }
 
-    async updateCard(id: number, data: { value?: string, category?: string, level?: number }) {
+    async updateCard(id: number, data: { value?: string, category?: string, level?: number, description?: string }) {
         return this.prisma.timesUpCard.update({ where: { id }, data });
     }
 
@@ -232,7 +272,7 @@ export class TimesUpService {
         return this.prisma.timesUpCard.delete({ where: { id } });
     }
 
-    async importCards(cards: { value: string, category: string, level: number }[]) {
+    async importCards(cards: { value: string, category: string, level: number, description?: string }[]) {
         return this.prisma.timesUpCard.createMany({
             data: cards,
             skipDuplicates: true

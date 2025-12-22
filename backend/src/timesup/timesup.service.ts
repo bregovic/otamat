@@ -202,6 +202,8 @@ export class TimesUpService {
                 data: {
                     gameId: game.id,
                     value: card.value,
+                    description: card.description,
+                    imageUrl: card.imageUrl,
                     state: 'DECK'
                 }
             });
@@ -235,7 +237,6 @@ export class TimesUpService {
     }
 
     // --- CARD MANAGEMENT (ADMIN) ---
-    // --- CARD MANAGEMENT (ADMIN) ---
     async getAllCards() {
         return this.prisma.timesUpCard.findMany({
             orderBy: { id: 'desc' },
@@ -262,11 +263,11 @@ export class TimesUpService {
         return Array.from(unique).sort();
     }
 
-    async createCard(data: { value: string, category: string, level: number, description?: string }) {
+    async createCard(data: { value: string, category: string, level: number, description?: string, imageUrl?: string }) {
         return this.prisma.timesUpCard.create({ data });
     }
 
-    async updateCard(id: number, data: { value?: string, category?: string, level?: number, description?: string }) {
+    async updateCard(id: number, data: { value?: string, category?: string, level?: number, description?: string, imageUrl?: string }) {
         return this.prisma.timesUpCard.update({ where: { id }, data });
     }
 
@@ -274,10 +275,23 @@ export class TimesUpService {
         return this.prisma.timesUpCard.delete({ where: { id } });
     }
 
-    async importCards(cards: { value: string, category: string, level: number, description?: string }[]) {
+    async importCards(cards: { value: string, category: string, level: number, description?: string, imageUrl?: string }[]) {
         return this.prisma.timesUpCard.createMany({
             data: cards,
             skipDuplicates: true
+        });
+    }
+
+    async bulkDeleteCards(ids: number[]) {
+        return this.prisma.timesUpCard.deleteMany({
+            where: { id: { in: ids } }
+        });
+    }
+
+    async bulkUpdateCards(ids: number[], data: { level?: number }) {
+        return this.prisma.timesUpCard.updateMany({
+            where: { id: { in: ids } },
+            data
         });
     }
 }

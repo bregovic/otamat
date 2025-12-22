@@ -340,6 +340,8 @@ model TimesUpGameCard {
   game      TimesUpGame     @relation(fields: [gameId], references: [id], onDelete: Cascade)
   
   value     String   // Copied from Card
+  description String? // Copied
+  imageUrl    String? // Copied
   
   state     TimesUpCardState @default(DECK)
   roundGuessed Int?   // In which round it was guessed

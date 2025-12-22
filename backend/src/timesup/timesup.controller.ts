@@ -16,7 +16,7 @@ export class TimesUpAdminController {
     }
 
     @Post()
-    async create(@Body() data: { value: string, category: string, level: number, description?: string }) {
+    async create(@Body() data: { value: string, category: string, level: number, description?: string, imageUrl?: string }) {
         return this.service.createCard(data);
     }
 
@@ -25,8 +25,18 @@ export class TimesUpAdminController {
         return this.service.importCards(data.cards);
     }
 
+    @Post('bulk-delete')
+    async bulkDelete(@Body() data: { ids: number[] }) {
+        return this.service.bulkDeleteCards(data.ids);
+    }
+
+    @Post('bulk-update')
+    async bulkUpdate(@Body() data: { ids: number[], level: number }) {
+        return this.service.bulkUpdateCards(data.ids, { level: data.level });
+    }
+
     @Put(':id')
-    async update(@Param('id', ParseIntPipe) id: number, @Body() data: { value?: string, category?: string, level?: number, description?: string }) {
+    async update(@Param('id', ParseIntPipe) id: number, @Body() data: { value?: string, category?: string, level?: number, description?: string, imageUrl?: string }) {
         return this.service.updateCard(id, data);
     }
 

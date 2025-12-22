@@ -64,9 +64,10 @@ function DixitContent() {
             try {
                 const session = sessionStorage.getItem('dixit_session');
                 const urlPin = new URLSearchParams(window.location.search).get('pin');
-                if (session && urlPin) {
+                if (session) {
                     const { pin, playerId: savedId } = JSON.parse(session);
-                    if (pin === urlPin && savedId) {
+                    // Allow reconnect if URL pin is missing (common on mobile reload) OR matches session pin
+                    if ((!urlPin || urlPin === pin) && savedId) {
                         console.log('Attempting reconnect...', pin, savedId);
                         newSocket.emit('dixit:reconnect', { pin, playerId: savedId }, (res: any) => {
                             if (res.success && res.game) {
@@ -76,6 +77,11 @@ function DixitContent() {
                                 setHasIdentity(true);
                                 setGameState(res.game);
                                 setLoading(false);
+
+                                // Restore URL if missing
+                                if (!urlPin) {
+                                    window.history.replaceState(null, '', `/otamat/dixit/play?pin=${pin}`);
+                                }
                             }
                         });
                     }

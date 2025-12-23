@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { BACKEND_URL } from '@/utils/config';
 import { getAvatarIcon } from '@/utils/avatars';
-import { Check, X, Crown, Lightbulb, Trophy, ArrowRight, Loader2, Grid as GridIcon, Square, ChevronLeft, ChevronRight, Volume2, RotateCcw } from 'lucide-react';
+import { Check, X, Crown, Lightbulb, Trophy, ArrowRight, Loader2, Grid as GridIcon, Square, ChevronLeft, ChevronRight, Volume2, RotateCcw, Trash2 } from 'lucide-react';
 
 interface DixitGameProps {
     socket: Socket;

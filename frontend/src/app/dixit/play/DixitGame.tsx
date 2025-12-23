@@ -26,7 +26,25 @@ const CardSelector = ({ cards, selectedCardId, onSelect, disabledIds = [], showO
         }
     }, [selectedCardId]);
 
-    // Implicit Selection in Gallery Mode
+    // Preload Adjacent Images
+    useEffect(() => {
+        if (!cards || cards.length === 0) return;
+
+        const preload = (idx: number) => {
+            const img = new Image();
+            img.src = `${BACKEND_URL}/dixit/image/${cards[idx]}`;
+        };
+
+        const next = (currentIndex + 1) % cards.length;
+        const next2 = (currentIndex + 2) % cards.length;
+        const prev = (currentIndex - 1 + cards.length) % cards.length;
+
+        preload(next);
+        preload(next2);
+        preload(prev);
+    }, [currentIndex, cards]);
+
+    // Implicit Selection in Gallery Mode (Delayed)
     useEffect(() => {
         const cid = cards[currentIndex];
         if (viewMode === 'gallery' && cid && !disabledIds.includes(cid)) {

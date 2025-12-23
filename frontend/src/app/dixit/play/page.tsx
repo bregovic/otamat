@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 import { BACKEND_URL } from '@/utils/config';
-import { User, Crown, Play, ArrowRight, Loader2, Users, Monitor, RotateCcw, Settings, X, Mic, Images } from 'lucide-react';
+import { User, Crown, Play, ArrowRight, Loader2, Users, Monitor, RotateCcw, Settings, X, Mic, Images, Share2 } from 'lucide-react';
 import QRCode from "react-qr-code";
 import Link from 'next/link';
 import DixitGame from './DixitGame';
@@ -514,9 +514,32 @@ function DixitContent() {
                 </h1>
                 <p className="text-2xl text-gray-400 mb-8">Připojte se na <span className="text-white font-bold">hollyhop.cz/otamat/dixit</span> pomocí PINu:</p>
 
-                <div className="text-8xl md:text-9xl font-black text-white bg-white/10 px-12 py-8 rounded-3xl border-4 border-white/20 mb-12 backdrop-blur-lg shadow-[0_0_50px_rgba(255,255,255,0.1)] animate-pulse font-mono tracking-widest">
+                <div className="text-8xl md:text-9xl font-black text-white bg-white/10 px-12 py-8 rounded-3xl border-4 border-white/20 mb-8 backdrop-blur-lg shadow-[0_0_50px_rgba(255,255,255,0.1)] animate-pulse font-mono tracking-widest">
                     {pinCode}
                 </div>
+
+                <button
+                    onClick={async () => {
+                        const url = `https://hollyhop.cz/otamat/dixit/play?pin=${pinCode}`;
+                        if (navigator.share) {
+                            try {
+                                await navigator.share({
+                                    title: 'Dixit OtaMat',
+                                    text: `Připoj se ke hře Dixit! PIN: ${pinCode}`,
+                                    url: url
+                                });
+                            } catch (e) { console.log('Share cancelled', e); }
+                        } else {
+                            try {
+                                await navigator.clipboard.writeText(url);
+                                alert('Odkaz zkopírován do schránky!');
+                            } catch (e) { alert('Nelze zkopírovat odkaz.'); }
+                        }
+                    }}
+                    className="mb-12 flex items-center gap-2 px-8 py-4 bg-indigo-600 hover:bg-indigo-500 rounded-full font-bold text-white text-lg shadow-lg transition-all hover:scale-105 active:scale-95 border border-white/10"
+                >
+                    <Share2 size={24} /> <span className="uppercase tracking-wider">Sdílet odkaz</span>
+                </button>
 
                 <div className="glass-card w-full !max-w-[1200px] p-8 min-h-[400px] flex flex-col bg-white/5 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-md">
                     <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">

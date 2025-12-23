@@ -247,6 +247,7 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
     const [clueInput, setClueInput] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [shuffledVotingCards, setShuffledVotingCards] = useState<string[]>([]);
 
     const clueMode = gameState.clueMode || 'TEXT';
     const phase = gameState.phase;
@@ -279,6 +280,27 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
         setSelectedCardId(null);
         setIsSubmitting(false);
     }, [myPlayedCards.length]);
+
+    // Shuffle Voting Cards logic
+    useEffect(() => {
+        if (activeRound && (phase === 'VOTING' || isStoryteller)) {
+            const cards: string[] = [];
+            Object.values(activeRound.cardsPlayed || {}).forEach((val: any) => {
+                if (Array.isArray(val)) cards.push(...val);
+                else cards.push(val);
+            });
+
+            // Compare with current shuffled state to see if we need update
+            const canonical = [...cards].sort().join(',');
+            const currentShuffledSorted = [...shuffledVotingCards].sort().join(',');
+
+            if (canonical !== currentShuffledSorted || shuffledVotingCards.length === 0) {
+                // Content diff -> Reshuffle
+                // Use a better shuffle (Fisher-Yates) or just random sort
+                setShuffledVotingCards([...cards].sort(() => Math.random() - 0.5));
+            }
+        }
+    }, [activeRound, phase]);
 
     const submitClue = () => {
         if (!selectedCardId || isSubmitting) return;
@@ -354,8 +376,8 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
                                 value={clueInput}
                                 onChange={e => setClueInput(e.target.value)}
                                 className={`bg-slate-800 border-2 text-white placeholder-slate-400 p-4 rounded-xl text-xl font-bold outline-none transition-all text-center w-full shadow-[0_0_15px_rgba(0,0,0,0.5)] ${(selectedCardId && !clueInput)
-                                        ? 'border-amber-500 animate-pulse ring-4 ring-amber-500/20'
-                                        : 'border-slate-500 focus:border-emerald-400 focus:bg-slate-700'
+                                    ? 'border-amber-500 animate-pulse ring-4 ring-amber-500/20'
+                                    : 'border-slate-500 focus:border-emerald-400 focus:bg-slate-700'
                                     }`}
                             />
                         ) : (
@@ -467,12 +489,7 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
 
     if (phase === 'VOTING') {
         const hasVoted = activeRound?.votes?.[playerId];
-        let votingCards: string[] = [];
-        Object.values(activeRound?.cardsPlayed || {}).forEach((val: any) => {
-            if (Array.isArray(val)) votingCards.push(...val);
-            else votingCards.push(val);
-        });
-        votingCards.sort();
+        const votingCards = shuffledVotingCards;
 
         const myPlayed = getPlayedCards(playerId);
 

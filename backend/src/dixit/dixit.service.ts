@@ -778,6 +778,17 @@ export class DixitService implements OnModuleInit {
         return this.getGameState(game.id);
     }
 
+    async endGame(pin: string) {
+        const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin } });
+        if (!game) return;
+
+        // Cleanup (if no cascade)
+        await this.prisma.dixitRound.deleteMany({ where: { gameId: game.id } });
+        await this.prisma.dixitPlayer.deleteMany({ where: { gameId: game.id } });
+        await this.prisma.dixitGame.delete({ where: { id: game.id } });
+        return true;
+    }
+
     async compressAllCards() {
         console.log('[Dixit] Starting compression of all cards...');
         let sharp;

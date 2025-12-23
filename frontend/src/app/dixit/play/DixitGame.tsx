@@ -183,7 +183,7 @@ const CardSelector = ({ cards, selectedCardId, onSelect, disabledIds = [], showO
     );
 };
 
-const ResultsView = ({ players, isHost, onRestart }: { players: any[], isHost: boolean, onRestart: () => void }) => {
+const ResultsView = ({ players, isHost, onRestart, onEnd, onLeave }: { players: any[], isHost: boolean, onRestart: () => void, onEnd: () => void, onLeave: () => void }) => {
     const sorted = [...players].sort((a, b) => a.score - b.score); // Ascending
     const [visibleCount, setVisibleCount] = useState(0);
 
@@ -238,18 +238,27 @@ const ResultsView = ({ players, isHost, onRestart }: { players: any[], isHost: b
             {visibleCount === sorted.length && (
                 <div className="flex flex-col gap-4 items-center mt-12 w-full max-w-sm">
                     {/* Host Restart Button */}
+                    {/* Host Controls */}
                     {isHost && (
-                        <button
-                            onClick={() => { if (confirm('Opravdu chcete spustit novou hru? Všichni budou vráceni do Lobby.')) onRestart(); }}
-                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 px-8 rounded-xl transition-all shadow-lg hover:scale-105 flex items-center justify-center gap-2"
-                        >
-                            <RotateCcw size={24} /> NOVÁ HRA
-                        </button>
+                        <div className="w-full flex flex-col gap-3 mb-4">
+                            <button
+                                onClick={() => { if (confirm('Opravdu chcete spustit novou hru? Všichni budou vráceni do Lobby.')) onRestart(); }}
+                                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 px-8 rounded-xl transition-all shadow-lg hover:scale-105 flex items-center justify-center gap-2"
+                            >
+                                <RotateCcw size={24} /> NOVÁ HRA
+                            </button>
+                            <button
+                                onClick={() => { if (confirm('Opravdu ukončit hru pro všechny?')) onEnd(); }}
+                                className="w-full bg-red-900/80 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-xl transition-all border border-red-500/30 flex items-center justify-center gap-2"
+                            >
+                                <Trash2 size={20} /> UKONČIT HRU
+                            </button>
+                        </div>
                     )}
 
                     {/* Back to Menu (Leave) */}
                     <button
-                        onClick={() => window.location.href = '/otamat/dixit'}
+                        onClick={onLeave}
                         className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-4 px-8 rounded-xl transition-all border border-white/20 hover:scale-105"
                     >
                         Zpět do menu
@@ -368,7 +377,13 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
 
     if (gameState.status === 'FINISHED') {
         const isHost = gameState.hostId === playerId || (!gameState.hostId && gameState.players[0]?.id === playerId);
-        return <ResultsView players={gameState.players} isHost={isHost} onRestart={() => socket.emit('dixit:restart', { pin: pinCode })} />;
+        return <ResultsView
+            players={gameState.players}
+            isHost={isHost}
+            onRestart={() => socket.emit('dixit:restart', { pin: pinCode })}
+            onEnd={() => socket.emit('dixit:end', { pin: pinCode })}
+            onLeave={() => { sessionStorage.removeItem('dixit_session'); window.location.href = '/otamat/dixit'; }}
+        />;
     }
 
     if (phase === 'STORYTELLER_PICK') {

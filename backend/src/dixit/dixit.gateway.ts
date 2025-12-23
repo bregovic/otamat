@@ -218,6 +218,12 @@ export class DixitGateway {
         this.server.to(data.pin).emit('dixit:update', gameState);
     }
 
+    @SubscribeMessage('dixit:end')
+    async handleEndGame(@MessageBody() data: { pin: string }) {
+        this.server.to(data.pin).emit('dixit:ended');
+        await this.dixitService.endGame(data.pin);
+    }
+
     @SubscribeMessage('dixit:restart')
     async handleRestart(
         @MessageBody() data: { pin: string }

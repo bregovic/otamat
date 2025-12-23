@@ -155,6 +155,12 @@ function DixitContent() {
             }
         });
 
+        newSocket.on('dixit:ended', () => {
+            alert('Hra byla ukončena hostitelem.');
+            sessionStorage.removeItem('dixit_session');
+            window.location.href = '/otamat/dixit';
+        });
+
         newSocket.on('dixit:debug_log', (msg: string) => {
             console.log('[SERVER LOG]:', msg);
         });

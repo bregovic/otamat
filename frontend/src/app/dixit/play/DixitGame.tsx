@@ -205,29 +205,26 @@ const ResultsView = ({ players, isHost, onRestart, onEnd, onLeave }: { players: 
             <div className="w-full max-w-xl flex flex-col-reverse gap-4">
                 {sorted.map((p, i) => {
                     const isVisible = i < visibleCount;
-                    const isWinner = i === sorted.length - 1;
                     const rank = sorted.length - i;
 
                     if (!isVisible) return null;
 
+                    const isWinner = rank === 1;
                     return (
                         <div
                             key={p.id}
-                            className={`
-                                flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-700 animate-in slide-in-from-bottom-8 fade-in
-                                ${isWinner
-                                    ? 'bg-amber-500/20 border-amber-500/50 scale-110 z-10 shadow-[0_0_30px_rgba(245,158,11,0.3)] my-4'
-                                    : 'bg-slate-800/50 border-white/10'
-                                }
-                            `}
+                            className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${isWinner
+                                ? 'bg-gradient-to-r from-amber-500/20 to-amber-900/40 border-amber-500/50 shadow-[0_0_30px_rgba(245,158,11,0.2)]'
+                                : 'bg-slate-800/50 border-white/5'
+                                }`}
                         >
                             <div className="flex-1 min-w-0 flex items-center gap-2 md:gap-4">
-                                <span className={`font-black text-lg md:text-xl ${isWinner ? 'text-amber-500' : 'text-slate-500'}`}>#{rank}</span>
-                                <span className="text-3xl md:text-4xl">{getAvatarIcon(p.avatar)}</span>
-                                <span className={`text-lg md:text-xl font-bold truncate ${isWinner ? 'text-white' : 'text-slate-300'}`}>{p.nickname}</span>
-                                {isWinner && <Crown className="text-amber-500 w-5 h-5 md:w-6 md:h-6 animate-bounce shrink-0" />}
+                                <span className={`font-black text-base md:text-xl ${isWinner ? 'text-amber-500' : 'text-slate-500'}`}>#{rank}</span>
+                                <span className="text-2xl md:text-4xl">{getAvatarIcon(p.avatar)}</span>
+                                <span className={`text-base md:text-xl font-bold truncate ${isWinner ? 'text-white' : 'text-slate-300'}`}>{p.nickname}</span>
+                                {isWinner && <Crown className="text-amber-500 w-4 h-4 md:w-6 md:h-6 animate-bounce shrink-0" />}
                             </div>
-                            <div className={`text-3xl font-black ${isWinner ? 'text-amber-500' : 'text-slate-400'}`}>
+                            <div className={`text-2xl md:text-3xl font-black ${isWinner ? 'text-amber-500' : 'text-slate-400'}`}>
                                 {p.score}
                             </div>
                         </div>

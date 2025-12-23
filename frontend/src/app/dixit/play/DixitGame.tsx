@@ -203,11 +203,11 @@ const ResultsView = ({ players, isHost, onRestart }: { players: any[], isHost: b
                                 }
                             `}
                         >
-                            <div className="flex items-center gap-4">
-                                <span className={`font-black text-xl ${isWinner ? 'text-amber-500' : 'text-slate-500'}`}>#{rank}</span>
-                                <span className="text-4xl">{getAvatarIcon(p.avatar)}</span>
-                                <span className={`text-xl font-bold ${isWinner ? 'text-white' : 'text-slate-300'}`}>{p.nickname}</span>
-                                {isWinner && <Crown className="text-amber-500 w-6 h-6 animate-bounce" />}
+                            <div className="flex-1 min-w-0 flex items-center gap-2 md:gap-4">
+                                <span className={`font-black text-lg md:text-xl ${isWinner ? 'text-amber-500' : 'text-slate-500'}`}>#{rank}</span>
+                                <span className="text-3xl md:text-4xl">{getAvatarIcon(p.avatar)}</span>
+                                <span className={`text-lg md:text-xl font-bold truncate ${isWinner ? 'text-white' : 'text-slate-300'}`}>{p.nickname}</span>
+                                {isWinner && <Crown className="text-amber-500 w-5 h-5 md:w-6 md:h-6 animate-bounce shrink-0" />}
                             </div>
                             <div className={`text-3xl font-black ${isWinner ? 'text-amber-500' : 'text-slate-400'}`}>
                                 {p.score}
@@ -448,13 +448,13 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
 
         return (
             <div className="flex flex-col items-center w-full max-w-6xl mx-auto min-h-[calc(100vh-80px)]">
-                <div className="text-center mb-6 pt-2 px-4 sticky top-0 z-30 bg-gradient-to-b from-slate-950 via-slate-950 to-transparent w-full">
-                    <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Vypravěč {storyteller?.nickname}:</p>
-                    <h2 className="text-2xl md:text-4xl font-black text-white px-2 flex items-center justify-center gap-3">
+                <div className="text-center mb-2 pt-2 px-4 sticky top-0 z-30 bg-gradient-to-b from-slate-950 via-slate-950 to-transparent w-full">
+                    <p className="text-[10px] md:text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Vypravěč {storyteller?.nickname}:</p>
+                    <h2 className="text-lg md:text-4xl font-black text-white px-2 flex items-center justify-center gap-3 leading-tight">
                         "{activeRound?.clue}"
                         {clueMode === 'TEXT' && (
-                            <button onClick={() => speakClue(activeRound?.clue)} className="p-2 bg-white/10 rounded-full hover:bg-white/20 text-emerald-400 transition-colors">
-                                <Volume2 size={24} />
+                            <button onClick={() => speakClue(activeRound?.clue)} className="p-2 bg-white/10 rounded-full hover:bg-white/20 text-emerald-400 transition-colors shrink-0">
+                                <Volume2 size={20} />
                             </button>
                         )}
                     </h2>
@@ -520,11 +520,11 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
 
         return (
             <div className="flex flex-col items-center w-full max-w-6xl mx-auto min-h-[calc(100vh-80px)]">
-                <div className="text-center mb-6 pt-2 px-4 sticky top-0 z-30 bg-gradient-to-b from-slate-950 via-slate-950 to-transparent w-full">
-                    <h2 className="text-xl md:text-3xl font-black text-white flex items-center justify-center gap-3">
+                <div className="text-center mb-2 pt-2 px-4 sticky top-0 z-30 bg-gradient-to-b from-slate-950 via-slate-950 to-transparent w-full">
+                    <h2 className="text-lg md:text-3xl font-black text-white flex items-center justify-center gap-3 leading-tight">
                         "{activeRound?.clue}"
                         {clueMode === 'TEXT' && (
-                            <button onClick={() => speakClue(activeRound?.clue)} className="p-2 bg-white/10 rounded-full hover:bg-white/20 text-emerald-400 transition-colors">
+                            <button onClick={() => speakClue(activeRound?.clue)} className="p-2 bg-white/10 rounded-full hover:bg-white/20 text-emerald-400 transition-colors shrink-0">
                                 <Volume2 size={20} />
                             </button>
                         )}

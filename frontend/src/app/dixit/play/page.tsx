@@ -23,6 +23,7 @@ function DixitContent() {
     const [selectedCategory, setSelectedCategory] = useState<keyof typeof avatarCategories>("Zvířátka");
 
     const [hasIdentity, setHasIdentity] = useState(false);
+    const [checkingSession, setCheckingSession] = useState(true);
 
     const [connected, setConnected] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -91,6 +92,7 @@ function DixitContent() {
             setConnected(true);
 
             // Reconnect Logic
+            let sessionFound = false;
             try {
                 const session = sessionStorage.getItem('dixit_session');
                 const urlPin = new URLSearchParams(window.location.search).get('pin');
@@ -98,6 +100,7 @@ function DixitContent() {
                     const { pin, playerId: savedId } = JSON.parse(session);
                     // Allow reconnect if URL pin is missing (common on mobile reload) OR matches session pin
                     if ((!urlPin || urlPin === pin) && savedId) {
+                        sessionFound = true;
                         console.log('Attempting reconnect...', pin, savedId);
                         newSocket.emit('dixit:reconnect', { pin, playerId: savedId }, (res: any) => {
                             if (res.success && res.game) {
@@ -112,11 +115,17 @@ function DixitContent() {
                                 if (!urlPin) {
                                     window.history.replaceState(null, '', `/otamat/dixit/play?pin=${pin}`);
                                 }
+                            } else {
+                                // Session unavailable or invalidated
+                                sessionStorage.removeItem('dixit_session');
                             }
+                            setCheckingSession(false);
                         });
                     }
                 }
             } catch (err) { console.error('Reconnect failed', err); }
+
+            if (!sessionFound) setCheckingSession(false);
         });
 
         newSocket.on('disconnect', () => {
@@ -244,7 +253,7 @@ function DixitContent() {
     // --- RENDERERS ---
 
     // 1. Loading
-    if (!socket) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white"><Loader2 className="animate-spin w-10 h-10" /></div>;
+    if ((!socket) || checkingSession) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white"><Loader2 className="animate-spin w-10 h-10" /></div>;
 
     // 2. Identity Screen (OtaMat Style)
     if (!hasIdentity) {

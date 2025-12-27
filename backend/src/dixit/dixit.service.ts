@@ -760,28 +760,46 @@ export class DixitService implements OnModuleInit {
         return this.getGameState(game.id);
     }
 
-    async restartGame(pin: string) {
-        const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin } });
-        if (!game) throw new Error('Game not found');
 
+    async restartGame(pin: string) {
+        const game = await this.prisma.dixitGame.findUnique({ where: { pinCode: pin }, include: { players: true } });
+        if (!game) return;
+
+        // Delete rounds
         await this.prisma.dixitRound.deleteMany({ where: { gameId: game.id } });
 
+        // Reset players
         await this.prisma.dixitPlayer.updateMany({
             where: { gameId: game.id },
-            data: { score: 0, hand: [], votedCardId: null, submittedCardId: null }
+            data: {
+                score: 0,
+                hand: [],
+                votedCardId: null,
+                submittedCardId: null,
+            }
         });
+
+        // Reset Game
+        // Generate new deck (full reset)
+        // Ensure 75+ cards
+        const allCards = Array.from({ length: 98 }, (_, i) => `card_${i + 1}.jpg`);
+        const shuffledDeck = allCards.sort(() => Math.random() - 0.5);
 
         await this.prisma.dixitGame.update({
             where: { id: game.id },
             data: {
                 status: GameStatus.WAITING,
+                phase: DixitPhase.STORYTELLER_PICK, // Will be ignored by WAITING status? Or should be null?
+                // Logic: startGame sets phase. WE set status WAITING.
+                // But frontend checks phase primarily?
+                // Let's check frontend. If status is waiting/lobby, it shows Lobby.
                 currentRound: 0,
-                storytellerId: null,
-                deck: []
+                deck: shuffledDeck,
+                storytellerId: null
             }
         });
 
-        return this.getGameState(game.id);
+        return await this.getGameState(game.id);
     }
 
     async endGame(pin: string) {

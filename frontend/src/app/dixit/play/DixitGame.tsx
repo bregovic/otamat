@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { BACKEND_URL } from '@/utils/config';
 import { getAvatarIcon } from '@/utils/avatars';
-import { Check, X, Crown, Lightbulb, Trophy, ArrowRight, Loader2, Grid as GridIcon, Square, ChevronLeft, ChevronRight, Volume2, RotateCcw, Trash2 } from 'lucide-react';
+import { Check, X, Crown, Lightbulb, Trophy, ArrowRight, Loader2, Grid as GridIcon, Square, ChevronLeft, ChevronRight, Volume2, RotateCcw, Trash2, LogOut } from 'lucide-react';
 
 interface DixitGameProps {
     socket: Socket;
@@ -254,11 +254,12 @@ const ResultsView = ({ players, isHost, onRestart, onEnd, onLeave }: { players: 
                     )}
 
                     {/* Back to Menu (Leave) */}
+                    {/* Leave Game (for everyone) */}
                     <button
-                        onClick={onLeave}
-                        className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-4 px-8 rounded-xl transition-all border border-white/20 hover:scale-105"
+                        onClick={() => { if (confirm('Opravdu opustit hru? Váš postup bude ztracen.')) onLeave(); }}
+                        className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 px-8 rounded-xl transition-all border border-slate-500 shadow-lg flex items-center justify-center gap-2"
                     >
-                        Zpět do menu
+                        <LogOut size={20} /> OPUSTIT HRU
                     </button>
                 </div>
             )}
@@ -268,6 +269,21 @@ const ResultsView = ({ players, isHost, onRestart, onEnd, onLeave }: { players: 
 
 
 export default function DixitGame({ socket, gameState, playerId, pinCode }: DixitGameProps) {
+    const handleLeave = () => {
+        localStorage.removeItem('dixit_session');
+        sessionStorage.removeItem('dixit_session');
+        window.location.href = '/otamat/dixit';
+    };
+
+    const ExitButton = () => (
+        <button
+            onClick={() => { if (confirm('Opravdu opustit hru?')) handleLeave(); }}
+            className="fixed top-4 right-4 z-[9999] p-3 md:p-4 bg-black/50 hover:bg-red-500/80 backdrop-blur-md rounded-full text-white/50 hover:text-white transition-all border border-white/5 hover:border-red-500 shadow-lg"
+            title="Opustit hru"
+        >
+            <LogOut size={20} />
+        </button>
+    );
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
     const [clueInput, setClueInput] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -379,14 +395,24 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
             isHost={isHost}
             onRestart={() => socket.emit('dixit:restart', { pin: pinCode })}
             onEnd={() => socket.emit('dixit:end', { pin: pinCode })}
-            onLeave={() => { sessionStorage.removeItem('dixit_session'); window.location.href = '/otamat/dixit'; }}
+            onLeave={handleLeave}
         />;
     }
+
+    // Common Wrapper to include Exit Button?
+    // We can inject it in each return, or wrap content.
+    // Given the component structure returns early, we need to add it to each return OR wrap.
+    // Simpler to just assume ExitButton is rendered via Portal? No nextjs.
+    // Actually, I can render it inside each view block.
+    // Or simpler: change structure to `let content; if... content = ...; return <>{ExitButton}{content}</>;`
+    // But that's a big refactor.
+    // I will add <ExitButton /> to the beginning of each major block return.
 
     if (phase === 'STORYTELLER_PICK') {
         if (isStoryteller) {
             return (
                 <div className="flex flex-col items-center w-full max-w-6xl mx-auto min-h-[calc(100vh-80px)]">
+                    <ExitButton />
                     <div className="text-center mb-4 px-4">
                         <div className="inline-block bg-amber-500/20 text-amber-300 px-3 py-1 rounded-full text-xs font-bold uppercase mb-2 border border-amber-500/50">Jsi Vypravěč</div>
                         <h2 className="text-2xl md:text-3xl font-bold text-white">Vyber kartu</h2>
@@ -431,6 +457,7 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
         } else {
             return (
                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+                    <ExitButton />
                     <div className="text-6xl mb-6">{getAvatarIcon(storyteller?.avatar)}</div>
                     <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">{storyteller?.nickname || 'Vypravěč'} vybírá...</h2>
                     <p className="text-slate-400 animate-pulse">Připrav se na hádání!</p>
@@ -443,6 +470,7 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
         if (isStoryteller) {
             return (
                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+                    <ExitButton />
                     <h2 className="text-sm text-slate-400 uppercase tracking-widest font-bold mb-4">Nápověda</h2>
                     <div className="text-3xl md:text-5xl font-black text-white bg-slate-800/50 px-6 py-4 rounded-2xl border border-white/10 mb-8 max-w-full break-words">
                         "{activeRound?.clue}"
@@ -469,6 +497,7 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
         if (hasPlayedAll) {
             return (
                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+                    <ExitButton />
                     <Check className="w-20 h-20 text-emerald-500 mb-6 drop-shadow-[0_0_20px_rgba(16,185,129,0.5)]" />
                     <h2 className="text-2xl font-bold text-white mb-4">Máš vybráno!</h2>
                     <p className="text-slate-400">Čekáme na ostatní hráče...</p>
@@ -478,6 +507,7 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
 
         return (
             <div className="flex flex-col items-center w-full max-w-6xl mx-auto min-h-[calc(100vh-80px)]">
+                <ExitButton />
                 <div className="text-center mb-2 pt-2 px-4 sticky top-0 z-30 bg-gradient-to-b from-slate-950 via-slate-950 to-transparent w-full">
                     <p className="text-[10px] md:text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Vypravěč {storyteller?.nickname}:</p>
                     <h2 className="text-lg md:text-4xl font-black text-white px-2 flex items-center justify-center gap-3 leading-tight">
@@ -526,6 +556,7 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
         if (isStoryteller) {
             return (
                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+                    <ExitButton />
                     <h2 className="text-2xl font-bold text-white mb-6">Hráči hlasují...</h2>
                     <div className="grid grid-cols-3 md:grid-cols-4 gap-2 px-2 w-full max-w-5xl pointer-events-none">
                         {votingCards.map((cid: string) => (
@@ -541,6 +572,7 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
         if (hasVoted) {
             return (
                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+                    <ExitButton />
                     <div className="text-5xl mb-4">🗳️</div>
                     <h2 className="text-2xl font-bold text-white mb-4">Hlas přijat!</h2>
                     <p className="text-slate-400">Výsledky se blíží...</p>
@@ -550,6 +582,7 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
 
         return (
             <div className="flex flex-col items-center w-full max-w-6xl mx-auto min-h-[calc(100vh-80px)]">
+                <ExitButton />
                 <div className="text-center mb-2 pt-2 px-4 sticky top-0 z-30 bg-gradient-to-b from-slate-950 via-slate-950 to-transparent w-full">
                     <h2 className="text-lg md:text-3xl font-black text-white flex items-center justify-center gap-3 leading-tight">
                         "{activeRound?.clue}"
@@ -595,6 +628,7 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
 
         return (
             <div className="flex flex-col items-center w-full max-w-6xl mx-auto p-4 pb-32">
+                <ExitButton />
                 <h1 className="text-4xl font-black text-amber-500 mb-8 drop-shadow-lg text-center uppercase tracking-wider">Výsledky kola</h1>
 
                 <div className="w-full mb-12">

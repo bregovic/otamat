@@ -94,36 +94,56 @@ function DixitContent() {
             // Reconnect Logic
             let sessionFound = false;
             try {
-                // Try LocalStorage first (more persistent), then SessionStorage (legacy)
-                const session = localStorage.getItem('dixit_session') || sessionStorage.getItem('dixit_session');
-                const urlPin = new URLSearchParams(window.location.search).get('pin');
-                if (session) {
-                    const { pin, playerId: savedId } = JSON.parse(session);
-                    // Allow reconnect if URL pin is missing (common on mobile reload) OR matches session pin
-                    if ((!urlPin || urlPin === pin) && savedId) {
-                        sessionFound = true;
-                        console.log('Attempting reconnect...', pin, savedId);
-                        newSocket.emit('dixit:reconnect', { pin, playerId: savedId }, (res: any) => {
-                            if (res.success && res.game) {
-                                console.log('Reconnected!');
-                                setPlayerId(savedId);
-                                setPinCode(pin);
-                                setHasIdentity(true);
-                                setGameState(res.game);
-                                setLoading(false);
+                // Check URL params first (Magic Link), then LocalStorage
+                const params = new URLSearchParams(window.location.search);
+                const urlPin = params.get('pin');
+                const urlPid = params.get('pid');
 
-                                // Restore URL if missing
-                                if (!urlPin) {
-                                    window.history.replaceState(null, '', `/otamat/dixit/play?pin=${pin}`);
-                                }
-                            } else {
-                                // Session unavailable or invalidated
+                let targetPin = urlPin;
+                let targetId = urlPid;
+
+                if (!targetId) {
+                    const session = localStorage.getItem('dixit_session') || sessionStorage.getItem('dixit_session');
+                    if (session) {
+                        const parsed = JSON.parse(session);
+                        // Use stored session if PIN matches or URL PIN is missing
+                        if (!urlPin || urlPin === parsed.pin) {
+                            targetPin = parsed.pin;
+                            targetId = parsed.playerId;
+                        }
+                    }
+                }
+
+                if (targetPin && targetId) {
+                    sessionFound = true;
+                    console.log('Attempting reconnect...', targetPin, targetId);
+                    newSocket.emit('dixit:reconnect', { pin: targetPin, playerId: targetId }, (res: any) => {
+                        if (res.success && res.game) {
+                            console.log('Reconnected!');
+                            setPlayerId(targetId);
+                            setPinCode(targetPin);
+                            setHasIdentity(true);
+                            setGameState(res.game);
+                            setLoading(false);
+
+                            // Ensure storage is up to date (e.g. if came via magic link)
+                            localStorage.setItem('dixit_session', JSON.stringify({ pin: targetPin, playerId: targetId }));
+
+                            // Ensure URL has PID (Magic Linkify)
+                            const currentUrl = new URL(window.location.href);
+                            if (!currentUrl.searchParams.get('pid')) {
+                                currentUrl.searchParams.set('pid', targetId!);
+                                window.history.replaceState(null, '', currentUrl.toString());
+                            }
+                        } else {
+                            // Session unavailable or invalidated
+                            if (!urlPid) { // Only clear if NOT checking a magic link (avoid clearing valid storage on bad link)
                                 localStorage.removeItem('dixit_session');
                                 sessionStorage.removeItem('dixit_session');
                             }
-                            setCheckingSession(false);
-                        });
-                    }
+                        }
+                        setCheckingSession(false);
+                    });
                 }
             } catch (err) { console.error('Reconnect failed', err); }
 
@@ -150,9 +170,9 @@ function DixitContent() {
                     setLoading(false);
                     creationPendingRef.current = false;
 
-                    const newUrl = `/dixit/play?pin=${game.pinCode}`;
+                    const newUrl = `/dixit/play?pin=${game.pinCode}&pid=${me.id}`;
                     if (window.location.pathname + window.location.search !== newUrl) {
-                        router.replace(newUrl); // Use router to handle basePath correctly
+                        router.replace(newUrl);
                     }
                 }
             }
@@ -209,7 +229,7 @@ function DixitContent() {
                         setHasIdentity(true);
                         creationPendingRef.current = false;
                         localStorage.setItem('dixit_session', JSON.stringify({ pin: response.pinCode, playerId: response.playerId }));
-                        router.replace(`/dixit/play?pin=${response.pinCode}`);
+                        router.replace(`/dixit/play?pin=${response.pinCode}&pid=${response.playerId}`);
                         if (response.game) setGameState(response.game);
                     } else {
                         if (creationPendingRef.current) {
@@ -228,6 +248,7 @@ function DixitContent() {
                         setHasIdentity(true);
                         creationPendingRef.current = false;
                         localStorage.setItem('dixit_session', JSON.stringify({ pin: targetPin, playerId: response.playerId }));
+                        router.replace(`/dixit/play?pin=${targetPin}&pid=${response.playerId}`);
                         if (response.game) setGameState(response.game);
                     } else {
                         if (creationPendingRef.current) {

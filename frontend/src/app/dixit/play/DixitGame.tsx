@@ -527,7 +527,7 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
             return (
                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
                     <h2 className="text-2xl font-bold text-white mb-6">Hráči hlasují...</h2>
-                    <div className="grid grid-cols-3 md:grid-cols-4 gap-2 px-2 w-full max-w-5xl opacity-40 pointer-events-none grayscale">
+                    <div className="grid grid-cols-3 md:grid-cols-4 gap-2 px-2 w-full max-w-5xl pointer-events-none">
                         {votingCards.map((cid: string) => (
                             <div key={cid} className="aspect-[2/3] rounded-lg overflow-hidden bg-slate-800">
                                 <img src={`${BACKEND_URL}/dixit/image/${cid}`} className="w-full h-full object-cover" />

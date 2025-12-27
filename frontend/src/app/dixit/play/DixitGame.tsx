@@ -594,11 +594,11 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
         });
 
         return (
-            <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-4 pb-24">
-                <h1 className="text-3xl font-black text-amber-500 mb-6 drop-shadow-lg text-center">VÝSLEDKY KOLA</h1>
+            <div className="flex flex-col items-center w-full max-w-6xl mx-auto p-4 pb-32">
+                <h1 className="text-4xl font-black text-amber-500 mb-8 drop-shadow-lg text-center uppercase tracking-wider">Výsledky kola</h1>
 
-                <div className="w-full mb-8">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="w-full mb-12">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
                         {allCards.map((card) => {
                             const isStorytellerCard = card.ownerId === gameState.storytellerId;
                             const owner = gameState.players.find((p: any) => p.id === card.ownerId);
@@ -606,39 +606,75 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
                                 .filter(([voterId, votedCardId]) => votedCardId === card.id)
                                 .map(([voterId]) => gameState.players.find((p: any) => p.id === voterId));
 
+                            const gainedPoints = activeRound?.scores?.[card.ownerId] || 0;
+                            const isZeroPoints = gainedPoints === 0;
+
                             return (
-                                <div key={card.id} className={`relative rounded-xl overflow-hidden bg-slate-800 aspect-[2/3] ${isStorytellerCard ? 'ring-4 ring-amber-500' : ''}`}>
-                                    <img src={`${BACKEND_URL}/dixit/image/${card.id}`} className="w-full h-full object-cover" />
-                                    <div className="absolute top-1 left-1 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-bold text-white flex items-center gap-1">
-                                        {getAvatarIcon(owner?.avatar)} {owner?.nickname}
-                                        {isStorytellerCard && <Crown className="w-3 h-3 text-amber-500" />}
+                                <div key={card.id} className={`relative rounded-2xl overflow-hidden bg-slate-800 shadow-2xl transition-transform hover:scale-[1.02] duration-300
+                                    ${isStorytellerCard ? 'ring-4 ring-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.3)]' : ''}
+                                    ${!isStorytellerCard && isZeroPoints ? 'ring-4 ring-red-500/80' : ''}
+                                `}>
+                                    {/* Image */}
+                                    <div className="aspect-[2/3] w-full">
+                                        <img src={`${BACKEND_URL}/dixit/image/${card.id}`} className="w-full h-full object-cover" />
                                     </div>
-                                    <div className="absolute inset-x-0 bottom-0 bg-black/80 backdrop-blur-sm p-1 flex flex-wrap gap-1 justify-center min-h-[24px]">
-                                        {votesForThis.map((v: any) => (
-                                            <span key={v.id} className="text-lg leading-none">{getAvatarIcon(v?.avatar)}</span>
-                                        ))}
+
+                                    {/* Owner Header - Higher Visibility */}
+                                    <div className="absolute top-0 inset-x-0 bg-gradient-to-b from-black/90 to-transparent pt-3 pb-6 px-3 flex items-center gap-2">
+                                        <span className="text-3xl drop-shadow-md">{getAvatarIcon(owner?.avatar)}</span>
+                                        <span className={`text-xl font-black text-white drop-shadow-md truncate ${isStorytellerCard ? 'text-emerald-400' : ''}`}>
+                                            {owner?.nickname}
+                                        </span>
+                                        {isStorytellerCard && <Crown className="w-5 h-5 text-emerald-500 animate-bounce" />}
                                     </div>
+
+                                    {/* Gained Points Animation */}
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <div className={`text-6xl md:text-8xl font-black text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] animate-bounce duration-1000 ${gainedPoints > 0 ? 'scale-100' : 'scale-90 opacity-80'}`}>
+                                            {gainedPoints > 0 ? `+${gainedPoints}` : `0`}
+                                        </div>
+                                    </div>
+
+                                    {/* Voters List - Vertical Bottom */}
+                                    {votesForThis.length > 0 && (
+                                        <div className="absolute bottom-2 right-2 flex flex-col gap-1 items-end pointer-events-none">
+                                            {votesForThis.map((v: any) => (
+                                                <div key={v.id} className="bg-black/70 backdrop-blur-md text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg border border-white/10 animate-in slide-in-from-right fade-in duration-500">
+                                                    <span>{getAvatarIcon(v?.avatar)}</span>
+                                                    <span className="max-w-[80px] truncate">{v.nickname}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
                     </div>
                 </div>
 
-                <div className="w-full bg-slate-900/50 rounded-2xl p-4 border border-white/10">
-                    <h3 className="text-lg text-white mb-3 font-bold">Žebříček</h3>
-                    <div className="space-y-2">
-                        {sortedPlayers.map((p: any, i: number) => (
-                            <div key={p.id} className="flex items-center justify-between bg-black/20 p-3 rounded-xl">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-lg font-bold text-slate-600 w-6">#{i + 1}</span>
-                                    <span className="text-2xl">{getAvatarIcon(p.avatar)}</span>
-                                    <span className={`text-lg font-bold ${p.id === playerId ? 'text-emerald-400' : 'text-white'}`}>
-                                        {p.nickname}
-                                    </span>
+                <div className="w-full max-w-2xl bg-slate-900/80 rounded-3xl p-6 border border-white/10 shadow-2xl backdrop-blur-md">
+                    <h3 className="text-2xl text-white mb-4 font-bold flex items-center gap-2"><Trophy className="text-amber-500" /> Žebříček</h3>
+                    <div className="space-y-3">
+                        {sortedPlayers.map((p: any, i: number) => {
+                            const gained = activeRound?.scores?.[p.id] || 0;
+                            return (
+                                <div key={p.id} className={`flex items-center justify-between p-4 rounded-xl transition-all ${p.id === playerId ? 'bg-white/10 border border-white/20' : 'bg-black/20'} ${gained === 0 ? 'border border-red-500/30 bg-red-900/10' : ''}`}>
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-xl font-bold text-slate-500 w-6">#{i + 1}</span>
+                                        <span className="text-3xl">{getAvatarIcon(p.avatar)}</span>
+                                        <div className="flex flex-col">
+                                            <span className={`text-lg font-bold ${p.id === playerId ? 'text-emerald-400' : 'text-white'}`}>
+                                                {p.nickname}
+                                            </span>
+                                            <span className={`text-xs font-bold ${gained > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                {gained > 0 ? `+${gained} bodů` : '0 bodů'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="text-2xl font-black text-white">{p.score}</div>
                                 </div>
-                                <div className="text-xl font-black text-white">{p.score}</div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -647,9 +683,9 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
                         <button
                             onClick={nextRound}
                             disabled={isSubmitting}
-                            className="btn btn-primary bg-emerald-600 hover:bg-emerald-500 text-white text-lg px-8 py-3 rounded-xl shadow-xl flex items-center gap-2"
+                            className="w-full max-w-md bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xl px-8 py-4 rounded-2xl shadow-xl shadow-emerald-500/20 transform hover:scale-105 transition-all flex items-center justify-center gap-3"
                         >
-                            {isSubmitting ? <Loader2 className="animate-spin" /> : <>DALŠÍ KOLO <ArrowRight /></>}
+                            {isSubmitting ? <Loader2 className="animate-spin w-6 h-6" /> : <>DALŠÍ KOLO <ArrowRight className="w-6 h-6" /></>}
                         </button>
                     </div>
                 )}

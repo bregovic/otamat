@@ -559,6 +559,12 @@ export class DixitService implements OnModuleInit {
             });
         }
 
+        // Save round scores
+        await this.prisma.dixitRound.update({
+            where: { id: roundId },
+            data: { scores: pointsMap }
+        });
+
         // Apply
         const updates = [];
         for (const player of game.players) {

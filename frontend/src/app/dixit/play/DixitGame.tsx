@@ -275,15 +275,9 @@ export default function DixitGame({ socket, gameState, playerId, pinCode }: Dixi
         window.location.href = '/otamat/dixit';
     };
 
-    const ExitButton = () => (
-        <button
-            onClick={() => { if (confirm('Opravdu opustit hru?')) handleLeave(); }}
-            className="fixed top-4 right-4 z-[9999] p-3 md:p-4 bg-black/50 hover:bg-red-500/80 backdrop-blur-md rounded-full text-white/50 hover:text-white transition-all border border-white/5 hover:border-red-500 shadow-lg"
-            title="Opustit hru"
-        >
-            <LogOut size={20} />
-        </button>
-    );
+    // ExitButton moved to page.tsx
+    const ExitButton = () => null;
+
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
     const [clueInput, setClueInput] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);

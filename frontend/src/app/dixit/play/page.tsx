@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 import { BACKEND_URL } from '@/utils/config';
-import { User, Crown, Play, ArrowRight, Loader2, Users, Monitor, RotateCcw, Settings, X, Mic, Images, Share2 } from 'lucide-react';
+import { User, Crown, Play, ArrowRight, Loader2, Users, Monitor, RotateCcw, Settings, X, Mic, Images, Share2, LogOut } from 'lucide-react';
 import QRCode from "react-qr-code";
 import Link from 'next/link';
 import DixitGame from './DixitGame';
@@ -493,6 +493,20 @@ function DixitContent() {
                     <div className="flex items-center gap-2">
                         <div className="text-xl font-black bg-white/10 w-10 h-10 flex items-center justify-center rounded-lg">{gameState.rounds?.length || 1}</div>
                         <span className="text-xs font-bold text-slate-400 uppercase">KOLO</span>
+
+                        <button
+                            onClick={() => {
+                                if (confirm('Opravdu opustit hru?')) {
+                                    localStorage.removeItem('dixit_session');
+                                    sessionStorage.removeItem('dixit_session');
+                                    window.location.href = '/otamat/dixit';
+                                }
+                            }}
+                            className="p-2 ml-2 bg-white/5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors"
+                            title="Opustit hru"
+                        >
+                            <LogOut size={16} />
+                        </button>
                         {isHost && (
                             <button
                                 onClick={() => { if (confirm('Opravdu vynutit posun hry? Použijte jen když se hra zasekne.')) socket?.emit('dixit:forceNext', { pin: pinCode }); }}

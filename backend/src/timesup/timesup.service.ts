@@ -17,6 +17,7 @@ export class TimesUpService {
         // New filters
         difficulty?: number; // 1 (Default), 2, 3, 0 (Kids)
         selectedCategories?: string[]; // Array of categories
+        cardCount?: number; // Number of cards (Default 40)
     }): Promise<TimesUpGame> {
         const gameCode = this.generateCode();
         const hostId = Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -85,7 +86,8 @@ export class TimesUpService {
             where: { gameCode: code },
             include: {
                 players: true,
-                teams: { include: { players: true } }
+                teams: { include: { players: true } },
+                cards: true
             },
         });
     }
@@ -95,7 +97,8 @@ export class TimesUpService {
             where: { hostId },
             include: {
                 players: true,
-                teams: { include: { players: true } }
+                teams: { include: { players: true } },
+                cards: true
             },
         });
     }
@@ -217,7 +220,10 @@ export class TimesUpService {
                 currentTeamId: teams[0]?.id, // First team starts
                 round: 1
             },
-            include: { teams: { include: { players: true } } }
+            include: {
+                players: true,
+                teams: { include: { players: true } }
+            }
         });
     }
 
@@ -288,10 +294,107 @@ export class TimesUpService {
         });
     }
 
-    async bulkUpdateCards(ids: number[], data: { level?: number }) {
+    async bulkUpdateCards(ids: number[], data: { level?: number, category?: string }) {
         return this.prisma.timesUpCard.updateMany({
             where: { id: { in: ids } },
             data
         });
+    }
+
+    // --- GAMEPLAY LOGIC ---
+
+    async startTurn(gameCode: string) {
+        const game = await this.getGame(gameCode);
+        if (!game) throw new Error("Game not found");
+
+        // 1. Select Next Player (Random from current team or round robin)
+        const team = game.teams.find(t => t.id === game.currentTeamId);
+        // If no currentTeam set (legacy?), use all players
+        let eligiblePlayers = team ? team.players : game.players;
+
+        let nextPlayer;
+        if (game.activePlayerId) {
+            // Find next in array relative to current active
+            const idx = eligiblePlayers.findIndex(p => p.id === game.activePlayerId);
+            if (idx >= 0) {
+                nextPlayer = eligiblePlayers[(idx + 1) % eligiblePlayers.length];
+            }
+        }
+
+        if (!nextPlayer) {
+            nextPlayer = eligiblePlayers[Math.floor(Math.random() * eligiblePlayers.length)];
+        }
+
+        // 2. Select Card
+        const card = await this.prisma.timesUpGameCard.findFirst({
+            where: { gameId: game.id, state: 'DECK' }
+        });
+
+        if (!card) {
+            return { roundOver: true, game };
+        }
+
+        // 3. Update State
+        const turnExpiresAt = new Date(Date.now() + game.timeLimit * 1000);
+
+        await this.prisma.timesUpGame.update({
+            where: { id: game.id },
+            data: {
+                status: 'PLAYING',
+                activePlayerId: nextPlayer.id,
+                activeCardId: card.id,
+                turnExpiresAt
+            }
+        });
+
+        return this.getGameByHostId(game.hostId);
+    }
+
+    async registerGuess(gameCode: string, guesserId: number) {
+        const game = await this.getGame(gameCode);
+        if (!game || !game.activeCardId || !game.activePlayerId) return game;
+
+        // 1. Score for Presenter
+        await this.prisma.timesUpPlayer.update({
+            where: { id: game.activePlayerId },
+            data: { score: { increment: 1 } }
+        });
+
+        // 2. Score for Guesser
+        await this.prisma.timesUpPlayer.update({
+            where: { id: guesserId },
+            data: { score: { increment: 1 } }
+        });
+
+        // 3. Mark Card Guessed
+        await this.prisma.timesUpGameCard.update({
+            where: { id: game.activeCardId },
+            data: { state: 'GUESSED', roundGuessed: game.round }
+        });
+
+        // 4. Team Score
+        if (game.currentTeamId) {
+            await this.prisma.timesUpTeam.update({
+                where: { id: game.currentTeamId },
+                data: { score: { increment: 1 } }
+            });
+        }
+
+        // 5. Next Card
+        const nextCard = await this.prisma.timesUpGameCard.findFirst({
+            where: { gameId: game.id, state: 'DECK' }
+        });
+
+        if (!nextCard) {
+            return { roundOver: true, game: await this.getGameByHostId(game.hostId) };
+        }
+
+        // Set Next Card
+        await this.prisma.timesUpGame.update({
+            where: { id: game.id },
+            data: { activeCardId: nextCard.id }
+        });
+
+        return this.getGameByHostId(game.hostId);
     }
 }

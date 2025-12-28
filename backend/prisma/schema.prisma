@@ -290,6 +290,9 @@ model TimesUpGame {
   
   // State
   currentTeamId Int?
+  activePlayerId Int? // Player currently describing
+  activeCardId   Int? // Card currently active
+  turnExpiresAt  DateTime? // When current turn ends
   round         Int      @default(0) // 0=Lobby, 1=Describe, 2=OneWord, 3=Pantomime
   
   teams     TimesUpTeam[]
@@ -330,6 +333,7 @@ model TimesUpPlayer {
   avatar    String   @default("👤")
   isHost    Boolean  @default(false)
   socketId  String?  // Current socket ID if online
+  score     Int      @default(0)
 
   @@map("timesup_players")
 }
@@ -362,6 +366,7 @@ model TimesUpCard {
   category  String   
   level     Int      @default(1)
   description String? 
+  imageUrl    String?
 
   @@map("timesup_cards")
 }

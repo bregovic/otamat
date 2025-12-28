@@ -31,8 +31,12 @@ export class TimesUpAdminController {
     }
 
     @Post('bulk-update')
-    async bulkUpdate(@Body() data: { ids: number[], level: number }) {
-        return this.service.bulkUpdateCards(data.ids, { level: data.level });
+    async bulkUpdate(@Body() data: { ids: number[], level?: number, category?: string }) {
+        const updateData: any = {};
+        if (data.level !== undefined) updateData.level = data.level;
+        if (data.category !== undefined) updateData.category = data.category;
+
+        return this.service.bulkUpdateCards(data.ids, updateData);
     }
 
     @Put(':id')

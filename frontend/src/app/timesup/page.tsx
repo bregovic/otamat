@@ -47,6 +47,12 @@ export default function TimesUpHome() {
                     </Link>
                 </div>
 
+                <div className="flex gap-4 mt-4">
+                    <Link href="/timesup/admin" className="text-slate-400 hover:text-purple-400 font-bold uppercase tracking-wider text-sm transition-colors border-b border-transparent hover:border-purple-400 pb-1">
+                        Správa karet (Admin)
+                    </Link>
+                </div>
+
                 <Link href="/" className="mt-8 text-slate-500 hover:text-white flex items-center gap-2 transition-colors">
                     <ArrowLeft size={16} /> Zpět na OtaMat
                 </Link>

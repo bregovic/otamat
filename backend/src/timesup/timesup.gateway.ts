@@ -76,4 +76,37 @@ export class TimesUpGateway {
             return { success: false, error: e.message };
         }
     }
+
+    @SubscribeMessage('timesup:startTurn')
+    async handleStartTurn(@MessageBody() data: { gameCode: string }, @ConnectedSocket() client: Socket) {
+        try {
+            const game = await this.timesupService.startTurn(data.gameCode);
+            // Handle roundOver just in case logic triggers it immediately
+            if ((game as any).roundOver) {
+                this.server.to(data.gameCode).emit('timesup:roundOver', (game as any).game);
+            } else {
+                this.server.to(data.gameCode).emit('timesup:turnStarted', game);
+            }
+            return { success: true };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }
+
+    @SubscribeMessage('timesup:guess')
+    async handleGuess(@MessageBody() data: { gameCode: string, guesserId: number }, @ConnectedSocket() client: Socket) {
+        try {
+            const result = await this.timesupService.registerGuess(data.gameCode, data.guesserId);
+
+            if (result && (result as any).roundOver) {
+                this.server.to(data.gameCode).emit('timesup:roundOver', (result as any).game);
+            } else {
+                this.server.to(data.gameCode).emit('timesup:cardGuessed', result);
+            }
+            return { success: true };
+        } catch (e) {
+            console.error("Guess error:", e);
+            return { success: false, error: e.message };
+        }
+    }
 }

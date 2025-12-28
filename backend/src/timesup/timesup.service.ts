@@ -140,8 +140,10 @@ export class TimesUpService {
 
         if (!game) throw new Error("Game not found");
 
-        // 1. Assign players to teams (Round Robin)
-        const unassignedPlayers = game.players.filter(p => !p.teamId);
+        // 1. Assign players to teams (Random Round Robin)
+        let unassignedPlayers = game.players.filter(p => !p.teamId);
+        unassignedPlayers = this.shuffleArray(unassignedPlayers);
+
         const teams = game.teams.sort((a, b) => a.order - b.order);
 
         if (teams.length > 0) {

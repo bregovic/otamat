@@ -2,9 +2,10 @@
 
 import { useTimesUpSocket } from "@/context/TimesUpSocketContext";
 import { useState, useEffect } from "react";
-import { Play, Plus, Minus, Settings } from "lucide-react";
+import { Play, Plus, Minus, Settings, Share, X } from "lucide-react";
 import QRCode from "react-qr-code";
 import Link from "next/link";
+import { avatarMap } from "@/utils/avatars";
 
 export default function HostPage() {
     const socket = useTimesUpSocket();
@@ -15,13 +16,7 @@ export default function HostPage() {
     const [hostAvatar, setHostAvatar] = useState('🐶');
     const [gameMode, setGameMode] = useState<'LOBBY' | 'SINGLE_DEVICE'>('LOBBY');
 
-    // Restore Game Mode from LocalStorage
-    useEffect(() => {
-        const storedMode = localStorage.getItem('timesup_gameMode');
-        if (storedMode === 'SINGLE_DEVICE' || storedMode === 'LOBBY') {
-            setGameMode(storedMode);
-        }
-    }, []);
+
     const [manualPlayersText, setManualPlayersText] = useState('');
 
     // Game Settings
@@ -68,6 +63,122 @@ export default function HostPage() {
     });
     const [localTimeLeft, setLocalTimeLeft] = useState(0);
 
+    // --- SESSION MANAGMENT ---
+
+    const clearSession = () => {
+        localStorage.removeItem('timesup_session_v1');
+        localStorage.removeItem('timesup_hostId');
+    };
+
+    // Restore Game Mode & Session from LocalStorage
+    useEffect(() => {
+        // 1. Restore Mode
+        const storedMode = localStorage.getItem('timesup_gameMode');
+        if (storedMode === 'SINGLE_DEVICE' || storedMode === 'LOBBY') {
+            setGameMode(storedMode);
+        }
+
+        // 2. Restore Session (Single Device)
+        try {
+            const sessionRaw = localStorage.getItem('timesup_session_v1');
+            if (sessionRaw) {
+                const session = JSON.parse(sessionRaw);
+                // Validate session - we check if mode matches Single Device for now, as that's what we are fixing
+                if (session && session.gameMode === 'SINGLE_DEVICE' && session.createdGame && session.localState) {
+                    console.log("Restoring previous TimesUp session...");
+                    setGameMode('SINGLE_DEVICE');
+                    setCreatedGame(session.createdGame);
+                    if (session.createdGame.players) setPlayers(session.createdGame.players);
+
+                    setLocalState(session.localState);
+                    setStep('GAME');
+                }
+            }
+        } catch (e) {
+            console.error("Failed to restore session", e);
+        }
+    }, [setGameMode, setCreatedGame, setPlayers, setLocalState, setStep]);
+
+    // Hint State
+    const [hint, setHint] = useState<string | null>(null);
+    const [isHintLoading, setIsHintLoading] = useState(false);
+
+    // Results Reveal State
+    const [resultsRevealIndex, setResultsRevealIndex] = useState(-1);
+
+    // Trigger Reveal when game ends
+    // Trigger Reveal when game ends
+    useEffect(() => {
+        if (localState.currentRound > 3 && resultsRevealIndex === -1 && createdGame?.teams) {
+            // Start the sequence
+            // Initial delay before first reveal? Or start immediately?
+            // Let's set it to 0 (shows nothing if we use <, or first if <=)
+            // If we use 'idx < resultsRevealIndex', then 0 means 0 items. 1 means 1 item (idx 0).
+            setResultsRevealIndex(0);
+
+            const interval = setInterval(() => {
+                setResultsRevealIndex(prev => {
+                    const next = prev + 1;
+                    if (next > createdGame.teams.length) { // Allow it to go 1 past last index to show all
+                        clearInterval(interval);
+                        return prev;
+                    }
+                    return next;
+                });
+            }, 3000);
+            return () => clearInterval(interval);
+        }
+    }, [localState.currentRound, createdGame]); // Removed resultsRevealIndex to prevent interval clearing loop
+
+    // Clear hint when card changes
+    useEffect(() => {
+        setHint(null);
+    }, [localState.activeCardId]);
+
+    const fetchHint = async () => {
+        // Find current card
+        const activeCardId = localState.activeCardId;
+        const activeCard = activeCardId
+            ? (createdGame?.cards?.find((c: any) => c.id === activeCardId) || localState.shuffledCards.find(c => c.id === activeCardId))
+            : null;
+
+        if (!activeCard?.value) return;
+
+        setIsHintLoading(true);
+        try {
+            // Use Czech Wikipedia Summary API
+            const term = encodeURIComponent(activeCard.value);
+            const res = await fetch(`https://cs.wikipedia.org/api/rest_v1/page/summary/${term}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.extract) {
+                    setHint(data.extract);
+                } else {
+                    setHint("O této osobě/pojmu se nám nepodařilo nic najít.");
+                }
+            } else {
+                setHint("Nápověda nebyla nalezena.");
+            }
+        } catch (e) {
+            console.error(e);
+            setHint("Chyba při načítání nápovědy.");
+        }
+        setIsHintLoading(false);
+    };
+
+    // Save Session to LocalStorage
+    useEffect(() => {
+        if (step === 'GAME' && gameMode === 'SINGLE_DEVICE' && createdGame) {
+            const session = {
+                gameMode,
+                createdGame,
+                localState,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('timesup_session_v1', JSON.stringify(session));
+        }
+    }, [step, gameMode, createdGame, localState]);
+
     // Sync Local State with Game
     // Initialize Local State & Cards
     useEffect(() => {
@@ -80,7 +191,8 @@ export default function HostPage() {
                 activePlayerId: createdGame.activePlayerId || prev.activePlayerId,
                 activeCardId: createdGame.activeCardId || prev.activeCardId,
                 turnExpiresAt: createdGame.turnExpiresAt ? new Date(createdGame.turnExpiresAt).getTime() : prev.turnExpiresAt,
-                currentTeamId: prev.currentTeamId || createdGame.currentTeamId || (createdGame.teams?.[0]?.id) || null
+                // Pick RANDOM start team if not set
+                currentTeamId: prev.currentTeamId || createdGame.currentTeamId || (createdGame.teams && createdGame.teams.length > 0 ? createdGame.teams[Math.floor(Math.random() * createdGame.teams.length)].id : null)
             }));
 
             // 1. Setup Cards
@@ -104,12 +216,14 @@ export default function HostPage() {
                             const targetDiff = Number(gameDiff);
 
                             // Logic:
+                            // Diff 0 (Kids) -> Level 0 only
                             // Diff 1 (Easy) -> Level 1 only (or 0/1)
                             // Diff 2 (Medium) -> Level 1 & 2
                             // Diff 3 (Hard) -> All levels
                             let levelMatch = false;
 
-                            if (targetDiff === 1) levelMatch = cardLevel <= 1;
+                            if (targetDiff === 0) levelMatch = cardLevel === 0;
+                            else if (targetDiff === 1) levelMatch = cardLevel <= 1;
                             else if (targetDiff === 2) levelMatch = cardLevel <= 2;
                             else levelMatch = true; // Level 3+ includes everything
 
@@ -201,10 +315,17 @@ export default function HostPage() {
             setLocalState(prev => {
                 if (!createdGame || !createdGame.teams || createdGame.teams.length === 0) return { ...prev, activePlayerId: null, turnExpiresAt: null };
 
-                // Find current team index
-                const currentIdx = createdGame.teams.findIndex((t: any) => t.id === prev.currentTeamId);
-                const nextIdx = (currentIdx + 1) % createdGame.teams.length;
-                const nextTeamId = createdGame.teams[nextIdx].id;
+                // Random Next Team Logic
+                // Filter out current team to avoid back-to-back (unless only 1 team)
+                const otherTeams = createdGame.teams.filter((t: any) => t.id !== prev.currentTeamId);
+                let nextTeamId;
+
+                if (otherTeams.length > 0) {
+                    nextTeamId = otherTeams[Math.floor(Math.random() * otherTeams.length)].id;
+                } else {
+                    // Only 1 team exists
+                    nextTeamId = createdGame.teams[0].id;
+                }
 
                 return {
                     ...prev,
@@ -293,6 +414,14 @@ export default function HostPage() {
             setCreatedGame(game);
         });
 
+        socket.on('timesup:gameEnded', () => {
+            alert("Hra byla ukončena.");
+            clearSession();
+            setStep('SETUP');
+            setCreatedGame(null);
+            window.location.reload();
+        });
+
         return () => {
             socket.off('timesup:created');
             socket.off('timesup:gameData');
@@ -301,6 +430,7 @@ export default function HostPage() {
             socket.off('timesup:turnStarted');
             socket.off('timesup:cardGuessed');
             socket.off('timesup:roundOver');
+            socket.off('timesup:gameEnded');
         };
     }, [socket]);
 
@@ -313,6 +443,8 @@ export default function HostPage() {
             : [];
 
         if (gameMode === 'SINGLE_DEVICE' && manualPlayers.length < 1) return alert("Zadej alespoň 1 dalšího hráče!");
+
+        console.log("Creating game with difficulty:", difficulty, "Categories:", selectedCategories);
 
         socket.emit('timesup:create', {
             hostName,
@@ -373,10 +505,16 @@ export default function HostPage() {
 
             const handleExit = () => {
                 if (confirm("Opravdu ukončit hru a vrátit se do lobby?")) {
-                    localStorage.removeItem('timesup_host_id');
-                    setStep('LOBBY');
-                    setCreatedGame(null);
-                    window.location.reload();
+                    if (gameMode !== 'SINGLE_DEVICE' && socket) {
+                        socket.emit('timesup:endGame', { gameCode: createdGame.gameCode });
+                        // The server will emit 'timesup:gameEnded', which we listen for to cleanup.
+                    } else {
+                        // Local cleanup for Single Device
+                        clearSession();
+                        setStep('SETUP');
+                        setCreatedGame(null);
+                        window.location.reload();
+                    }
                 }
             };
 
@@ -384,6 +522,7 @@ export default function HostPage() {
                 // 1. Try Server (Sync for Lobby Mode)
                 if (gameMode !== 'SINGLE_DEVICE' && socket) {
                     socket.emit('timesup:startTurn', { gameCode: createdGame.gameCode });
+                    return; // CRITICAL: Do not run local logic in Lobby Mode! Rely on server event.
                 }
 
                 // Check if any cards left in this round
@@ -404,18 +543,8 @@ export default function HostPage() {
                 if (currentTeamId) {
                     const team = createdGame.teams?.find((t: any) => t.id === currentTeamId);
                     if (team && team.players && team.players.length > 0) {
-                        // Round Robin within team
-                        const playerIdx = localState.teamPlayerIndices[currentTeamId] || 0;
-                        nextPlayer = team.players[playerIdx % team.players.length];
-
-                        // Increment index for next time this team plays
-                        setLocalState(prev => ({
-                            ...prev,
-                            teamPlayerIndices: {
-                                ...prev.teamPlayerIndices,
-                                [currentTeamId]: (prev.teamPlayerIndices[currentTeamId] || 0) + 1
-                            }
-                        }));
+                        // RANDOM Player within team
+                        nextPlayer = team.players[Math.floor(Math.random() * team.players.length)];
                     }
                 }
 
@@ -427,7 +556,19 @@ export default function HostPage() {
                 if (!nextPlayer || !nextPlayer.id) return;
 
                 // Pick Card
-                const nextCard = availableCards[Math.floor(Math.random() * availableCards.length)];
+                // Logic: If there was an active card from previous turn (time ran out), use it strictly!
+                // Otherwise pick random.
+                let nextCard = null;
+                if (localState.activeCardId) {
+                    const prevCard = availableCards.find(c => c.id === localState.activeCardId);
+                    if (prevCard) {
+                        nextCard = prevCard;
+                    }
+                }
+
+                if (!nextCard) {
+                    nextCard = availableCards[Math.floor(Math.random() * availableCards.length)];
+                }
 
                 if (!nextCard || !nextCard.id) return;
 
@@ -448,6 +589,7 @@ export default function HostPage() {
                 // 1. Try Server (Sync for Lobby Mode)
                 if (gameMode !== 'SINGLE_DEVICE' && socket) {
                     socket.emit('timesup:guess', { gameCode: createdGame.gameCode, guesserId });
+                    return; // CRITICAL: Wait for server response in lobby mode
                 }
 
                 setLocalState(prev => {
@@ -538,19 +680,19 @@ export default function HostPage() {
                     </button>
 
                     {/* Top Info */}
-                    <div className="z-10 w-full flex justify-between items-start max-w-6xl">
+                    <div className="z-10 w-full flex justify-between items-start max-w-6xl flex-row">
                         <div className="flex flex-col">
-                            <div className="text-xl font-bold text-slate-500 tracking-widest uppercase">
+                            <div className="text-sm md:text-xl font-bold text-slate-500 tracking-widest uppercase">
                                 {localState.currentRound === 1 && "Kolo 1: Popis slovy"}
                                 {localState.currentRound === 2 && "Kolo 2: Jedno slovo"}
                                 {localState.currentRound === 3 && "Kolo 3: Pantomima"}
                                 {localState.currentRound > 3 && "KONEC HRY"}
                             </div>
-                            <div className="text-sm text-slate-600 font-bold">
+                            <div className="text-xs md:text-sm text-slate-600 font-bold">
                                 Zbývá karet: {localState.shuffledCards.length - localState.guessedCardIds.length}
                             </div>
                         </div>
-                        <div className="text-4xl font-black font-mono text-purple-500 tabular-nums">{localTimeLeft}s</div>
+                        <div className="text-3xl md:text-4xl font-black font-mono text-purple-500 tabular-nums">{localTimeLeft}s</div>
                     </div>
 
                     {/* Center: Action */}
@@ -558,27 +700,87 @@ export default function HostPage() {
                         {!isTurnActive ? (
                             <div className="flex flex-col items-center gap-8 animate-in fade-in zoom-in duration-300">
                                 {localState.currentRound > 3 ? (
-                                    <>
-                                        <h2 className="text-5xl font-black text-white glow-text">VÍTĚZOVÉ</h2>
-                                        <div className="grid grid-cols-2 gap-8 w-full">
-                                            {Object.entries(localState.scores)
-                                                .sort(([, a], [, b]) => b - a)
-                                                .map(([pid, score], idx) => {
-                                                    const p = players.find(p => p.id === parseInt(pid));
+                                    <div className="w-full flex flex-col items-center">
+                                        <h2 className="text-6xl font-black text-white glow-text mb-12 uppercase tracking-widest">
+                                            {resultsRevealIndex >= createdGame.teams.length ? "🎉 VÍTĚZOVÉ 🎉" : "VYHLÁŠENÍ VÝSLEDKŮ"}
+                                        </h2>
+
+                                        <div className="flex flex-col-reverse gap-6 w-full max-w-3xl mb-16">
+                                            {createdGame.teams
+                                                .map((team: any) => {
+                                                    // Calculate Team Score
+                                                    const teamScore = team.players.reduce((acc: number, p: any) => acc + (localState.scores[p.id] || 0), 0);
+                                                    return { ...team, score: teamScore };
+                                                })
+                                                .sort((a: any, b: any) => a.score - b.score) // Sort lowest to highest for reveal (rendering in reverse column)
+                                                .map((team: any, idx: number, allTeams: any[]) => {
+                                                    // Logic: Show if index < revealIndex
+                                                    // resultsRevealIndex goes 0..N
+                                                    const isVisible = idx < resultsRevealIndex;
+                                                    if (!isVisible) return null;
+
+                                                    const isWinner = idx === allTeams.length - 1; // Last one revealed is the winner
+                                                    const rank = allTeams.length - idx;
+
                                                     return (
-                                                        <div key={pid} className="bg-[#1e1e24] p-6 rounded-2xl flex items-center justify-between border border-[#2a2a35] shadow-xl">
-                                                            <div className="flex items-center gap-4">
-                                                                <span className="text-3xl font-black text-slate-500">#{idx + 1}</span>
-                                                                <div className="text-4xl">{p?.avatar}</div>
-                                                                <div className="text-xl font-bold text-white">{p?.name || 'Hráč'}</div>
+                                                        <div key={team.id} className={`relative p-8 rounded-3xl border-4 flex items-center justify-between shadow-2xl animate-in slide-in-from-bottom duration-700 ${isWinner ? 'bg-gradient-to-r from-yellow-600/20 to-yellow-500/10 border-yellow-500 scale-110 z-10' : 'bg-[#1e1e24] border-[#2a2a35] grayscale-[0.3]'}`}>
+
+                                                            {/* Medal / Rank */}
+                                                            <div className={`text-4xl font-black w-24 h-24 rounded-full flex items-center justify-center border-4 ${isWinner ? 'bg-yellow-500 text-black border-yellow-300 shadow-[0_0_30px_rgba(234,179,8,0.5)]' : 'bg-[#2a2a35] text-slate-500 border-slate-600'}`}>
+                                                                {isWinner ? '🏆' : `#${rank}`}
                                                             </div>
-                                                            <div className="text-4xl font-black text-purple-500">{score}</div>
+
+                                                            {/* Team Info */}
+                                                            <div className="flex-1 px-8">
+                                                                <h3 className={`text-4xl font-black uppercase mb-2 ${isWinner ? 'text-yellow-500' : 'text-white'}`}>{team.name}</h3>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {team.players.map((p: any) => (
+                                                                        <span key={p.id} className="text-slate-400 font-bold flex items-center gap-1 bg-black/20 px-2 py-1 rounded">
+                                                                            {p.avatar} {p.name}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Score */}
+                                                            <div className={`text-6xl font-black font-mono ${isWinner ? 'text-yellow-400' : 'text-slate-300'}`}>
+                                                                {team.score} b
+                                                            </div>
                                                         </div>
-                                                    )
-                                                })}
+                                                    );
+                                                })
+                                            }
                                         </div>
-                                        <button onClick={handleExit} className="bg-white text-black px-12 py-6 rounded-2xl font-black text-3xl mt-8">Zpět do menu</button>
-                                    </>
+
+                                        {/* Individual Stats (Small) */}
+                                        {resultsRevealIndex >= createdGame.teams.length && (
+                                            <div className="w-full max-w-4xl animate-in fade-in duration-1000 delay-500">
+                                                <div className="h-px bg-slate-800 w-full mb-8"></div>
+                                                <h4 className="text-center text-slate-500 uppercase tracking-widest font-bold mb-6 text-sm">Individuální žebříček</h4>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                                    {Object.entries(localState.scores)
+                                                        .sort(([, a], [, b]) => b - a)
+                                                        .map(([pid, score], idx) => {
+                                                            const p = players.find(p => p.id === parseInt(pid));
+                                                            if (!p) return null;
+                                                            return (
+                                                                <div key={pid} className="bg-[#15151a] p-3 rounded-xl border border-[#2a2a35] flex items-center gap-3 opacity-70 hover:opacity-100 transition-opacity">
+                                                                    <span className="font-mono font-bold text-slate-600">#{idx + 1}</span>
+                                                                    <div className="text-lg">{p.avatar}</div>
+                                                                    <div className="flex-1 text-sm font-bold text-slate-300 truncate">{p.name}</div>
+                                                                    <div className="font-bold text-purple-400">{score}</div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                </div>
+                                                <div className="flex justify-center mt-12">
+                                                    <button onClick={handleExit} className="bg-white hover:bg-slate-200 text-black px-12 py-5 rounded-2xl font-black text-2xl transition-transform hover:scale-105 active:scale-95 shadow-xl">
+                                                        Zpět do menu
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : (
                                     <>
                                         <div className="flex flex-wrap gap-8 justify-center w-full mb-8">
@@ -613,9 +815,9 @@ export default function HostPage() {
                                             </div>
                                         )}
 
-                                        <h2 className="text-4xl font-bold text-slate-300">Připraveni?</h2>
-                                        <button onClick={startTurn} className="bg-white text-black px-16 py-8 rounded-[3rem] text-5xl font-black shadow-2xl shadow-white/20 hover:scale-105 transition-all hover:bg-purple-50 flex items-center gap-4">
-                                            <Play size={48} fill="currentColor" /> START
+                                        <h2 className="text-2xl md:text-4xl font-bold text-slate-300 text-center">Připraveni?</h2>
+                                        <button onClick={startTurn} className="bg-white text-black px-8 py-4 md:px-16 md:py-8 rounded-[3rem] text-3xl md:text-5xl font-black shadow-2xl shadow-white/20 hover:scale-105 transition-all hover:bg-purple-50 flex items-center gap-4">
+                                            <Play size={32} className="md:w-12 md:h-12" fill="currentColor" /> START
                                         </button>
                                     </>
                                 )}
@@ -629,10 +831,31 @@ export default function HostPage() {
                                     </h2>
                                 </div>
 
-                                <div className="bg-white !text-black p-12 rounded-[3rem] shadow-2xl w-full text-center flex flex-col items-center gap-4 animate-in zoom-in duration-300 transform hover:scale-105 transition-transform border-[6px] border-purple-500">
-                                    <h1 className="text-7xl font-black tracking-tighter leading-tight break-words !text-black" style={{ color: 'black' }}>{activeCard?.value || "..."}</h1>
-                                    {activeCard?.description && <p className="text-2xl font-bold !text-slate-500 mt-2" style={{ color: '#64748b' }}>{activeCard.description}</p>}
-                                    {activeCard?.imageUrl && <img src={activeCard.imageUrl} alt="Card" className="max-h-64 rounded-xl mt-4 object-contain" />}
+                                <div className="bg-white !text-black p-6 md:p-12 rounded-[2rem] md:rounded-[3rem] shadow-2xl w-full text-center flex flex-col items-center gap-2 md:gap-4 animate-in zoom-in duration-300 transform hover:scale-105 transition-transform border-[6px] border-purple-500">
+                                    <h1 className="text-4xl md:text-7xl font-black tracking-tighter leading-tight break-words !text-black" style={{ color: 'black' }}>{activeCard?.value || "..."}</h1>
+                                    {activeCard?.description && <p className="text-lg md:text-2xl font-bold !text-slate-500 mt-2" style={{ color: '#64748b' }}>{activeCard.description}</p>}
+                                    {activeCard?.imageUrl && <img src={activeCard.imageUrl} alt="Card" className="max-h-48 md:max-h-64 rounded-xl mt-4 object-contain" />}
+                                </div>
+
+                                {/* Hint Section */}
+                                <div className="w-full max-w-xl mt-6 flex flex-col items-center">
+                                    {!hint && !isHintLoading && (
+                                        <button
+                                            onClick={fetchHint}
+                                            className="text-slate-500 hover:text-white text-sm font-bold uppercase tracking-wider flex items-center gap-2 mx-auto transition-colors bg-white/5 hover:bg-white/10 px-6 py-3 rounded-full border border-white/5 hover:border-white/20"
+                                        >
+                                            🕵️ Nevíš? Zobrazit nápovědu
+                                        </button>
+                                    )}
+
+                                    {isHintLoading && <div className="text-slate-400 text-center animate-pulse">⏳ Hledám nápovědu na Wikipedii...</div>}
+
+                                    {hint && (
+                                        <div className="bg-blue-900/40 border border-blue-500/30 p-6 rounded-2xl text-blue-100 text-lg mt-2 animate-in slide-in-from-top-2 fade-in relative max-w-2xl w-full text-center shadow-lg backdrop-blur-sm">
+                                            <button onClick={() => setHint(null)} className="absolute top-2 right-4 text-blue-400 hover:text-white text-2xl" title="Zavřít">×</button>
+                                            <p className="leading-relaxed"><span className="font-bold text-blue-300">Wikipedia:</span> {hint}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </>
                         )}
@@ -681,12 +904,24 @@ export default function HostPage() {
                 </div>
 
                 {/* Scoreboard */}
-                <div className="flex gap-8 z-10 w-full max-w-4xl justify-center mb-12">
+                <div className="flex gap-8 z-10 w-full max-w-6xl justify-center mb-12 flex-wrap">
                     {createdGame.teams?.map((team: any, idx: number) => (
-                        <div key={team.id} className={`glass-card p-6 flex-1 rounded-2xl border-t-4 transition-all ${createdGame.currentTeamId === team.id ? 'border-yellow-400 bg-white/10 scale-105 shadow-yellow-500/20 shadow-2xl' : 'border-slate-700 opacity-70'}`}>
+                        <div key={team.id} className={`glass-card p-6 flex-1 min-w-[200px] rounded-2xl border-t-4 transition-all flex flex-col ${createdGame.currentTeamId === team.id ? 'border-yellow-400 bg-white/10 scale-105 shadow-yellow-500/20 shadow-2xl' : 'border-slate-700 opacity-70'}`}>
                             <div className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Tým {idx + 1}</div>
                             <div className="text-2xl font-bold truncate mb-2">{team.name}</div>
-                            <div className="text-5xl font-black font-mono">{team.score || 0}</div>
+                            <div className="text-5xl font-black font-mono mb-4">{team.score || 0}</div>
+
+                            {/* Players List */}
+                            <div className="mt-auto border-t border-white/10 pt-4 space-y-2">
+                                {team.players?.map((p: any) => (
+                                    <div key={p.id} className={`flex items-center gap-2 text-sm font-bold ${createdGame.activePlayerId === p.id ? 'text-yellow-400' : 'text-slate-400'}`}>
+                                        <span>{p.avatar}</span>
+                                        <span className="truncate">{p.name}</span>
+                                        {createdGame.activePlayerId === p.id && <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded ml-auto">NA ŘADĚ</span>}
+                                    </div>
+                                ))}
+                                {(!team.players || team.players.length === 0) && <div className="text-slate-600 text-xs italic">Žádní hráči</div>}
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -696,9 +931,15 @@ export default function HostPage() {
                     {createdGame.currentTeamId ? (
                         <>
                             <p className="text-2xl text-slate-300">Na řadě je:</p>
-                            <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                            <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 text-center">
                                 {createdGame.teams.find((t: any) => t.id === createdGame.currentTeamId)?.name}
                             </h2>
+                            {createdGame.activePlayerId && (
+                                <div className="flex items-center gap-3 bg-white/5 px-6 py-3 rounded-xl border border-white/10 animate-pulse">
+                                    <span className="text-3xl">{createdGame.players?.find((p: any) => p.id === createdGame.activePlayerId)?.avatar}</span>
+                                    <span className="text-2xl font-bold text-white">{createdGame.players?.find((p: any) => p.id === createdGame.activePlayerId)?.name}</span>
+                                </div>
+                            )}
                         </>
                     ) : (
                         <h2 className="text-4xl font-bold">Připravte se!</h2>
@@ -731,13 +972,24 @@ export default function HostPage() {
                 </button>
 
                 <div className="flex flex-col items-center gap-2 mt-10 z-10 w-full relative">
-                    <h1 className="text-4xl font-black mb-2 tracking-tighter">Lobby</h1>
                     <p className="text-slate-400 text-lg">Připojte se na <span className="font-bold text-white">hollyhop.cz</span> pomocí PINu:</p>
 
-                    <div className="bg-[#1e1e24] border-2 border-[#2a2a35] rounded-3xl px-12 py-4 shadow-2xl mt-2">
-                        <span className="text-8xl font-black text-white tracking-widest tabular-nums leading-none">
-                            {createdGame.gameCode}
-                        </span>
+                    <div className="flex items-center gap-4 mt-2">
+                        <div className="bg-[#1e1e24] border-2 border-[#2a2a35] rounded-3xl px-12 py-4 shadow-2xl">
+                            <span className="text-8xl font-black text-white tracking-widest tabular-nums leading-none">
+                                {createdGame.gameCode}
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => {
+                                navigator.clipboard.writeText(joinUrl);
+                                alert("Odkaz zkopírován!");
+                            }}
+                            className="bg-[#1e1e24] hover:bg-[#2a2a35] text-white p-6 rounded-3xl border-2 border-[#2a2a35] transition-colors flex items-center justify-center"
+                            title="Zkopírovat odkaz pro připojení"
+                        >
+                            <Share size={32} />
+                        </button>
                     </div>
 
                     <div className="absolute right-0 top-0 hidden xl:flex flex-col items-center gap-2 bg-white p-3 rounded-xl shadow-xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
@@ -761,16 +1013,37 @@ export default function HostPage() {
                                 <p className="text-2xl font-medium">Čekání na hráče...</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pr-2">
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 overflow-y-auto pr-2">
                                 {players.map((p) => (
-                                    <div key={p.id} className="bg-[#1e1e24] p-4 rounded-xl flex items-center gap-3 border border-[#2a2a35] animate-in zoom-in duration-300">
-                                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-xl shadow-lg">
-                                            {p.avatar || '👤'}
+                                    <div key={p.id} className="relative group">
+                                        <div className="bg-[#1e1e24] p-4 rounded-xl flex flex-col items-center gap-2 border border-[#2a2a35] animate-in zoom-in duration-300 hover:border-slate-500 transition-colors">
+                                            <div className="w-16 h-16 bg-gradient-to-br from-purple-500/20 to-indigo-600/20 rounded-full flex items-center justify-center text-4xl shadow-inner border border-white/5">
+                                                {avatarMap[p.avatar] || p.avatar || '👤'}
+                                            </div>
+                                            <span className="font-bold text-lg truncate w-full text-center text-white">
+                                                {p.name}
+                                            </span>
+                                            {p.isHost && (
+                                                <span className="text-[10px] uppercase font-bold bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded-full border border-yellow-500/50">
+                                                    HOST
+                                                </span>
+                                            )}
                                         </div>
-                                        <span className="font-bold text-lg truncate flex items-center gap-2">
-                                            {p.name}
-                                            {p.isHost && <span className="text-xs bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded-full border border-yellow-500/50">HOST</span>}
-                                        </span>
+
+                                        {/* Kick Button */}
+                                        {!p.isHost && (
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm(`Opravdu vyhodit hráče ${p.name}?`)) {
+                                                        socket?.emit('timesup:kick', { gameCode: createdGame.gameCode, playerId: p.id });
+                                                    }
+                                                }}
+                                                className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 hover:scale-110"
+                                                title="Vyhodit hráče"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                             </div>

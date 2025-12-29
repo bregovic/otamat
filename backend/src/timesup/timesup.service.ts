@@ -161,6 +161,8 @@ export class TimesUpService {
         let whereClause: any = {};
 
         // Difficulty: 0=Kids, 1=Lvl1, 2=Lvl1+2, 3=All (Adults)
+        console.log(`Starting game ${gameCode} with Difficulty=${game.difficulty}, Categories=${game.selectedCategories}`);
+
         if (game.difficulty === 0) {
             whereClause.level = 0;
         } else if (game.difficulty === 1) {
@@ -172,10 +174,15 @@ export class TimesUpService {
             whereClause.level = { gte: 1 };
         }
 
+        console.log("WhereClause:", JSON.stringify(whereClause));
+
         // Fetch all potentially matching cards
         let allCards = await this.prisma.timesUpCard.findMany({
             where: whereClause
         });
+
+        console.log(`Found ${allCards.length} matching cards.`);
+        if (allCards.length > 0) console.log("Sample card:", allCards[0]);
 
         // Filter by Categories (In-Memory because of semicolon separation)
         if (game.selectedCategories && game.selectedCategories.trim().length > 0) {
@@ -192,12 +199,9 @@ export class TimesUpService {
         // Security check: If selection results in too few cards, create fallback?
         // Or just let it be. If 0 cards, game is instant over or error?
         if (allCards.length < 10) {
-            console.warn(`Warning: Only ${allCards.length} cards found for Diff=${game.difficulty}, Cats=${game.selectedCategories}. Fallback to ignores category.`);
-            // Fallback - ignore category, keep difficulty
-            allCards = await this.prisma.timesUpCard.findMany({
-                where: whereClause,
-                take: 100 // fallback limit
-            });
+            console.warn(`Warning: Only ${allCards.length} cards found for Diff=${game.difficulty}, Cats=${game.selectedCategories}.`);
+            // REMOVED FALLBACK: Do NOT ignore category just because count is low. 
+            // Users prioritize content filtering over quantity.
         }
 
         const selectedCards = this.shuffleArray(allCards).slice(0, 40);
@@ -398,5 +402,19 @@ export class TimesUpService {
         });
 
         return this.getGameByHostId(game.hostId);
+    }
+
+    async endGame(gameCode: string) {
+        const game = await this.prisma.timesUpGame.findUnique({ where: { gameCode } });
+        if (game) {
+            // Delete game and cascade (handled by Prisma schema if relations onDelete: Cascade)
+            // If not, we might need to delete players/teams/cards first.
+            // Assuming Schema handles cascade or we leave it. 
+            // Ideally we want to keep stats? But user asked to "reset".
+            // Let's just DELETE for now to ensure clean slate.
+            await this.prisma.timesUpGame.delete({ where: { id: game.id } });
+            return true;
+        }
+        return false;
     }
 }

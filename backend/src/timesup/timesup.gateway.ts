@@ -109,4 +109,18 @@ export class TimesUpGateway {
             return { success: false, error: e.message };
         }
     }
+
+    @SubscribeMessage('timesup:endGame')
+    async handleEndGame(@MessageBody() data: { gameCode: string }, @ConnectedSocket() client: Socket) {
+        try {
+            const success = await this.timesupService.endGame(data.gameCode);
+            if (success) {
+                this.server.to(data.gameCode).emit('timesup:gameEnded');
+                return { success: true };
+            }
+            return { success: false, error: "Game not found" };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }
 }

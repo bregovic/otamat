@@ -313,22 +313,26 @@ export class TimesUpService {
         const game = await this.getGame(gameCode);
         if (!game) throw new Error("Game not found");
 
-        // 1. Select Next Player (Random from current team or round robin)
+        // 1. Select Next Player - SEQUENTIAL rotation within current team
         const team = game.teams.find(t => t.id === game.currentTeamId);
         // If no currentTeam set (legacy?), use all players
         let eligiblePlayers = team ? team.players : game.players;
 
         let nextPlayer;
-        if (game.activePlayerId) {
+        if (game.activePlayerId && eligiblePlayers.length > 0) {
             // Find next in array relative to current active
             const idx = eligiblePlayers.findIndex(p => p.id === game.activePlayerId);
             if (idx >= 0) {
                 nextPlayer = eligiblePlayers[(idx + 1) % eligiblePlayers.length];
+            } else {
+                // Current active player not in this team's list - start from beginning
+                nextPlayer = eligiblePlayers[0];
             }
         }
 
-        if (!nextPlayer) {
-            nextPlayer = eligiblePlayers[Math.floor(Math.random() * eligiblePlayers.length)];
+        // If still no nextPlayer (first turn or no active player), start from first player
+        if (!nextPlayer && eligiblePlayers.length > 0) {
+            nextPlayer = eligiblePlayers[0];
         }
 
         // 2. Select Card

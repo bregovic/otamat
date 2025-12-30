@@ -335,6 +335,11 @@ export class TimesUpService {
             nextPlayer = eligiblePlayers[0];
         }
 
+        // Guard: If still no player found, throw error
+        if (!nextPlayer) {
+            throw new Error("No eligible player found for turn");
+        }
+
         // 2. Select Card
         const card = await this.prisma.timesUpGameCard.findFirst({
             where: { gameId: game.id, state: 'DECK' }
